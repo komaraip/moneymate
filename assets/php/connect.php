@@ -1,6 +1,6 @@
 <?php
     $server = 'localhost';
-    $username = '';
+    $username = 'root';
     $password = '';
     $database = 'project_moneymate';
 
