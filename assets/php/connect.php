@@ -1,8 +1,8 @@
 <?php
     $server = 'localhost';
-    $username = 'komarai1_admin';
-    $password = '@Ipanjay321@';
-    $database = 'komarai1_moneymate';
+    $username = '';
+    $password = '';
+    $database = 'project_moneymate';
 
     if(isset($_POST)){
         $conn = new mysqli($server, $username, $password, $database);
