@@ -1,2 +1,2 @@
 # MONEY MATE
-Deploy: project.komaraip.com/moneymate
+Website Link: <a href="https://project.komaraip.com/moneymate/">Money Mate</a>
