@@ -1,0 +1,123 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap");
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Open Sans", sans-serif;
+}
+
+body {
+  height: 100vh;
+  width: 100%;
+  background-color: #1B1C31;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo{
+  padding: 2rem;
+}
+
+.logo img{
+  height: 60px;
+}
+
+.container {
+  background-color: #181818;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  width: 700px;
+  height: 450px;
+}
+
+.box{
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  margin: 1rem;
+}
+
+h2 {
+  margin-bottom: 20px;
+  text-align: center;
+  color: #fff;
+  font-size: 40px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  color: #fff;
+}
+
+input[type="email"],
+input[type="password"] {
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.button{
+  display: flex;
+  justify-content: center;
+}
+
+button {
+  width: 100px;
+  margin-top: 20px;
+  padding: 8px;
+  background-color: #181818;
+  color: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+  border-color: #812DE2;
+}
+
+button:hover {
+  background-color: #FC9D10;
+  color: #181818;
+  border-color: #FC9D10;
+}
+
+.register-link {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.register-link p {
+  color: #fff;
+}
+
+.register-link a {
+  color: #FC9D10;
+  text-decoration: none;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
+
+@media screen and (max-width:450px){
+  .container {
+    width: 300px;
+  }
+  
+  .logo img{
+    height: 50px;
+  }
+
+  .box{
+    padding: 1rem;
+    margin: 0rem;
+  }
+}
