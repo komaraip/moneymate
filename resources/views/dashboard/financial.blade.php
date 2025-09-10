@@ -1,4 +1,4 @@
-@extends('layouts.dashboard-modern')
+@extends('layouts.dashboard')
 
 @section('title', 'MoneyMate - Financial Report')
 @section('page-title', 'Financial Report')

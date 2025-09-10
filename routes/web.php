@@ -20,7 +20,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
 // Protected routes (require authentication)
 Route::middleware('auth')->group(function () {
     // Dashboard routes
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/financial', [DashboardController::class, 'financial'])->name('dashboard.financial');
     Route::get('/dashboard/account', [DashboardController::class, 'account'])->name('dashboard.account');
     Route::put('/dashboard/account', [DashboardController::class, 'updateAccount'])->name('dashboard.account.update');

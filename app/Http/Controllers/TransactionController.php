@@ -60,7 +60,7 @@ class TransactionController extends Controller
             ->where('type', 'expense')
             ->sum('balance');
 
-        return view('transactions.index-modern', compact(
+        return view('transactions.index', compact(
             'transactions',
             'categories',
             'totalIncome',
@@ -73,7 +73,7 @@ class TransactionController extends Controller
      */
     public function create()
     {
-        return view('transactions.create-modern');
+        return view('transactions.create');
     }
 
     /**
@@ -123,7 +123,7 @@ class TransactionController extends Controller
             ->take(5)
             ->get();
 
-        return view('transactions.show-modern', compact('transaction', 'relatedTransactions'));
+        return view('transactions.show', compact('transaction', 'relatedTransactions'));
     }
 
     /**
@@ -136,7 +136,7 @@ class TransactionController extends Controller
             abort(403);
         }
 
-        return view('transactions.edit-modern', compact('transaction'));
+        return view('transactions.edit', compact('transaction'));
     }
 
     /**

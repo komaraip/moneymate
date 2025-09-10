@@ -2,55 +2,80 @@
 
 @section('title', 'MoneyMate - Register')
 
-@push('styles')
-<link rel="stylesheet" href="{{ asset('assets/css/register.css') }}">
-@endpush
-
 @section('content')
-<div class="logo">
-    <a href="{{ route('home') }}">
-        <img src="{{ asset('assets/image/logo.png') }}" alt="Logo">
-    </a>
-</div>
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center px-4 py-8">
+    <div class="mb-8">
+        <a href="{{ route('home') }}">
+            <img src="{{ asset('assets/image/logo.png') }}" alt="Logo" class="h-12 md:h-16">
+        </a>
+    </div>
 
-<div class="container">
-    <h1>Register</h1>
+    <div class="w-full max-w-2xl bg-[#1b1c30] rounded-xl shadow-2xl p-8">
+        <h1 class="text-3xl font-bold text-white text-center mb-8">Register</h1>
 
-    <div class="regform">
         @if($errors->any())
-            <div class="alert alert-danger">
-                <ul style="margin: 0; padding: 0; list-style: none;">
+            <div class="mb-6 p-4 bg-red-900/50 border border-red-500 rounded-lg">
+                <ul class="space-y-1">
                     @foreach($errors->all() as $error)
-                        <li style="color: red; margin-bottom: 5px;">{{ $error }}</li>
+                        <li class="text-red-300 text-sm">{{ $error }}</li>
                     @endforeach
                 </ul>
             </div>
         @endif
 
-        <form action="{{ route('auth.register.post') }}" method="post">
+        <form action="{{ route('auth.register.post') }}" method="post" class="space-y-6">
             @csrf
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="fullname">Full Name</label>
-                    <input type="text" id="fullname" name="fullname" value="{{ old('fullname') }}" required>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="fullname" class="block text-sm font-medium text-white mb-2">Full Name</label>
+                    <input
+                        type="text"
+                        id="fullname"
+                        name="fullname"
+                        value="{{ old('fullname') }}"
+                        required
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                        placeholder="Enter your full name"
+                    >
                 </div>
 
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" value="{{ old('email') }}" required>
+                <div>
+                    <label for="email" class="block text-sm font-medium text-white mb-2">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value="{{ old('email') }}"
+                        required
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                        placeholder="Enter your email"
+                    >
                 </div>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="password" class="block text-sm font-medium text-white mb-2">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                        placeholder="Enter your password"
+                    >
                 </div>
 
-                <div class="form-group">
-                    <label for="country">Country</label>
-                    <select id="country" name="country" required>
-                        <option value="">-</option>
+                <div>
+                    <label for="country" class="block text-sm font-medium text-white mb-2">Country</label>
+                    <select
+                        id="country"
+                        name="country"
+                        required
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                    >
+                        <option value="">Select Country</option>
                         <option value="Indonesia" {{ old('country') == 'Indonesia' ? 'selected' : '' }}>Indonesia</option>
                         <option value="Malaysia" {{ old('country') == 'Malaysia' ? 'selected' : '' }}>Malaysia</option>
                         <option value="Singapore" {{ old('country') == 'Singapore' ? 'selected' : '' }}>Singapore</option>
@@ -63,11 +88,16 @@
                 </div>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="card">Card Type</label>
-                    <select id="card" name="card" required>
-                        <option value="">-</option>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="card" class="block text-sm font-medium text-white mb-2">Card Type</label>
+                    <select
+                        id="card"
+                        name="card"
+                        required
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                    >
+                        <option value="">Select Card Type</option>
                         <option value="BCA" {{ old('card') == 'BCA' ? 'selected' : '' }}>BCA</option>
                         <option value="Mandiri" {{ old('card') == 'Mandiri' ? 'selected' : '' }}>Mandiri</option>
                         <option value="BRI" {{ old('card') == 'BRI' ? 'selected' : '' }}>BRI</option>
@@ -76,22 +106,43 @@
                     </select>
                 </div>
 
-                <div class="form-group">
-                    <label for="cardnumber">Card Number</label>
-                    <input type="text" id="cardnumber" name="cardnumber" value="{{ old('cardnumber') }}" required>
+                <div>
+                    <label for="cardnumber" class="block text-sm font-medium text-white mb-2">Card Number</label>
+                    <input
+                        type="text"
+                        id="cardnumber"
+                        name="cardnumber"
+                        value="{{ old('cardnumber') }}"
+                        required
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                        placeholder="Enter your card number"
+                    >
                 </div>
             </div>
 
-            <div class="button-1">
-                <button type="submit" name="register">
+            <div class="pt-4">
+                <button
+                    type="submit"
+                    name="register"
+                    class="w-full py-3 px-4 bg-[#1b1c30] border border-purple-600 text-white font-semibold rounded-lg hover:bg-[#efa13c] hover:text-gray-900 hover:border-[#efa13c] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-all duration-200"
+                >
                     REGISTER
                 </button>
             </div>
         </form>
 
-        <div class="login-link">
-            <p>Already have an account? <a href="{{ route('auth.login') }}">Login</a></p>
+        <!-- Login Link -->
+        <div class="mt-6 text-center">
+            <p class="text-white">
+                Already have an account?
+                <a href="{{ route('auth.login') }}" class="text-[#efa13c] hover:text-[#d68a2e] font-medium hover:underline transition-colors duration-200">
+                    Login
+                </a>
+            </p>
         </div>
     </div>
 </div>
+
+<!-- Footer -->
+@include('components.footer')
 @endsection

@@ -1,4 +1,4 @@
-@extends('layouts.dashboard-modern')
+@extends('layouts.dashboard')
 
 @section('title', 'MoneyMate - Transactions')
 @section('page-title', 'All Transactions')

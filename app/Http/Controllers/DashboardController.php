@@ -49,7 +49,7 @@ class DashboardController extends Controller
             ->where('type', 'expense')
             ->sum('balance');
 
-        return view('dashboard.index-modern', compact(
+        return view('dashboard.index', compact(
             'user',
             'transactions',
             'spendingByCategory',
@@ -99,7 +99,7 @@ class DashboardController extends Controller
             ->take(12)
             ->get();
 
-        return view('dashboard.financial-modern', compact(
+        return view('dashboard.financial', compact(
             'user',
             'recentTransactions',
             'spendingByCategory',
@@ -115,7 +115,7 @@ class DashboardController extends Controller
     public function account()
     {
         $user = Auth::user();
-        return view('dashboard.account-modern', compact('user'));
+        return view('dashboard.account', compact('user'));
     }
 
     /**

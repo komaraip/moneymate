@@ -1,4 +1,4 @@
-@extends('layouts.dashboard-modern')
+@extends('layouts.dashboard')
 
 @section('title', 'MoneyMate - Edit Transaction')
 @section('page-title', 'Edit Transaction')
@@ -78,7 +78,7 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <span class="text-gray-500 sm:text-sm">{{ auth()->user()->currency }}</span>
                                 </div>
-                                <input type="number" name="balance" id="balance" step="0.01" min="0.01" value="{{ old('balance', $transaction->balance) }}" required class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md @error('balance') border-red-300 @enderror" placeholder="0.00">
+                                <input type="number" name="balance" id="balance" step="0.01" min="0.01" value="{{ old('balance', $transaction->balance) }}" required class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 sm:text-sm rounded-md {{ $errors->has('balance') ? 'border-red-300' : 'border-gray-300' }}" placeholder="0.00">
                             </div>
                             @error('balance')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -89,7 +89,7 @@
                         <div>
                             <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
                             <div class="mt-1">
-                                <select name="category" id="category" required class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('category') border-red-300 @enderror">
+                                <select name="category" id="category" required class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('category') ? 'border-red-300' : 'border-gray-300' }}">
                                     <option value="">Select a category</option>
                                     <optgroup label="Income Categories">
                                         <option value="Salary" {{ old('category', $transaction->category) == 'Salary' ? 'selected' : '' }}>Salary</option>
@@ -126,7 +126,7 @@
                         <div>
                             <label for="transaction_date" class="block text-sm font-medium text-gray-700">Transaction Date</label>
                             <div class="mt-1">
-                                <input type="date" name="transaction_date" id="transaction_date" value="{{ old('transaction_date', $transaction->transaction_date->format('Y-m-d')) }}" required class="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md @error('transaction_date') border-red-300 @enderror">
+                                <input type="date" name="transaction_date" id="transaction_date" value="{{ old('transaction_date', $transaction->transaction_date->format('Y-m-d')) }}" required class="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm rounded-md {{ $errors->has('transaction_date') ? 'border-red-300' : 'border-gray-300' }}">
                             </div>
                             @error('transaction_date')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -138,7 +138,7 @@
                     <div>
                         <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
                         <div class="mt-1">
-                            <textarea name="description" id="description" rows="3" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border border-gray-300 rounded-md @error('description') border-red-300 @enderror" placeholder="Optional description for this transaction...">{{ old('description', $transaction->description) }}</textarea>
+                            <textarea name="description" id="description" rows="3" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border rounded-md {{ $errors->has('description') ? 'border-red-300' : 'border-gray-300' }}" placeholder="Optional description for this transaction...">{{ old('description', $transaction->description) }}</textarea>
                         </div>
                         <p class="mt-2 text-sm text-gray-500">Add any additional notes or details about this transaction.</p>
                         @error('description')

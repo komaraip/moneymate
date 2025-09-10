@@ -1,521 +1,242 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-gray-50">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>@yield('title', 'MoneyMate Dashboard')</title>
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-    <!-- Icon CSS -->
-    <link rel="stylesheet" href="{{ asset('assets/member/icons/font-awesome/css/all.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/member/icons/flaticon/flaticon.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/member/icons/themify-icons/css/themify-icons.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/member/icons/bootstrap-icons/font/bootstrap-icons.css') }}">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/heroicons/2.0.18/24/outline/index.min.css">
+    <script src="https://unpkg.com/heroicons@2.0.18/24/outline/index.js"></script>
 
-    <!-- Main Dashboard CSS -->
-    <link href="{{ asset('assets/css/dashboard.css') }}" rel="stylesheet">
+    <!-- Scripts -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <!-- Custom Dashboard Overrides -->
     <style>
-        .main-wrapper {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        .nav-header {
-            width: 260px;
-            background: linear-gradient(135deg, #5bcfc5 0%, #38bfb3 100%);
-            position: fixed;
-            height: 100vh;
-            z-index: 1000;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-        }
-
-        .brand-logo {
-            display: block;
-            padding: 25px 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .brand-logo img {
-            max-width: 120px;
-            height: auto;
-            filter: brightness(0) invert(1);
-        }
-
-        .header {
-            margin-left: 260px;
-            background: #fff;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
-            position: fixed;
-            width: calc(100% - 260px);
-            z-index: 999;
-            height: 80px;
-        }
-
-        .header-content {
-            padding: 0 30px;
-            height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .dashboard_bar {
-            font-size: 28px;
-            font-weight: 700;
-            color: #2c3e50;
-            margin: 0;
-        }
-
-        .dlabnav {
-            width: 260px;
-            position: fixed;
-            top: 0;
-            height: 100vh;
-            background: linear-gradient(135deg, #5bcfc5 0%, #38bfb3 100%);
-            overflow-y: auto;
-            padding-top: 140px;
-        }
-
-        .dlabnav-scroll {
-            padding: 0;
-        }
-
-        .metismenu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .metismenu li {
-            margin: 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .metismenu a {
-            display: flex;
-            align-items: center;
-            padding: 18px 25px;
-            color: rgba(255,255,255,0.9);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-
-        .metismenu a:hover {
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            padding-left: 35px;
-        }
-
-        .metismenu a.active {
-            background: rgba(255,255,255,0.2);
-            color: #fff;
-            border-right: 4px solid #fff;
-        }
-
-        .metismenu i {
-            width: 20px;
-            font-size: 18px;
-        }
-
-        .nav-text {
-            margin-left: 15px;
-            font-weight: 500;
-        }
-
-        .content-body {
-            margin-left: 260px;
-            margin-top: 80px;
-            padding: 30px;
-            width: calc(100% - 260px);
-            min-height: calc(100vh - 80px);
-            background: #f8f9fa;
-        }
-
-        .card {
-            background: #fff;
-            border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
-            margin-bottom: 30px;
-            overflow: hidden;
-            border: none;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
-        }
-
-        .card-header {
-            padding: 25px 30px;
-            border-bottom: 1px solid #eee;
-            background: linear-gradient(135deg, #5bcfc5 0%, #38bfb3 100%);
-            color: #fff;
-        }
-
-        .card-title {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 600;
-            color: #fff;
-        }
-
-        .card-body {
-            padding: 30px;
-        }
-
-        .stat-widget-one {
-            padding: 25px;
-            border-radius: 15px;
-            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
-        }
-
-        .stat-icon {
-            width: 70px;
-            height: 70px;
-            border-radius: 20px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            margin-right: 20px;
-            background: linear-gradient(135deg, #5bcfc5 0%, #38bfb3 100%);
-            color: #fff;
-        }
-
-        .stat-content {
-            vertical-align: top;
-        }
-
-        .stat-text {
-            font-size: 16px;
-            color: #6c757d;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .stat-digit {
-            font-size: 28px;
-            font-weight: 700;
-            color: #2c3e50;
-        }
-
-        .btn {
-            padding: 12px 25px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #5bcfc5 0%, #38bfb3 100%);
-            color: #fff;
-            box-shadow: 0 4px 15px rgba(91, 207, 197, 0.3);
-        }
-
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #38bfb3 0%, #217069 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(91, 207, 197, 0.4);
-        }
-
-        .navbar-nav .dropdown-menu {
-            border: none;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            border-radius: 10px;
-        }
-
-        .header-profile img {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid #5bcfc5;
-        }
-
-        .header-info {
-            text-align: right;
-            margin-right: 15px;
-        }
-
-        .header-info span {
-            display: block;
-            color: #2c3e50;
-        }
-
-        .header-info small {
-            color: #6c757d;
-            font-size: 13px;
-        }
-
-        .table {
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .table th {
-            background: linear-gradient(135deg, #5bcfc5 0%, #38bfb3 100%);
-            color: #fff;
-            font-weight: 600;
-            border: none;
-            padding: 15px;
-        }
-
-        .table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-            vertical-align: middle;
-        }
-
-        .badge {
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .badge-success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: #fff;
-        }
-
-        .badge-danger {
-            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
-            color: #fff;
-        }
-
-        .alert {
-            border: none;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 25px;
-        }
-
-        .alert-success {
-            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-            color: #155724;
-        }
-
-        #preloader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #5bcfc5 0%, #38bfb3 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-
-        #preloader img {
-            width: 120px;
-            height: auto;
-            filter: brightness(0) invert(1);
-            margin-bottom: 30px;
-        }
-
-        .waviy span {
-            font-size: 48px;
-            font-weight: 700;
-            color: #fff;
-            text-transform: uppercase;
-            animation: waviy 1s infinite;
-            animation-delay: calc(.1s * var(--i));
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        @keyframes waviy {
-            0%,40%,100% {
-                transform: translateY(0)
-            }
-            20% {
-                transform: translateY(-20px)
-            }
-        }
+        [x-cloak] { display: none !important; }
     </style>
-
-    <title>@yield('title', 'MoneyMate - Dashboard')</title>
-    @stack('styles')
 </head>
-<body>
-    <div id="preloader">
-        <img src="{{ asset('assets/image/logo1.png') }}" alt="">
-        <div class="waviy">
-            <span style="--i:1">M</span>
-            <span style="--i:2">o</span>
-            <span style="--i:3">n</span>
-            <span style="--i:4">e</span>
-            <span style="--i:5">y</span>
-            <span style="--i:6">M</span>
-            <span style="--i:7">a</span>
-            <span style="--i:8">t</span>
-            <span style="--i:9">e</span>
-        </div>
-    </div>
 
-    <div class="main-wrapper">
-        <!-- Nav header start -->
-        <div class="nav-header">
-            <a href="{{ route('dashboard') }}" class="brand-logo">
-                <img class="logo-abbr" src="{{ asset('assets/image/logo1.png') }}" alt="">
-                <img class="logo-compact" src="{{ asset('assets/image/logo.png') }}" alt="">
-                <img class="brand-title" src="{{ asset('assets/image/logo.png') }}" alt="">
-            </a>
+<body class="h-full" x-data="{ sidebarOpen: false, darkMode: false }" :class="{ 'dark': darkMode }">
+    <div class="min-h-full">
+        <!-- Sidebar -->
+        <div class="fixed inset-y-0 z-50 flex w-72 flex-col" x-show="sidebarOpen" x-cloak>
+            <!-- Sidebar backdrop, show/hide based on sidebar state. -->
+            <div class="fixed inset-0 bg-gray-900/80" @click="sidebarOpen = false" x-show="sidebarOpen" x-transition:enter="transition-opacity ease-linear duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
 
-            <div class="nav-control">
-                <div class="hamburger">
-                    <span class="line"></span><span class="line"></span><span class="line"></span>
+            <!-- Sidebar panel, show/hide based on sidebar state. -->
+            <div class="relative flex w-full max-w-xs flex-1 flex-col bg-white" x-show="sidebarOpen" x-transition:enter="transition ease-in-out duration-300 transform" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in-out duration-300 transform" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full">
+                <div class="absolute right-0 top-0 -mr-12 pt-2" x-show="sidebarOpen">
+                    <button type="button" class="ml-1 flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" @click="sidebarOpen = false">
+                        <span class="sr-only">Close sidebar</span>
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="flex flex-1 flex-col overflow-y-auto px-4 pb-4">
+                    <div class="flex h-16 flex-shrink-0 items-center">
+                        <h1 class="text-2xl font-bold text-indigo-600">MoneyMate</h1>
+                    </div>
+                    <nav class="mt-5 flex-1 space-y-1">
+                        <a href="{{ route('dashboard') }}" class="group flex items-center rounded-md px-2 py-2 text-sm font-medium {{ request()->routeIs('dashboard') ? 'bg-indigo-100 text-indigo-900' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900' }}">
+                            <svg class="mr-3 h-5 w-5 flex-shrink-0 {{ request()->routeIs('dashboard') ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                            </svg>
+                            Dashboard
+                        </a>
+
+                        <a href="{{ route('transactions.index') }}" class="group flex items-center rounded-md px-2 py-2 text-sm font-medium {{ request()->routeIs('transactions.*') ? 'bg-indigo-100 text-indigo-900' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900' }}">
+                            <svg class="mr-3 h-5 w-5 flex-shrink-0 {{ request()->routeIs('transactions.*') ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Transactions
+                        </a>
+
+                        <a href="{{ route('dashboard.financial') }}" class="group flex items-center rounded-md px-2 py-2 text-sm font-medium {{ request()->routeIs('dashboard.financial') ? 'bg-indigo-100 text-indigo-900' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900' }}">
+                            <svg class="mr-3 h-5 w-5 flex-shrink-0 {{ request()->routeIs('dashboard.financial') ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                            </svg>
+                            Financial Report
+                        </a>
+
+                        <a href="{{ route('dashboard.account') }}" class="group flex items-center rounded-md px-2 py-2 text-sm font-medium {{ request()->routeIs('dashboard.account') ? 'bg-indigo-100 text-indigo-900' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900' }}">
+                            <svg class="mr-3 h-5 w-5 flex-shrink-0 {{ request()->routeIs('dashboard.account') ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Account Settings
+                        </a>
+                    </nav>
                 </div>
             </div>
         </div>
-        <!-- Nav header end -->
 
-        <!-- Header start -->
-        <div class="header">
-            <div class="header-content">
-                <nav class="navbar navbar-expand">
-                    <div class="collapse navbar-collapse justify-content-between">
-                        <div class="header-left">
-                            <div class="dashboard_bar">
-                                @yield('page-title', 'Dashboard')
-                            </div>
-                        </div>
-
-                        <ul class="navbar-nav header-right">
-                            <li class="nav-item dropdown header-profile">
-                                <a class="nav-link" href="#" role="button" data-bs-toggle="dropdown">
-                                    <div class="header-info ms-3">
-                                        <span class="font-w600">Hi,<b> {{ Auth::user()->fullname }}</b></span>
-                                        <small class="text-end font-w400">{{ Auth::user()->email }}</small>
-                                    </div>
-                                    <img src="{{ Auth::user()->profile ?? asset('assets/image/logo1.png') }}" width="20" alt="">
-                                </a>
-                                <div class="dropdown-menu dropdown-menu-end">
-                                    <a href="{{ route('dashboard.account') }}" class="dropdown-item ai-icon">
-                                        <i class="flaticon-381-settings-2"></i>
-                                        <span class="ms-2">Account Setting</span>
+        <!-- Static sidebar for desktop -->
+        <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+            <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 shadow-xl">
+                <div class="flex h-16 shrink-0 items-center">
+                    <h1 class="text-2xl font-bold text-indigo-600">MoneyMate</h1>
+                </div>
+                <nav class="flex flex-1 flex-col">
+                    <ul role="list" class="flex flex-1 flex-col gap-y-7">
+                        <li>
+                            <ul role="list" class="-mx-2 space-y-1">
+                                <li>
+                                    <a href="{{ route('dashboard') }}" class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold {{ request()->routeIs('dashboard') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:text-indigo-700 hover:bg-gray-50' }}">
+                                        <svg class="h-6 w-6 shrink-0 {{ request()->routeIs('dashboard') ? 'text-indigo-700' : 'text-gray-400 group-hover:text-indigo-700' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                                        </svg>
+                                        Dashboard
                                     </a>
-                                    <form method="POST" action="{{ route('auth.logout') }}">
-                                        @csrf
-                                        <button type="submit" class="dropdown-item ai-icon">
-                                            <i class="flaticon-381-exit"></i>
-                                            <span class="ms-2">Logout</span>
-                                        </button>
-                                    </form>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
+                                </li>
+                                <li>
+                                    <a href="{{ route('transactions.index') }}" class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold {{ request()->routeIs('transactions.*') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:text-indigo-700 hover:bg-gray-50' }}">
+                                        <svg class="h-6 w-6 shrink-0 {{ request()->routeIs('transactions.*') ? 'text-indigo-700' : 'text-gray-400 group-hover:text-indigo-700' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Transactions
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('dashboard.financial') }}" class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold {{ request()->routeIs('dashboard.financial') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:text-indigo-700 hover:bg-gray-50' }}">
+                                        <svg class="h-6 w-6 shrink-0 {{ request()->routeIs('dashboard.financial') ? 'text-indigo-700' : 'text-gray-400 group-hover:text-indigo-700' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                                        </svg>
+                                        Financial Report
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('dashboard.account') }}" class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold {{ request()->routeIs('dashboard.account') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:text-indigo-700 hover:bg-gray-50' }}">
+                                        <svg class="h-6 w-6 shrink-0 {{ request()->routeIs('dashboard.account') ? 'text-indigo-700' : 'text-gray-400 group-hover:text-indigo-700' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        Account Settings
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
                 </nav>
             </div>
         </div>
-        <!-- Header end -->
 
-        <!-- Sidebar start -->
-        <div class="dlabnav">
-            <div class="dlabnav-scroll">
-                <ul class="metismenu" id="menu">
-                    <li><a href="{{ route('dashboard') }}" class="ai-icon" aria-expanded="false">
-                        <i class="flaticon-381-networking"></i>
-                        <span class="nav-text">Dashboard</span>
-                    </a></li>
+        <div class="lg:pl-72">
+            <!-- Top bar -->
+            <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+                <button type="button" class="-m-2.5 p-2.5 text-gray-700 lg:hidden" @click="sidebarOpen = true">
+                    <span class="sr-only">Open sidebar</span>
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                </button>
 
-                    <li><a href="{{ route('dashboard.financial') }}" class="ai-icon" aria-expanded="false">
-                        <i class="flaticon-381-controls-3"></i>
-                        <span class="nav-text">Financial</span>
-                    </a></li>
+                <!-- Separator -->
+                <div class="h-6 w-px bg-gray-200 lg:hidden" aria-hidden="true"></div>
 
-                    <li><a href="{{ route('transactions.index') }}" class="ai-icon" aria-expanded="false">
-                        <i class="flaticon-381-notebook-1"></i>
-                        <span class="nav-text">Transactions</span>
-                    </a></li>
-
-                    <li><a href="{{ route('transactions.create') }}" class="ai-icon" aria-expanded="false">
-                        <i class="flaticon-381-add"></i>
-                        <span class="nav-text">Add Transaction</span>
-                    </a></li>
-
-                    <li><a href="{{ route('dashboard.account') }}" class="ai-icon" aria-expanded="false">
-                        <i class="flaticon-381-settings-2"></i>
-                        <span class="nav-text">Account</span>
-                    </a></li>
-                </ul>
-            </div>
-        </div>
-        <!-- Sidebar end -->
-
-        <!-- Content body start -->
-        <div class="content-body">
-            <div class="container-fluid">
-                @if(session('success'))
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        {{ session('success') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <div class="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+                    <div class="flex flex-1 items-center">
+                        <h1 class="text-xl font-semibold leading-6 text-gray-900">@yield('page-title', 'Dashboard')</h1>
                     </div>
-                @endif
+                    <div class="flex items-center gap-x-4 lg:gap-x-6">
+                        <!-- Profile dropdown -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button type="button" class="-m-1.5 flex items-center p-1.5" @click="open = !open">
+                                <span class="sr-only">Open user menu</span>
+                                @if(auth()->user()->profile)
+                                    <img class="h-8 w-8 rounded-full object-cover" src="{{ asset('storage/' . auth()->user()->profile) }}" alt="Profile photo">
+                                @else
+                                    <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center">
+                                        <span class="text-sm font-medium text-white">{{ substr(auth()->user()->name, 0, 1) }}</span>
+                                    </div>
+                                @endif
+                                <span class="hidden lg:flex lg:items-center">
+                                    <span class="ml-4 text-sm font-semibold leading-6 text-gray-900">{{ auth()->user()->name }}</span>
+                                    <svg class="ml-2 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                    </svg>
+                                </span>
+                            </button>
 
-                @if(session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        {{ session('error') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <div x-show="open" x-cloak @click.away="open = false" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
+                                <a href="{{ route('dashboard.account') }}" class="block px-3 py-1 text-sm leading-6 text-gray-900 hover:bg-gray-50">Profile</a>
+                                <form method="POST" action="{{ route('auth.logout') }}">
+                                    @csrf
+                                    <button type="submit" class="block w-full px-3 py-1 text-left text-sm leading-6 text-gray-900 hover:bg-gray-50">Sign out</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
-                @endif
-
-                @yield('content')
+                </div>
             </div>
+
+            <main class="py-10">
+                <div class="px-4 sm:px-6 lg:px-8">
+                    <!-- Flash Messages -->
+                    @if (session('success'))
+                        <div class="rounded-md bg-green-50 p-4 mb-6" x-data="{ show: true }" x-show="show" x-transition>
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.53L7.53 10.53a.75.75 0 00-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
+                                </div>
+                                <div class="ml-auto pl-3">
+                                    <div class="-mx-1.5 -my-1.5">
+                                        <button type="button" @click="show = false" class="inline-flex rounded-md bg-green-50 p-1.5 text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 focus:ring-offset-green-50">
+                                            <span class="sr-only">Dismiss</span>
+                                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if (session('error'))
+                        <div class="rounded-md bg-red-50 p-4 mb-6" x-data="{ show: true }" x-show="show" x-transition>
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
+                                </div>
+                                <div class="ml-auto pl-3">
+                                    <div class="-mx-1.5 -my-1.5">
+                                        <button type="button" @click="show = false" class="inline-flex rounded-md bg-red-50 p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 focus:ring-offset-red-50">
+                                            <span class="sr-only">Dismiss</span>
+                                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    @yield('content')
+                </div>
+            </main>
         </div>
-        <!-- Content body end -->
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ asset('assets/member/vendor/global/global.min.js') }}"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     @stack('scripts')
-
-    <script>
-        // Preloader
-        setTimeout(function() {
-            document.getElementById('preloader').style.display = 'none';
-        }, 2000);
-
-        // Sidebar toggle functionality
-        function toggleSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            const content = document.querySelector('.content-body');
-
-            if (sidebar && content) {
-                sidebar.classList.toggle('collapsed');
-                content.classList.toggle('expanded');
-            }
-        }
-
-        // Auto-hide alerts after 5 seconds
-        setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                const alertInstance = new bootstrap.Alert(alert);
-                alertInstance.close();
-            });
-        }, 5000);
-    </script>
 </body>
 </html>

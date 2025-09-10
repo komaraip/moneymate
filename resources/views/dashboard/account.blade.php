@@ -1,4 +1,4 @@
-@extends('layouts.dashboard-modern')
+@extends('layouts.dashboard')
 
 @section('title', 'MoneyMate - Account Settings')
 @section('page-title', 'Account Settings')
@@ -85,7 +85,7 @@
                             <div>
                                 <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
                                 <div class="mt-1">
-                                    <input type="text" name="name" id="name" value="{{ old('name', auth()->user()->name) }}" required class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('name') border-red-300 @enderror">
+                                    <input type="text" name="name" id="name" value="{{ old('name', auth()->user()->name) }}" required class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('name') ? 'border-red-300' : 'border-gray-300' }}">
                                 </div>
                                 @error('name')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -95,7 +95,7 @@
                             <div>
                                 <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
                                 <div class="mt-1">
-                                    <input type="email" name="email" id="email" value="{{ old('email', auth()->user()->email) }}" required class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('email') border-red-300 @enderror">
+                                    <input type="email" name="email" id="email" value="{{ old('email', auth()->user()->email) }}" required class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('email') ? 'border-red-300' : 'border-gray-300' }}">
                                 </div>
                                 @error('email')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -107,7 +107,7 @@
                             <div>
                                 <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
                                 <div class="mt-1">
-                                    <select name="currency" id="currency" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('currency') border-red-300 @enderror">
+                                    <select name="currency" id="currency" class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('currency') ? 'border-red-300' : 'border-gray-300' }}">
                                         <option value="$" {{ auth()->user()->currency == '$' ? 'selected' : '' }}>USD ($)</option>
                                         <option value="€" {{ auth()->user()->currency == '€' ? 'selected' : '' }}>EUR (€)</option>
                                         <option value="£" {{ auth()->user()->currency == '£' ? 'selected' : '' }}>GBP (£)</option>
@@ -124,7 +124,7 @@
                             <div>
                                 <label for="balance_limit" class="block text-sm font-medium text-gray-700">Balance Limit</label>
                                 <div class="mt-1">
-                                    <input type="number" name="balance_limit" id="balance_limit" step="0.01" min="0" value="{{ old('balance_limit', auth()->user()->balance_limit) }}" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('balance_limit') border-red-300 @enderror">
+                                    <input type="number" name="balance_limit" id="balance_limit" step="0.01" min="0" value="{{ old('balance_limit', auth()->user()->balance_limit) }}" class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('balance_limit') ? 'border-red-300' : 'border-gray-300' }}">
                                 </div>
                                 {{-- <p class="mt-1 text-sm text-gray-500">Set a warning limit for your account balance</p> --}}
                                 @error('balance_limit')
@@ -188,7 +188,7 @@
                     <div>
                         <label for="current_password" class="block text-sm font-medium text-gray-700">Current Password</label>
                         <div class="mt-1">
-                            <input type="password" name="current_password" id="current_password" required class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('current_password') border-red-300 @enderror">
+                            <input type="password" name="current_password" id="current_password" required class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('current_password') ? 'border-red-300' : 'border-gray-300' }}">
                         </div>
                         @error('current_password')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -200,7 +200,7 @@
                     <div>
                         <label for="password" class="block text-sm font-medium text-gray-700">New Password</label>
                         <div class="mt-1">
-                            <input type="password" name="password" id="password" required class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('password') border-red-300 @enderror">
+                            <input type="password" name="password" id="password" required class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('password') ? 'border-red-300' : 'border-gray-300' }}">
                         </div>
                         @error('password')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -289,7 +289,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('dashboard.index') }}" class="relative group bg-gray-50 p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg hover:bg-gray-100 transition-colors">
+                <a href="{{ route('dashboard') }}" class="relative group bg-gray-50 p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg hover:bg-gray-100 transition-colors">
                     <div>
                         <span class="rounded-lg inline-flex p-3 bg-blue-50 text-blue-700 ring-4 ring-white">
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
