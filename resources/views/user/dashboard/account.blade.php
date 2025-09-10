@@ -71,138 +71,153 @@
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Profile Information -->
-        <div class="lg:col-span-2">
-            <div class="bg-white shadow rounded-lg">
-                <div class="px-4 py-5 sm:p-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Profile Information</h3>
-                    <p class="mt-1 text-sm text-gray-500">Update your personal information and email address.</p>
+        <div class="lg:col-span-2 flex">
+            <div class="bg-white shadow rounded-lg flex-1">
+                <div class="px-4 py-5 sm:p-6 h-full flex flex-col">
+                    <div class="flex-shrink-0">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Profile Information</h3>
+                        <p class="mt-1 text-sm text-gray-500">Update your personal information and email address.</p>
+                    </div>
 
-                    <form method="POST" action="{{ route('user.dashboard.account.update') }}" class="mt-6 space-y-6">
+                    <form method="POST" action="{{ route('user.dashboard.account.update') }}" class="mt-6 space-y-6 flex-1 flex flex-col">
                         @csrf
                         @method('PUT')
 
-                        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                            <div>
-                                <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
-                                <div class="mt-1">
-                                    <input type="text" name="name" id="name" value="{{ old('name', auth()->user()->name) }}" required class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('name') ? 'border-red-300' : 'border-gray-300' }}">
+                        <div class="flex-1 space-y-6">
+                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                                <div>
+                                    <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                                    <div class="mt-1">
+                                        <input type="text" name="name" id="name" value="{{ old('name', auth()->user()->name) }}" required class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('name') ? 'border-red-300' : 'border-gray-300' }}">
+                                    </div>
+                                    @error('name')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
-                                @error('name')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+
+                                <div>
+                                    <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                                    <div class="mt-1">
+                                        <input type="email" name="email" id="email" value="{{ old('email', auth()->user()->email) }}" required class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('email') ? 'border-red-300' : 'border-gray-300' }}">
+                                    </div>
+                                    @error('email')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
                             </div>
 
-                            <div>
-                                <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
-                                <div class="mt-1">
-                                    <input type="email" name="email" id="email" value="{{ old('email', auth()->user()->email) }}" required class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('email') ? 'border-red-300' : 'border-gray-300' }}">
+                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                                <div>
+                                    <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
+                                    <div class="mt-1">
+                                        <select name="currency" id="currency" class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('currency') ? 'border-red-300' : 'border-gray-300' }}">
+                                            <option value="">Select Currency</option>
+                                            @foreach($currencies as $currency)
+                                                <option value="{{ $currency->code }}" {{ auth()->user()->currency == $currency->code ? 'selected' : '' }}>
+                                                    {{ $currency->name }} ({{ $currency->symbol }})
+                                                </option>
+                                            @endforeach
+                                            <!-- Fallback options for backward compatibility -->
+                                            @if(!$currencies->where('code', auth()->user()->currency)->count() && auth()->user()->currency)
+                                                <option value="{{ auth()->user()->currency }}" selected>{{ auth()->user()->currency }}</option>
+                                            @endif
+                                        </select>
+                                    </div>
+                                    @error('currency')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
-                                @error('email')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+
+                                <div>
+                                    <label for="balance_limit" class="block text-sm font-medium text-gray-700">Balance Limit</label>
+                                    <div class="mt-1">
+                                        <input type="number" name="balance_limit" id="balance_limit" step="0.01" min="0" value="{{ old('balance_limit', auth()->user()->balance_limit) }}" class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('balance_limit') ? 'border-red-300' : 'border-gray-300' }}">
+                                    </div>
+                                    {{-- <p class="mt-1 text-sm text-gray-500">Set a warning limit for your account balance</p> --}}
+                                    @error('balance_limit')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <!-- New Category Fields -->
+                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                                <div>
+                                    <label for="country" class="block text-sm font-medium text-gray-700">Country</label>
+                                    <div class="mt-1">
+                                        <select name="country" id="country" class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('country') ? 'border-red-300' : 'border-gray-300' }}">
+                                            <option value="">Select Country</option>
+                                            @foreach($countries as $country)
+                                                <option value="{{ $country->id }}" {{ auth()->user()->country == $country->id ? 'selected' : '' }}>
+                                                    {{ $country->name }}
+                                                    @if($country->currency_code)
+                                                        ({{ $country->currency_code }})
+                                                    @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    @error('country')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div>
+                                    <label for="card_type" class="block text-sm font-medium text-gray-700">Card Type</label>
+                                    <div class="mt-1">
+                                        <select name="card_type" id="card_type" class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('card_type') ? 'border-red-300' : 'border-gray-300' }}">
+                                            <option value="">Select Card Type</option>
+                                            @foreach($cardTypes as $cardType)
+                                                <option value="{{ $cardType->id }}" {{ auth()->user()->card_type == $cardType->id ? 'selected' : '' }}>
+                                                    {{ $cardType->name }}
+                                                    @if($cardType->brand_name)
+                                                        ({{ $cardType->brand_name }})
+                                                    @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    @error('card_type')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                                <div>
+                                    <label for="cardnumber" class="block text-sm font-medium text-gray-700">Card Number</label>
+                                    <div class="mt-1">
+                                        <input type="text" name="cardnumber" id="cardnumber" value="{{ old('cardnumber', auth()->user()->cardnumber) }}" placeholder="Enter your card number" maxlength="19" class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('cardnumber') ? 'border-red-300' : 'border-gray-300' }}">
+                                    </div>
+                                    <p class="mt-1 text-sm text-gray-500">Enter your card number (will be masked for security)</p>
+                                    @error('cardnumber')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div>
+                                    <label for="card_name" class="block text-sm font-medium text-gray-700">Card Name (Bank)</label>
+                                    <div class="mt-1">
+                                        <select name="card_name" id="card_name" class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('card_name') ? 'border-red-300' : 'border-gray-300' }}">
+                                            <option value="">Select Bank/Card Name</option>
+                                            @foreach($cardNames as $cardName)
+                                                <option value="{{ $cardName->id }}" {{ auth()->user()->card_name == $cardName->id ? 'selected' : '' }}>
+                                                    {{ $cardName->name }}
+                                                    @if($cardName->bank_type)
+                                                        ({{ $cardName->bank_type }})
+                                                    @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    @error('card_name')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                            <div>
-                                <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
-                                <div class="mt-1">
-                                    <select name="currency" id="currency" class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('currency') ? 'border-red-300' : 'border-gray-300' }}">
-                                        <option value="">Select Currency</option>
-                                        @foreach($currencies as $currency)
-                                            <option value="{{ $currency->code }}" {{ auth()->user()->currency == $currency->code ? 'selected' : '' }}>
-                                                {{ $currency->name }} ({{ $currency->symbol }})
-                                            </option>
-                                        @endforeach
-                                        <!-- Fallback options for backward compatibility -->
-                                        @if(!$currencies->where('code', auth()->user()->currency)->count() && auth()->user()->currency)
-                                            <option value="{{ auth()->user()->currency }}" selected>{{ auth()->user()->currency }}</option>
-                                        @endif
-                                    </select>
-                                </div>
-                                @error('currency')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div>
-                                <label for="balance_limit" class="block text-sm font-medium text-gray-700">Balance Limit</label>
-                                <div class="mt-1">
-                                    <input type="number" name="balance_limit" id="balance_limit" step="0.01" min="0" value="{{ old('balance_limit', auth()->user()->balance_limit) }}" class="appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('balance_limit') ? 'border-red-300' : 'border-gray-300' }}">
-                                </div>
-                                {{-- <p class="mt-1 text-sm text-gray-500">Set a warning limit for your account balance</p> --}}
-                                @error('balance_limit')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <!-- New Category Fields -->
-                        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                            <div>
-                                <label for="country" class="block text-sm font-medium text-gray-700">Country</label>
-                                <div class="mt-1">
-                                    <select name="country" id="country" class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('country') ? 'border-red-300' : 'border-gray-300' }}">
-                                        <option value="">Select Country</option>
-                                        @foreach($countries as $country)
-                                            <option value="{{ $country->id }}" {{ auth()->user()->country == $country->id ? 'selected' : '' }}>
-                                                {{ $country->name }}
-                                                @if($country->currency_code)
-                                                    ({{ $country->currency_code }})
-                                                @endif
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                @error('country')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div>
-                                <label for="card_type" class="block text-sm font-medium text-gray-700">Card Type</label>
-                                <div class="mt-1">
-                                    <select name="card_type" id="card_type" class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('card_type') ? 'border-red-300' : 'border-gray-300' }}">
-                                        <option value="">Select Card Type</option>
-                                        @foreach($cardTypes as $cardType)
-                                            <option value="{{ $cardType->id }}" {{ auth()->user()->card_type == $cardType->id ? 'selected' : '' }}>
-                                                {{ $cardType->name }}
-                                                @if($cardType->brand_name)
-                                                    ({{ $cardType->brand_name }})
-                                                @endif
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                @error('card_type')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 gap-6 sm:grid-cols-1">
-                            <div>
-                                <label for="card_name" class="block text-sm font-medium text-gray-700">Card Name (Bank)</label>
-                                <div class="mt-1">
-                                    <select name="card_name" id="card_name" class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm {{ $errors->has('card_name') ? 'border-red-300' : 'border-gray-300' }}">
-                                        <option value="">Select Bank/Card Name</option>
-                                        @foreach($cardNames as $cardName)
-                                            <option value="{{ $cardName->id }}" {{ auth()->user()->card_name == $cardName->id ? 'selected' : '' }}>
-                                                {{ $cardName->name }}
-                                                @if($cardName->bank_type)
-                                                    ({{ $cardName->bank_type }})
-                                                @endif
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                @error('card_name')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="flex justify-end">
+                        <div class="flex justify-end pt-4 border-t border-gray-200">
                             <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                 <svg class="-ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
@@ -217,10 +232,12 @@
 
         <!-- Account Overview -->
         <div class="lg:col-span-1">
-            <div class="bg-white shadow rounded-lg">
-                <div class="px-4 py-5 sm:p-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Account Overview</h3>
-                    <dl class="mt-6 space-y-4">
+            <div class="bg-white shadow rounded-lg h-full">
+                <div class="px-4 py-5 sm:p-6 h-full flex flex-col">
+                    <div class="flex-shrink-0">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Account Overview</h3>
+                    </div>
+                    <dl class="mt-6 space-y-4 flex-1">
                         <div>
                             <dt class="text-sm font-medium text-gray-500">Current Balance</dt>
                             <dd class="mt-1 text-lg font-semibold text-gray-900">{{ auth()->user()->currency }} {{ number_format(auth()->user()->balance, 2) }}</dd>
@@ -262,6 +279,18 @@
                                 </dd>
                             </div>
                         @endif
+                        @if(auth()->user()->cardnumber)
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500">Card Number</dt>
+                                <dd class="mt-1 text-sm text-gray-900 font-mono">
+                                    @php
+                                        $cardNumber = auth()->user()->cardnumber;
+                                        $maskedNumber = '****-****-****-' . substr($cardNumber, -4);
+                                    @endphp
+                                    {{ $maskedNumber }}
+                                </dd>
+                            </div>
+                        @endif
                         <div>
                             <dt class="text-sm font-medium text-gray-500">Member Since</dt>
                             <dd class="mt-1 text-sm text-gray-900">{{ auth()->user()->created_at->format('F j, Y') }}</dd>
@@ -286,7 +315,7 @@
                 @csrf
                 @method('PUT')
 
-                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div class="space-y-6">
                     <div>
                         <label for="current_password" class="block text-sm font-medium text-gray-700">Current Password</label>
                         <div class="mt-1">
@@ -296,8 +325,6 @@
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-
-                    <div></div> <!-- Empty div for spacing -->
 
                     <div>
                         <label for="password" class="block text-sm font-medium text-gray-700">New Password</label>
@@ -329,111 +356,8 @@
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="bg-white shadow rounded-lg">
-        <div class="px-4 py-5 sm:p-6">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Quick Actions</h3>
-            <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <a href="{{ route('user.transactions.create') }}" class="relative group bg-gray-50 p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div>
-                        <span class="rounded-lg inline-flex p-3 bg-indigo-50 text-indigo-700 ring-4 ring-white">
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="mt-8">
-                        <h3 class="text-lg font-medium">
-                            <span class="absolute inset-0" aria-hidden="true"></span>
-                            Add Transaction
-                        </h3>
-                        <p class="mt-2 text-sm text-gray-500">
-                            Record a new income or expense.
-                        </p>
-                    </div>
-                </a>
-
-                <a href="{{ route('dashboard.financial') }}" class="relative group bg-gray-50 p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div>
-                        <span class="rounded-lg inline-flex p-3 bg-green-50 text-green-700 ring-4 ring-white">
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="mt-8">
-                        <h3 class="text-lg font-medium">
-                            <span class="absolute inset-0" aria-hidden="true"></span>
-                            Financial Report
-                        </h3>
-                        <p class="mt-2 text-sm text-gray-500">
-                            View detailed financial analytics.
-                        </p>
-                    </div>
-                </a>
-
-                <a href="{{ route('transactions.index') }}" class="relative group bg-gray-50 p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div>
-                        <span class="rounded-lg inline-flex p-3 bg-purple-50 text-purple-700 ring-4 ring-white">
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="mt-8">
-                        <h3 class="text-lg font-medium">
-                            <span class="absolute inset-0" aria-hidden="true"></span>
-                            All Transactions
-                        </h3>
-                        <p class="mt-2 text-sm text-gray-500">
-                            Browse all your transactions.
-                        </p>
-                    </div>
-                </a>
-
-                <a href="{{ route('dashboard') }}" class="relative group bg-gray-50 p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div>
-                        <span class="rounded-lg inline-flex p-3 bg-blue-50 text-blue-700 ring-4 ring-white">
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="mt-8">
-                        <h3 class="text-lg font-medium">
-                            <span class="absolute inset-0" aria-hidden="true"></span>
-                            Dashboard
-                        </h3>
-                        <p class="mt-2 text-sm text-gray-500">
-                            Return to main dashboard.
-                        </p>
-                    </div>
-                </a>
-            </div>
-        </div>
-    </div>
-
     <!-- Danger Zone -->
-    <div class="bg-white shadow rounded-lg border border-red-200">
-        <div class="px-4 py-5 sm:p-6">
-            <h3 class="text-lg leading-6 font-medium text-red-900">Danger Zone</h3>
-            <p class="mt-1 text-sm text-red-600">Proceed with caution. These actions cannot be undone.</p>
 
-            <div class="mt-6 flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
-                <button type="button" onclick="if(confirm('Are you sure you want to delete all transactions? This action cannot be undone.')) { document.getElementById('delete-transactions-form').submit(); }" class="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                    <svg class="-ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                    </svg>
-                    Delete All Transactions
-                </button>
-
-                <form id="delete-transactions-form" method="POST" action="{{ route('user.dashboard.account.delete-transactions') }}" style="display: none;">
-                    @csrf
-                    @method('DELETE')
-                </form>
-            </div>
-        </div>
-    </div>
 </div>
 
 @push('scripts')
@@ -501,6 +425,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Card number formatting
+    const cardNumberInput = document.getElementById('cardnumber');
+    if (cardNumberInput) {
+        cardNumberInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            let formattedValue = value.match(/.{1,4}/g)?.join('-') || value;
+            if (formattedValue !== e.target.value) {
+                e.target.value = formattedValue;
+            }
+        });
+
+        // Prevent non-numeric characters except backspace, delete, tab, and arrow keys
+        cardNumberInput.addEventListener('keydown', function(e) {
+            const allowedKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight'];
+            const isNumber = (e.key >= '0' && e.key <= '9');
+
+            if (!isNumber && !allowedKeys.includes(e.key) && !e.ctrlKey) {
+                e.preventDefault();
+            }
+        });
+    }
 });
 </script>
 @endpush

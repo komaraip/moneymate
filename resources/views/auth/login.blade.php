@@ -4,14 +4,12 @@
 
 @section('content')
 <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center px-4">
-    <!-- Logo -->
     <div class="mb-8">
         <a href="{{ route('home') }}">
             <img src="{{ asset('assets/image/logo.png') }}" alt="Logo" class="h-12 md:h-16">
         </a>
     </div>
 
-    <!-- Login Container -->
     <div class="w-full max-w-md bg-[#1b1c30] rounded-xl shadow-2xl p-8">
         <h2 class="text-3xl font-bold text-white text-center mb-8">Log in</h2>
 
@@ -28,7 +26,6 @@
         <form action="{{ route('auth.login.post') }}" method="post" class="space-y-6">
             @csrf
 
-            <!-- Email Field -->
             <div>
                 <label for="email" class="block text-sm font-medium text-white mb-2">Email</label>
                 <input
@@ -42,7 +39,6 @@
                 >
             </div>
 
-            <!-- Password Field -->
             <div>
                 <label for="password" class="block text-sm font-medium text-white mb-2">Password</label>
                 <input
@@ -55,7 +51,6 @@
                 >
             </div>
 
-            <!-- Submit Button -->
             <div class="pt-4">
                 <button
                     type="submit"
@@ -66,7 +61,6 @@
             </div>
         </form>
 
-        <!-- Login Link -->
         <div class="mt-6 text-center">
             <p class="text-white">
                 Don't have an account yet?
@@ -78,6 +72,5 @@
     </div>
 </div>
 
-<!-- Footer -->
 @include('components.footer')
 @endsection

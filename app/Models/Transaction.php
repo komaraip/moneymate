@@ -37,6 +37,15 @@ class Transaction extends Model
     }
 
     /**
+     * Get the amount attribute (alias for balance).
+     * This provides backward compatibility.
+     */
+    public function getAmountAttribute()
+    {
+        return $this->balance;
+    }
+
+    /**
      * Get the user that owns the transaction.
      */
     public function user()

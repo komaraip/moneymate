@@ -137,6 +137,8 @@ namespace App\Models{
  * @property bool $is_active
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Transaction> $transactions
+ * @property-read int|null $transactions_count
  * @method static \Illuminate\Database\Eloquent\Builder<static>|IncomeCategory active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|IncomeCategory newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|IncomeCategory newQuery()
@@ -163,6 +165,8 @@ namespace App\Models{
  * @property bool $is_active
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Transaction> $transactions
+ * @property-read int|null $transactions_count
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OutcomeCategory active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OutcomeCategory newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OutcomeCategory newQuery()
@@ -190,6 +194,7 @@ namespace App\Models{
  * @property \Illuminate\Support\Carbon $transaction_date
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read mixed $amount
  * @property-read \App\Models\IncomeCategory|null $incomeCategory
  * @property-read \App\Models\OutcomeCategory|null $outcomeCategory
  * @property-read \App\Models\User $user

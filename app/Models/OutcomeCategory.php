@@ -28,4 +28,12 @@ class OutcomeCategory extends Model
     {
         return $query->where('is_active', true);
     }
+
+    /**
+     * Get all transactions that belong to this outcome category
+     */
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'category')->where('type', 'expense');
+    }
 }

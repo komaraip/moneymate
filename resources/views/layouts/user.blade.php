@@ -15,83 +15,177 @@
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="font-sans antialiased bg-gray-100">
-    <div class="min-h-screen">
-        <!-- Navigation -->
-        <nav class="bg-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <div class="flex items-center">
-                        <a href="{{ route('user.dashboard') }}" class="flex-shrink-0">
-                            <img src="{{ asset('assets/image/logo.png') }}" alt="MoneyMate" class="h-8 w-auto">
-                        </a>
-                        <div class="hidden md:ml-10 md:flex md:space-x-8">
-                            <a href="{{ route('user.dashboard') }}" class="text-gray-900 hover:text-[#efa13c] px-3 py-2 text-sm font-medium {{ request()->routeIs('user.dashboard') ? 'text-[#efa13c] border-b-2 border-[#efa13c]' : '' }}">
-                                Dashboard
+<body class="font-sans antialiased bg-gray-50">
+    <div class="min-h-screen flex">
+        <!-- Sidebar Overlay (Mobile) -->
+        <div class="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden hidden" id="sidebar-overlay"></div>
+
+        <!-- Sidebar -->
+        <div class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 transform -translate-x-full transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0" id="sidebar">
+            <div class="flex items-center justify-center h-16 bg-gray-800">
+                <img src="{{ asset('assets/image/logo.png') }}" alt="MoneyMate" class="h-8 w-auto sm:h-8">
+            </div>
+
+            <nav class="mt-8 px-2">
+                <div class="px-2">
+                    <p class="text-gray-400 text-xs uppercase tracking-wider font-semibold">Main</p>
+                </div>
+
+                <a href="{{ route('user.dashboard') }}" class="flex items-center px-4 py-3 mx-2 mt-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 rounded-lg {{ request()->routeIs('user.dashboard') ? 'bg-gray-700 text-white border-r-3 border-[#efa13c]' : '' }}">
+                    <i class="fas fa-tachometer-alt mr-3 text-sm"></i>
+                    <span class="text-sm font-medium">Dashboard</span>
+                </a>
+
+                <a href="{{ route('user.transactions.index') }}" class="flex items-center px-4 py-3 mx-2 mt-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 rounded-lg {{ request()->routeIs('user.transactions.*') ? 'bg-gray-700 text-white border-r-3 border-[#efa13c]' : '' }}">
+                    <i class="fas fa-exchange-alt mr-3 text-sm"></i>
+                    <span class="text-sm font-medium">Transactions</span>
+                </a>
+
+                <a href="{{ route('user.dashboard.financial') }}" class="flex items-center px-4 py-3 mx-2 mt-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 rounded-lg {{ request()->routeIs('user.dashboard.financial') ? 'bg-gray-700 text-white border-r-3 border-[#efa13c]' : '' }}">
+                    <i class="fas fa-chart-bar mr-3 text-sm"></i>
+                    <span class="text-sm font-medium">Financial Reports</span>
+                </a>
+
+                <div class="px-2 mt-6">
+                    <p class="text-gray-400 text-xs uppercase tracking-wider font-semibold">Account</p>
+                </div>
+
+                <a href="{{ route('user.dashboard.account') }}" class="flex items-center px-4 py-3 mx-2 mt-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 rounded-lg {{ request()->routeIs('user.dashboard.account') ? 'bg-gray-700 text-white border-r-3 border-[#efa13c]' : '' }}">
+                    <i class="fas fa-user-cog mr-3 text-sm"></i>
+                    <span class="text-sm font-medium">Account Settings</span>
+                </a>
+
+                <form method="POST" action="{{ route('auth.logout') }}" class="mx-2 mt-1">
+                    @csrf
+                    <button type="submit" class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 text-left rounded-lg">
+                        <i class="fas fa-sign-out-alt mr-3 text-sm"></i>
+                        <span class="text-sm font-medium">Logout</span>
+                    </button>
+                </form>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col min-w-0">
+            <!-- Top Navigation -->
+            <header class="bg-white shadow-sm border-b border-gray-200 lg:pl-0">
+                <div class="flex items-center justify-between px-4 sm:px-6 py-4">
+                    <div class="flex items-center min-w-0 flex-1">
+                        <button class="lg:hidden text-gray-600 hover:text-gray-900 focus:outline-none focus:text-gray-900 mr-3" id="sidebar-toggle">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+
+                        <!-- Breadcrumbs -->
+                        <nav class="flex items-center space-x-2 text-sm text-gray-500" aria-label="Breadcrumb">
+                            <a href="{{ route('user.dashboard') }}" class="hover:text-gray-700 transition-colors duration-200">
+                                <i class="fas fa-home text-gray-400"></i>
                             </a>
-                            <a href="{{ route('user.transactions.index') }}" class="text-gray-900 hover:text-[#efa13c] px-3 py-2 text-sm font-medium {{ request()->routeIs('user.transactions.*') ? 'text-[#efa13c] border-b-2 border-[#efa13c]' : '' }}">
-                                Transactions
-                            </a>
-                            <a href="{{ route('user.dashboard.financial') }}" class="text-gray-900 hover:text-[#efa13c] px-3 py-2 text-sm font-medium {{ request()->routeIs('user.dashboard.financial') ? 'text-[#efa13c] border-b-2 border-[#efa13c]' : '' }}">
-                                Financial Reports
-                            </a>
-                        </div>
+
+                            @if(request()->routeIs('user.dashboard'))
+                                <i class="fas fa-chevron-right text-xs text-gray-400"></i>
+                                <span class="text-gray-900 font-medium">Dashboard</span>
+                            @elseif(request()->routeIs('user.transactions.*'))
+                                <i class="fas fa-chevron-right text-xs text-gray-400"></i>
+                                <a href="{{ route('user.transactions.index') }}" class="hover:text-gray-700 transition-colors duration-200">Transactions</a>
+                                @if(request()->routeIs('user.transactions.create'))
+                                    <i class="fas fa-chevron-right text-xs text-gray-400"></i>
+                                    <span class="text-gray-900 font-medium">Add New</span>
+                                @elseif(request()->routeIs('user.transactions.edit'))
+                                    <i class="fas fa-chevron-right text-xs text-gray-400"></i>
+                                    <span class="text-gray-900 font-medium">Edit</span>
+                                @elseif(request()->routeIs('user.transactions.show'))
+                                    <i class="fas fa-chevron-right text-xs text-gray-400"></i>
+                                    <span class="text-gray-900 font-medium">View Details</span>
+                                @endif
+                            @elseif(request()->routeIs('user.dashboard.financial'))
+                                <i class="fas fa-chevron-right text-xs text-gray-400"></i>
+                                <span class="text-gray-900 font-medium">Financial Reports</span>
+                            @elseif(request()->routeIs('user.dashboard.account'))
+                                <i class="fas fa-chevron-right text-xs text-gray-400"></i>
+                                <span class="text-gray-900 font-medium">Account Settings</span>
+                            @else
+                                <i class="fas fa-chevron-right text-xs text-gray-400"></i>
+                                <span class="text-gray-900 font-medium">@yield('page-title', 'Dashboard')</span>
+                            @endif
+                        </nav>
                     </div>
 
-                    <div class="flex items-center space-x-4">
-                        <!-- User dropdown -->
-                        <div class="relative">
-                            <button type="button" class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#efa13c]" id="user-menu-button">
-                                <span class="sr-only">Open user menu</span>
+                    <div class="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+                        <div class="flex items-center">
+                            @if(auth()->user()->profile)
+                                <img src="{{ asset('storage/' . auth()->user()->profile) }}" alt="{{ auth()->user()->name }}" class="h-8 w-8 rounded-full object-cover">
+                            @else
                                 <div class="h-8 w-8 rounded-full bg-[#efa13c] flex items-center justify-center text-white font-medium">
                                     {{ substr(auth()->user()->name, 0, 1) }}
                                 </div>
-                                <span class="ml-2 text-gray-700 font-medium">{{ auth()->user()->name }}</span>
-                                <i class="fas fa-chevron-down ml-2 text-gray-500 text-xs"></i>
-                            </button>
-
-                            <div class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5" id="user-menu">
-                                <div class="py-1">
-                                    <a href="{{ route('user.dashboard.account') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        <i class="fas fa-user-cog mr-2"></i>Account Settings
-                                    </a>
-                                    <form method="POST" action="{{ route('auth.logout') }}" class="block">
-                                        @csrf
-                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
+                            @endif
+                            <span class="ml-2 text-gray-700 font-medium text-sm sm:text-base">{{ auth()->user()->name }}</span>
                         </div>
                     </div>
                 </div>
-            </div>
-        </nav>
+            </header>
 
-        <!-- Page Heading -->
-        @yield('header')
+            <!-- Page Heading -->
+            @yield('header')
 
-        <!-- Page Content -->
-        <main>
-            @yield('content')
-        </main>
+            <!-- Page Content -->
+            <main class="flex-1 p-4 sm:p-6 overflow-auto">
+                <!-- Success/Error Messages -->
+                @if(session('success'))
+                    <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded" role="alert">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <span class="text-sm sm:text-base">{{ session('success') }}</span>
+                    </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded" role="alert">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <span class="text-sm sm:text-base">{{ session('error') }}</span>
+                    </div>
+                @endif
+
+                @yield('content')
+            </main>
+        </div>
     </div>
 
-    <!-- User menu toggle script -->
+    <!-- Sidebar toggle script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const menuButton = document.getElementById('user-menu-button');
-            const menu = document.getElementById('user-menu');
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
 
-            menuButton.addEventListener('click', function() {
-                menu.classList.toggle('hidden');
+            // Toggle sidebar on mobile
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('-translate-x-full');
+                    sidebarOverlay.classList.toggle('hidden');
+                });
+            }
+
+            // Close sidebar when clicking overlay
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebarOverlay.classList.add('hidden');
+                });
+            }
+
+            // Close sidebar on window resize to large screens
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 1024) { // lg breakpoint
+                    sidebar.classList.remove('-translate-x-full');
+                    sidebarOverlay.classList.add('hidden');
+                }
             });
 
-            // Close menu when clicking outside
-            document.addEventListener('click', function(event) {
-                if (!menuButton.contains(event.target) && !menu.contains(event.target)) {
-                    menu.classList.add('hidden');
+            // Handle escape key to close sidebar
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape' && !sidebar.classList.contains('-translate-x-full')) {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebarOverlay.classList.add('hidden');
                 }
             });
         });

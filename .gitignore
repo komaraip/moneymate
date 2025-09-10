@@ -2,7 +2,6 @@
 /vendor/
 /node_modules/
 /public/build/
-/public/assets/
 /storage/*.key
 /storage/pail
 /storage/app/*
