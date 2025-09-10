@@ -22,8 +22,11 @@ class User extends Authenticatable
         'name', // Alias for fullname
         'email',
         'password',
+        'role',
         'country',
         'card',
+        'card_type',
+        'card_name',
         'cardnumber',
         'balance',
         'balance_limit',
@@ -80,5 +83,61 @@ class User extends Authenticatable
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Get the user's country.
+     */
+    public function countryCategory()
+    {
+        return $this->belongsTo(CountryCategory::class, 'country');
+    }
+
+    /**
+     * Get the user's card name (bank).
+     */
+    public function cardNameCategory()
+    {
+        return $this->belongsTo(CardNameCategory::class, 'card_name');
+    }
+
+    /**
+     * Get the user's card type.
+     */
+    public function cardTypeCategory()
+    {
+        return $this->belongsTo(CardTypeCategory::class, 'card_type');
+    }
+
+    /**
+     * Check if user is admin
+     */
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Check if user is regular user
+     */
+    public function isUser()
+    {
+        return $this->role === 'user';
+    }
+
+    /**
+     * Scope to get only admin users
+     */
+    public function scopeAdmins($query)
+    {
+        return $query->where('role', 'admin');
+    }
+
+    /**
+     * Scope to get only regular users
+     */
+    public function scopeUsers($query)
+    {
+        return $query->where('role', 'user');
     }
 }

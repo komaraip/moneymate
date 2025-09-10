@@ -43,4 +43,48 @@ class Transaction extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Get the income category for this transaction (if type is income).
+     */
+    public function incomeCategory()
+    {
+        return $this->belongsTo(IncomeCategory::class, 'category');
+    }
+
+    /**
+     * Get the outcome category for this transaction (if type is expense).
+     */
+    public function outcomeCategory()
+    {
+        return $this->belongsTo(OutcomeCategory::class, 'category');
+    }
+
+    /**
+     * Get the category based on transaction type.
+     */
+    public function getCategory()
+    {
+        if ($this->type === 'income') {
+            return $this->incomeCategory;
+        } else {
+            return $this->outcomeCategory;
+        }
+    }
+
+    /**
+     * Scope for income transactions.
+     */
+    public function scopeIncome($query)
+    {
+        return $query->where('type', 'income');
+    }
+
+    /**
+     * Scope for expense transactions.
+     */
+    public function scopeExpense($query)
+    {
+        return $query->where('type', 'expense');
+    }
 }

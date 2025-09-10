@@ -1,22 +1,14 @@
-/.phpunit.cache
-/node_modules
-/public/build
-/public/storage
-/storage/*.key
-/storage/pail
-/vendor
-.env
-.env.example
-
 # Laravel & PHP
 /vendor/
 /node_modules/
 /public/build/
 /public/assets/
 /storage/*.key
+/storage/pail
 /storage/app/*
 /storage/framework/*
 /storage/logs/*
+/.phpunit.cache
 .env
 .env.*
 .phpunit.result.cache
@@ -25,37 +17,30 @@ Homestead.yaml
 npm-debug.log
 yarn-error.log
 composer.lock
+
 # IDE & Editor
 .idea/
 .vscode/
 *.sublime-workspace
 *.sublime-project
+
 # OS
 .DS_Store
 Thumbs.db
-# Laravel IDE Helper
-_ide_helper.php
-_ide_helper_models.php
-# Database
-/database/*.sqlite
-/database/*.sqlite3
-/database/*.db
-/database/database.sqlite
-/database/database.sqlite3
-/database/database.db
-/database/migrations/*.php
-/database/factories/*.php
-/database/seeders/*.php
+
 # Misc
 *.log
 *.bak
 *.tmp
 *.swp
 *.swo
+
 # Laravel Sail
 sail.log
+
 # Laravel Pint
 pint.json
+
 # Custom
 /vendor/
 _laravel_ide/
