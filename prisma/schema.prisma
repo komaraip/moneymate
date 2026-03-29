@@ -75,6 +75,11 @@ enum CategoryType {
   ADJUSTMENT
 }
 
+enum CashflowMode {
+  COMBINED
+  SEPARATE
+}
+
 enum ReviewStatus {
   PENDING
   APPROVED
@@ -149,6 +154,9 @@ model User {
   accounts           Account[]
   transactions       Transaction[]
   categories         Category[]
+  investmentCategories InvestmentCategory[]
+  brokers            Broker[]
+  reportPreference   ReportPreference?
   securities         Security[]
   investmentAccounts InvestmentAccount[]
   tradeActivities    TradeActivity[]
@@ -276,18 +284,27 @@ model Account {
   institutionName     String?            @map("institution_name")
   accountType         AccountType        @map("account_type")
   accountSubtype      String?            @map("account_subtype")
+  accountNickname     String?            @map("account_nickname")
+  accountGroup        String?            @map("account_group")
+  investmentRole      String?            @map("investment_role")
   currency            String             @default("IDR")
   maskedAccountNumber String?            @map("masked_account_number")
   externalReference   String?            @map("external_reference")
+  includeInTotalCash  Boolean            @default(true) @map("include_in_total_cash")
+  includeInNetWorth   Boolean            @default(true) @map("include_in_net_worth")
+  includeInDashboard  Boolean            @default(true) @map("include_in_dashboard")
+  includeInDailyCashflow Boolean         @default(true) @map("include_in_daily_cashflow")
+  includeInInvestmentCashflow Boolean    @default(true) @map("include_in_investment_cashflow")
   isActive            Boolean            @default(true) @map("is_active")
   createdAt           DateTime           @default(now()) @map("created_at")
   updatedAt           DateTime           @updatedAt @map("updated_at")
   user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshots           AccountSnapshot[]
   transactions        Transaction[]
-  investmentAccount   InvestmentAccount?
+  investmentAccounts  InvestmentAccount[]
 
   @@index([userId, accountType])
+  @@unique([userId, accountType, externalReference])
   @@map("accounts")
 }
 
@@ -362,6 +379,74 @@ model Category {
   @@map("categories")
 }
 
+model InvestmentCategory {
+  id                  String            @id @default(cuid())
+  userId              String            @map("user_id")
+  name                String
+  slug                String
+  description         String?
+  iconToken           String?           @map("icon_token")
+  colorToken          String?           @map("color_token")
+  isSystemDefault     Boolean           @default(false) @map("is_system_default")
+  isActive            Boolean           @default(true) @map("is_active")
+  includeInNetWorth   Boolean           @default(true) @map("include_in_net_worth")
+  includeInDashboard  Boolean           @default(true) @map("include_in_dashboard")
+  includeInReports    Boolean           @default(true) @map("include_in_reports")
+  sortOrder           Int               @default(0) @map("sort_order")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brokers             Broker[]
+  investmentAccounts  InvestmentAccount[]
+
+  @@unique([userId, slug])
+  @@unique([userId, name])
+  @@index([userId, sortOrder, name])
+  @@map("investment_categories")
+}
+
+model Broker {
+  id                   String              @id @default(cuid())
+  userId               String              @map("user_id")
+  investmentCategoryId String?             @map("investment_category_id")
+  brokerName           String              @map("broker_name")
+  brokerCode           String?             @map("broker_code")
+  legalEntityName      String?             @map("legal_entity_name")
+  branchName           String?             @map("branch_name")
+  clientCode           String?             @map("client_code")
+  sid                  String?
+  sre                  String?
+  rdnAccountId         String?             @map("rdn_account_id")
+  defaultCurrency      String              @default("IDR") @map("default_currency")
+  country              String?             @default("ID")
+  isActive             Boolean             @default(true) @map("is_active")
+  notes                String?
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investmentCategory   InvestmentCategory? @relation(fields: [investmentCategoryId], references: [id], onDelete: SetNull)
+  investmentAccounts   InvestmentAccount[]
+
+  @@unique([userId, brokerName])
+  @@index([userId, brokerCode])
+  @@map("brokers")
+}
+
+model ReportPreference {
+  id                                 String       @id @default(cuid())
+  userId                             String       @unique @map("user_id")
+  defaultCashflowMode                CashflowMode @default(SEPARATE) @map("default_cashflow_mode")
+  includeDividendsInIncome           Boolean      @default(true) @map("include_dividends_in_income")
+  includeStockSaleProceedsInIncome   Boolean      @default(false) @map("include_stock_sale_proceeds_in_income")
+  includeBrokerFeesInExpenses        Boolean      @default(false) @map("include_broker_fees_in_expenses")
+  includeInvestmentCashInTotalCash   Boolean      @default(true) @map("include_investment_cash_in_total_cash")
+  createdAt                          DateTime     @default(now()) @map("created_at")
+  updatedAt                          DateTime     @updatedAt @map("updated_at")
+  user                               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("report_preferences")
+}
+
 model Security {
   id               String            @id @default(cuid())
   userId           String            @map("user_id")
@@ -384,7 +469,11 @@ model Security {
 model InvestmentAccount {
   id               String            @id @default(cuid())
   userId           String            @map("user_id")
-  accountId        String?           @unique @map("account_id")
+  investmentCategoryId String?       @map("investment_category_id")
+  brokerId         String?           @map("broker_id")
+  accountId        String?           @map("account_id")
+  displayName      String?           @map("display_name")
+  brokerAccountCode String?          @map("broker_account_code")
   brokerName       String?           @map("broker_name")
   sid              String?
   clientCode       String?           @map("client_code")
@@ -392,14 +481,21 @@ model InvestmentAccount {
   rdn              String?
   officeName       String?           @map("office_name")
   salesperson      String?
+  isActive         Boolean           @default(true) @map("is_active")
+  notes            String?
   createdAt        DateTime          @default(now()) @map("created_at")
   updatedAt        DateTime          @updatedAt @map("updated_at")
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investmentCategory InvestmentCategory? @relation(fields: [investmentCategoryId], references: [id], onDelete: SetNull)
+  broker           Broker?           @relation(fields: [brokerId], references: [id], onDelete: SetNull)
   account          Account?          @relation(fields: [accountId], references: [id], onDelete: SetNull)
   tradeActivities  TradeActivity[]
   holdingSnapshots HoldingSnapshot[]
 
   @@index([userId, clientCode])
+  @@index([brokerId])
+  @@index([investmentCategoryId])
+  @@index([accountId])
   @@map("investment_accounts")
 }
 

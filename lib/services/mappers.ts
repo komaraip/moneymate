@@ -59,9 +59,18 @@ export function mapAccountSummary(
     | "name"
     | "institutionName"
     | "accountType"
+    | "accountSubtype"
+    | "accountNickname"
+    | "accountGroup"
+    | "investmentRole"
     | "currency"
     | "maskedAccountNumber"
     | "externalReference"
+    | "includeInTotalCash"
+    | "includeInNetWorth"
+    | "includeInDashboard"
+    | "includeInDailyCashflow"
+    | "includeInInvestmentCashflow"
     | "isActive"
   > & {
     latestSnapshot?: Pick<AccountSnapshot, "balance" | "availableBalance" | "snapshotDate" | "sourceType"> | null;
@@ -72,9 +81,18 @@ export function mapAccountSummary(
     name: account.name,
     institutionName: account.institutionName ?? null,
     accountType: account.accountType,
+    accountSubtype: account.accountSubtype ?? null,
+    accountNickname: account.accountNickname ?? null,
+    accountGroup: account.accountGroup ?? null,
+    investmentRole: account.investmentRole ?? null,
     currency: account.currency,
     maskedAccountNumber: account.maskedAccountNumber ?? null,
     externalReference: account.externalReference ?? null,
+    includeInTotalCash: account.includeInTotalCash,
+    includeInNetWorth: account.includeInNetWorth,
+    includeInDashboard: account.includeInDashboard,
+    includeInDailyCashflow: account.includeInDailyCashflow,
+    includeInInvestmentCashflow: account.includeInInvestmentCashflow,
     isActive: account.isActive,
     currentBalance: decimalToString(account.latestSnapshot?.balance),
     availableBalance: decimalToString(account.latestSnapshot?.availableBalance),

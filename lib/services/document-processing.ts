@@ -40,7 +40,55 @@ async function updateJobStage(jobId: string, stage: ExtractionStage, status = Ex
   });
 }
 
+async function ensureStocksInvestmentCategory(tx: Prisma.TransactionClient, userId: string) {
+  const existing = await tx.investmentCategory.findFirst({
+    where: {
+      userId,
+      slug: "stocks"
+    }
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  return tx.investmentCategory.create({
+    data: {
+      userId,
+      name: "Stocks",
+      slug: "stocks",
+      isSystemDefault: true,
+      sortOrder: 0
+    }
+  });
+}
+
 async function upsertInvestmentAccount(tx: Prisma.TransactionClient, document: Document, parsed: ReturnType<typeof parseStockActivityDocument>) {
+  const stocksCategory = await ensureStocksInvestmentCategory(tx, document.userId);
+  const brokerName = parsed.accountMetadata.office?.trim() || "Imported broker profile";
+  const broker = await tx.broker.upsert({
+    where: {
+      userId_brokerName: {
+        userId: document.userId,
+        brokerName
+      }
+    },
+    update: {
+      investmentCategoryId: stocksCategory.id,
+      clientCode: parsed.accountMetadata.clientCode ?? undefined,
+      sid: parsed.accountMetadata.sid ?? undefined,
+      sre: parsed.accountMetadata.sre ?? undefined
+    },
+    create: {
+      userId: document.userId,
+      investmentCategoryId: stocksCategory.id,
+      brokerName,
+      clientCode: parsed.accountMetadata.clientCode,
+      sid: parsed.accountMetadata.sid,
+      sre: parsed.accountMetadata.sre
+    }
+  });
+
   const uniqueReference = parsed.accountMetadata.clientCode ?? parsed.accountMetadata.sid ?? crypto.randomUUID();
   const identifierClauses = [
     parsed.accountMetadata.clientCode
@@ -60,6 +108,7 @@ async function upsertInvestmentAccount(tx: Prisma.TransactionClient, document: D
       ? await tx.investmentAccount.findFirst({
           where: {
             userId: document.userId,
+            brokerId: broker.id,
             OR: identifierClauses
           }
         })
@@ -71,7 +120,9 @@ async function upsertInvestmentAccount(tx: Prisma.TransactionClient, document: D
         id: existing.id
       },
       data: {
-        brokerName: parsed.accountMetadata.office ?? existing.brokerName,
+        investmentCategoryId: stocksCategory.id,
+        brokerId: broker.id,
+        brokerName: brokerName ?? existing.brokerName,
         sid: parsed.accountMetadata.sid ?? existing.sid,
         clientCode: parsed.accountMetadata.clientCode ?? existing.clientCode,
         sre: parsed.accountMetadata.sre ?? existing.sre,
@@ -85,7 +136,9 @@ async function upsertInvestmentAccount(tx: Prisma.TransactionClient, document: D
   return tx.investmentAccount.create({
     data: {
       userId: document.userId,
-      brokerName: parsed.accountMetadata.office ?? "Imported brokerage account",
+      investmentCategoryId: stocksCategory.id,
+      brokerId: broker.id,
+      brokerName: parsed.accountMetadata.office ?? brokerName,
       sid: parsed.accountMetadata.sid ?? uniqueReference,
       clientCode: parsed.accountMetadata.clientCode,
       sre: parsed.accountMetadata.sre,

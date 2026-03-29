@@ -44,5 +44,6 @@ export const listTransactionsQuerySchema = paginationQuerySchema.extend({
 
 export const cashflowReportQuerySchema = z.object({
   from: z.string().trim().optional(),
-  to: z.string().trim().optional()
+  to: z.string().trim().optional(),
+  mode: z.enum(["COMBINED", "SEPARATE"]).optional()
 });

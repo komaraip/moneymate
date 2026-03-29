@@ -22,7 +22,7 @@ function pickQueryValue(value: string | string[] | undefined) {
   return typeof value === "string" ? value : undefined;
 }
 
-function buildExportHref(kind: string, from?: string, to?: string) {
+function buildExportHref(kind: string, from?: string, to?: string, mode?: string) {
   const params = new URLSearchParams();
   params.set("kind", kind);
 
@@ -34,11 +34,17 @@ function buildExportHref(kind: string, from?: string, to?: string) {
     params.set("to", to);
   }
 
+  if (mode) {
+    params.set("mode", mode);
+  }
+
   return `/api/reports/export?${params.toString()}`;
 }
 
 const exportLinkClassName =
   "inline-flex items-center justify-center rounded-2xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm font-semibold text-foreground shadow-panel transition hover:bg-white";
+const selectClassName =
+  "w-full rounded-2xl border border-border/80 bg-white/80 px-4 py-2.5 text-sm text-foreground outline-none transition focus:border-accent/50 focus:ring-4 focus:ring-accent/10";
 
 export default async function ReportsPage({
   searchParams
@@ -49,9 +55,10 @@ export default async function ReportsPage({
   const params = await searchParams;
   const from = pickQueryValue(params.from);
   const to = pickQueryValue(params.to);
+  const mode = pickQueryValue(params.mode);
 
   const [cashflow, balance, investments, documentHealth] = await Promise.all([
-    getCashflowReport(user.id, { from, to }),
+    getCashflowReport(user.id, { from, to, mode }),
     getBalanceReport(user.id, { from, to }),
     getInvestmentReport(user.id, { from, to }),
     getDocumentHealthReport(user.id)
@@ -86,16 +93,16 @@ export default async function ReportsPage({
         description="Phase 4 brings together trend analysis, duplicate detection, parser quality signals, and exports."
         action={
           <div className="flex flex-wrap gap-2">
-            <a href={buildExportHref("cashflow", from, to)} className={exportLinkClassName}>
+            <a href={buildExportHref("cashflow", from, to, mode)} className={exportLinkClassName}>
               Export Cashflow CSV
             </a>
-            <a href={buildExportHref("transactions", from, to)} className={exportLinkClassName}>
+            <a href={buildExportHref("transactions", from, to, mode)} className={exportLinkClassName}>
               Export Transactions CSV
             </a>
-            <a href={buildExportHref("documents", from, to)} className={exportLinkClassName}>
+            <a href={buildExportHref("documents", from, to, mode)} className={exportLinkClassName}>
               Export Documents CSV
             </a>
-            <a href={buildExportHref("holdings", from, to)} className={exportLinkClassName}>
+            <a href={buildExportHref("holdings", from, to, mode)} className={exportLinkClassName}>
               Export Holdings CSV
             </a>
           </div>
@@ -110,6 +117,13 @@ export default async function ReportsPage({
         <label className="grid gap-2 text-sm font-medium text-foreground">
           To
           <Input name="to" type="date" defaultValue={to} />
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-foreground">
+          Cashflow mode
+          <select name="mode" defaultValue={mode ?? cashflow.mode} className={selectClassName}>
+            <option value="COMBINED">Combined</option>
+            <option value="SEPARATE">Separate</option>
+          </select>
         </label>
         <div className="flex items-end">
           <button type="submit" className={exportLinkClassName}>
@@ -135,6 +149,12 @@ export default async function ReportsPage({
               ? `${Math.round(documentHealth.summary.averageConfidence * 100)}%`
               : "-"
           }
+          tone="accent"
+        />
+        <MetricCard label="Regular Cashflow Net" value={formatCurrency(cashflow.streams.regular.net)} tone="accent" />
+        <MetricCard
+          label="Investment Cashflow Net"
+          value={formatCurrency(cashflow.streams.investment.net)}
           tone="accent"
         />
       </div>

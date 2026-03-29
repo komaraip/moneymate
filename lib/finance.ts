@@ -6,6 +6,41 @@ export const cashAccountTypes = [
   "MANUAL_CASH_ACCOUNT"
 ] as const;
 
+export const bankInstitutionPresets = [
+  "BCA",
+  "BRI",
+  "Mandiri",
+  "BNI",
+  "CIMB Niaga",
+  "Jago",
+  "SeaBank",
+  "Permata",
+  "OCBC",
+  "Maybank",
+  "Danamon",
+  "GoPay",
+  "OVO",
+  "DANA",
+  "ShopeePay"
+] as const;
+
+export const regularAccountSubtypePresets = [
+  "savings",
+  "checking",
+  "payroll",
+  "digital_bank",
+  "e_wallet",
+  "cash_wallet"
+] as const;
+
+export const investmentAccountRolePresets = [
+  "trading_cash",
+  "settlement_cash",
+  "dividend_receiving_account",
+  "linked_rdn",
+  "temporary_funding_account"
+] as const;
+
 export type CashAccountType = (typeof cashAccountTypes)[number];
 
 export const manualTransactionTypes = ["income", "expense", "transfer", "adjustment"] as const;
@@ -45,6 +80,10 @@ export function getDirectionForTransactionType(type: ManualTransactionType) {
   if (type === "expense") return "out";
   if (type === "transfer") return "transfer";
   return "neutral";
+}
+
+export function isInvestmentCashAccountType(type: string | null | undefined) {
+  return type === "INVESTMENT_CASH_ACCOUNT";
 }
 
 export function getCategoryTypeForTransactionType(type: ManualTransactionType) {

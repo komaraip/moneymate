@@ -32,7 +32,8 @@ export default async function TransactionsPage({
     type: pickQueryValue(params.type),
     search: pickQueryValue(params.search),
     from: pickQueryValue(params.from),
-    to: pickQueryValue(params.to)
+    to: pickQueryValue(params.to),
+    mode: pickQueryValue(params.mode)
   };
 
   const [accounts, transactions, cashflow] = await Promise.all([
@@ -44,7 +45,8 @@ export default async function TransactionsPage({
     }),
     getCashflowReport(user.id, {
       from: query.from,
-      to: query.to
+      to: query.to,
+      mode: query.mode
     })
   ]);
 
@@ -65,6 +67,8 @@ export default async function TransactionsPage({
           value={formatCurrency(cashflow.summary.net)}
           tone={Number(cashflow.summary.net) >= 0 ? "success" : "warning"}
         />
+        <MetricCard label="Regular Net" value={formatCurrency(cashflow.streams.regular.net)} tone="accent" />
+        <MetricCard label="Investment Net" value={formatCurrency(cashflow.streams.investment.net)} tone="accent" />
       </div>
 
       <Card>
@@ -112,6 +116,13 @@ export default async function TransactionsPage({
         <label className="grid gap-2 text-sm font-medium text-foreground">
           To
           <Input name="to" type="date" defaultValue={query.to} />
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-foreground">
+          Cashflow mode
+          <select name="mode" defaultValue={query.mode ?? cashflow.mode} className={selectClassName}>
+            <option value="COMBINED">Combined</option>
+            <option value="SEPARATE">Separate</option>
+          </select>
         </label>
         <div className="flex items-end">
           <button type="submit" className="inline-flex items-center justify-center rounded-2xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm font-semibold text-foreground shadow-panel transition hover:bg-white">

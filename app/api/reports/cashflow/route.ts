@@ -10,7 +10,8 @@ export async function GET(request: Request) {
     return jsonOk(
       await getCashflowReport(user.id, {
         from: searchParams.get("from") ?? undefined,
-        to: searchParams.get("to") ?? undefined
+        to: searchParams.get("to") ?? undefined,
+        mode: searchParams.get("mode") ?? undefined
       })
     );
   } catch (error) {

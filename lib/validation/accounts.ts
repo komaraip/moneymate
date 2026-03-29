@@ -8,8 +8,17 @@ export const createAccountSchema = z.object({
   name: z.string().trim().min(2).max(120),
   institutionName: optionalText(120),
   accountType: z.enum(cashAccountTypes),
+  accountSubtype: optionalText(64),
+  accountNickname: optionalText(120),
+  accountGroup: optionalText(120),
+  investmentRole: optionalText(120),
   currency: z.string().trim().min(3).max(3).default("IDR"),
   accountNumber: z.string().trim().min(4).max(64),
+  includeInTotalCash: z.boolean().optional(),
+  includeInNetWorth: z.boolean().optional(),
+  includeInDashboard: z.boolean().optional(),
+  includeInDailyCashflow: z.boolean().optional(),
+  includeInInvestmentCashflow: z.boolean().optional(),
   openingBalance: optionalText(64),
   openingBalanceDate: optionalText(64)
 });
@@ -18,8 +27,17 @@ export const updateAccountSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   institutionName: optionalText(120),
   accountType: z.enum(cashAccountTypes).optional(),
+  accountSubtype: optionalText(64),
+  accountNickname: optionalText(120),
+  accountGroup: optionalText(120),
+  investmentRole: optionalText(120),
   currency: z.string().trim().min(3).max(3).optional(),
   accountNumber: z.string().trim().min(4).max(64).optional(),
+  includeInTotalCash: z.boolean().optional(),
+  includeInNetWorth: z.boolean().optional(),
+  includeInDashboard: z.boolean().optional(),
+  includeInDailyCashflow: z.boolean().optional(),
+  includeInInvestmentCashflow: z.boolean().optional(),
   isActive: z.boolean().optional()
 });
 

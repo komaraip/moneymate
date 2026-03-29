@@ -27,6 +27,7 @@ export async function GET(request: Request) {
       kind: searchParams.get("kind") ?? undefined,
       from: searchParams.get("from") ?? undefined,
       to: searchParams.get("to") ?? undefined,
+      mode: searchParams.get("mode") ?? undefined,
       duplicatesOnly: searchParams.get("duplicatesOnly") ?? undefined,
       confidenceBelow: searchParams.get("confidenceBelow") ?? undefined,
       accountId: searchParams.get("accountId") ?? undefined,
@@ -37,7 +38,8 @@ export async function GET(request: Request) {
     if (params.kind === "cashflow") {
       const report = await getCashflowReport(user.id, {
         from: params.from,
-        to: params.to
+        to: params.to,
+        mode: params.mode
       });
       return createCsvResponse(
         "cashflow-report.csv",

@@ -3,7 +3,8 @@ import { booleanQuerySchema } from "./shared";
 
 export const reportRangeSchema = z.object({
   from: z.string().trim().optional(),
-  to: z.string().trim().optional()
+  to: z.string().trim().optional(),
+  mode: z.enum(["COMBINED", "SEPARATE"]).optional()
 });
 
 export const exportKindSchema = z.enum(["cashflow", "transactions", "documents", "holdings"]);

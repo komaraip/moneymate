@@ -102,6 +102,18 @@ export async function listAccounts(userId: string, query: Record<string, string 
               }
             },
             {
+              accountNickname: {
+                contains: params.search,
+                mode: "insensitive"
+              }
+            },
+            {
+              accountGroup: {
+                contains: params.search,
+                mode: "insensitive"
+              }
+            },
+            {
               maskedAccountNumber: {
                 contains: params.search,
                 mode: "insensitive"
@@ -162,9 +174,18 @@ export async function createAccount(
         name: payload.name,
         institutionName: payload.institutionName || undefined,
         accountType: payload.accountType,
+        accountSubtype: payload.accountSubtype || undefined,
+        accountNickname: payload.accountNickname || undefined,
+        accountGroup: payload.accountGroup || undefined,
+        investmentRole: payload.investmentRole || undefined,
         currency: payload.currency.toUpperCase(),
         maskedAccountNumber: maskAccountNumber(normalizedAccountNumber),
-        externalReference: normalizedAccountNumber
+        externalReference: normalizedAccountNumber,
+        includeInTotalCash: payload.includeInTotalCash ?? true,
+        includeInNetWorth: payload.includeInNetWorth ?? true,
+        includeInDashboard: payload.includeInDashboard ?? true,
+        includeInDailyCashflow: payload.includeInDailyCashflow ?? true,
+        includeInInvestmentCashflow: payload.includeInInvestmentCashflow ?? true
       }
     });
 
@@ -242,9 +263,18 @@ export async function updateAccount(userId: string, accountId: string, input: Re
       name: payload.name,
       institutionName: payload.institutionName === null ? null : payload.institutionName || undefined,
       accountType: payload.accountType,
+      accountSubtype: payload.accountSubtype === null ? null : payload.accountSubtype || undefined,
+      accountNickname: payload.accountNickname === null ? null : payload.accountNickname || undefined,
+      accountGroup: payload.accountGroup === null ? null : payload.accountGroup || undefined,
+      investmentRole: payload.investmentRole === null ? null : payload.investmentRole || undefined,
       currency: payload.currency ? payload.currency.toUpperCase() : undefined,
       maskedAccountNumber: nextAccountNumber ? maskAccountNumber(nextAccountNumber) : undefined,
       externalReference: nextAccountNumber ?? undefined,
+      includeInTotalCash: payload.includeInTotalCash,
+      includeInNetWorth: payload.includeInNetWorth,
+      includeInDashboard: payload.includeInDashboard,
+      includeInDailyCashflow: payload.includeInDailyCashflow,
+      includeInInvestmentCashflow: payload.includeInInvestmentCashflow,
       isActive: payload.isActive
     }
   });

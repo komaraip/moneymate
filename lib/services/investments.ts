@@ -12,7 +12,11 @@ export async function getApprovedHoldings(userId: string) {
     },
     include: {
       security: true,
-      investmentAccount: true
+      investmentAccount: {
+        include: {
+          broker: true
+        }
+      }
     },
     orderBy: [
       {
@@ -44,7 +48,12 @@ export async function getApprovedHoldings(userId: string) {
         marketValue: decimalToString(snapshot.marketValue),
         latestSnapshotDate: snapshot.snapshotDate.toISOString(),
         sourceDocumentId: snapshot.sourceDocumentId,
-        investmentAccountName: snapshot.investmentAccount.brokerName ?? snapshot.investmentAccount.clientCode ?? null
+        investmentAccountName:
+          snapshot.investmentAccount.broker?.brokerName ??
+          snapshot.investmentAccount.displayName ??
+          snapshot.investmentAccount.brokerName ??
+          snapshot.investmentAccount.clientCode ??
+          null
       }) satisfies HoldingSummary
   );
 }
@@ -90,7 +99,11 @@ export async function getSecurityDetail(userId: string, ticker: string): Promise
         reviewStatus: ReviewStatus.APPROVED
       },
       include: {
-        investmentAccount: true
+        investmentAccount: {
+          include: {
+            broker: true
+          }
+        }
       },
       orderBy: {
         snapshotDate: "desc"
@@ -125,7 +138,11 @@ export async function getSecurityDetail(userId: string, ticker: string): Promise
           latestSnapshotDate: latestHolding.snapshotDate.toISOString(),
           sourceDocumentId: latestHolding.sourceDocumentId,
           investmentAccountName:
-            latestHolding.investmentAccount.brokerName ?? latestHolding.investmentAccount.clientCode ?? null
+            latestHolding.investmentAccount.broker?.brokerName ??
+            latestHolding.investmentAccount.displayName ??
+            latestHolding.investmentAccount.brokerName ??
+            latestHolding.investmentAccount.clientCode ??
+            null
         }
       : null,
     activities: activities.map((activity) => ({
@@ -134,4 +151,3 @@ export async function getSecurityDetail(userId: string, ticker: string): Promise
     }))
   };
 }
-

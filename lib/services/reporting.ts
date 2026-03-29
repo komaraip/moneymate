@@ -1,4 +1,4 @@
-import { DocumentStatus, ReviewStatus } from "@prisma/client";
+import { CashflowMode, DocumentStatus, ReviewStatus } from "@prisma/client";
 import {
   BalanceReport,
   CashflowReport,
@@ -148,6 +148,45 @@ function pickLatestNumericValue<T extends { snapshotDate: Date }>(
   return latestValue;
 }
 
+function normalizeDescription(value: string) {
+  return value.toLowerCase();
+}
+
+function isInvestmentDescriptor(description: string, keyword: "dividend" | "sale_proceeds" | "broker_fee") {
+  const normalized = normalizeDescription(description);
+  if (keyword === "dividend") {
+    return normalized.includes("dividend");
+  }
+
+  if (keyword === "sale_proceeds") {
+    return normalized.includes("sale") || normalized.includes("sell");
+  }
+
+  return (
+    normalized.includes("broker fee") ||
+    normalized.includes("brokerage fee") ||
+    normalized.includes("stamp duty") ||
+    normalized.includes("levy")
+  );
+}
+
+async function getOrCreateReportPreference(userId: string) {
+  return prisma.reportPreference.upsert({
+    where: {
+      userId
+    },
+    update: {},
+    create: {
+      userId,
+      defaultCashflowMode: CashflowMode.SEPARATE,
+      includeDividendsInIncome: true,
+      includeStockSaleProceedsInIncome: false,
+      includeBrokerFeesInExpenses: false,
+      includeInvestmentCashInTotalCash: true
+    }
+  });
+}
+
 export async function getCashflowReport(
   userId: string,
   query: Record<string, string | string[] | undefined> = {}
@@ -155,6 +194,12 @@ export async function getCashflowReport(
   const fromRaw = typeof query.from === "string" ? query.from : undefined;
   const toRaw = typeof query.to === "string" ? query.to : undefined;
   const { from, to } = resolveDateRange(fromRaw, toRaw);
+  const requestedModeRaw = typeof query.mode === "string" ? query.mode.toUpperCase() : undefined;
+  const preferences = await getOrCreateReportPreference(userId);
+  const mode =
+    requestedModeRaw === CashflowMode.COMBINED || requestedModeRaw === CashflowMode.SEPARATE
+      ? (requestedModeRaw as CashflowMode)
+      : preferences.defaultCashflowMode;
 
   const transactions = await prisma.transaction.findMany({
     where: {
@@ -170,6 +215,11 @@ export async function getCashflowReport(
           name: true,
           categoryType: true
         }
+      },
+      account: {
+        select: {
+          accountType: true
+        }
       }
     },
     orderBy: {
@@ -179,6 +229,12 @@ export async function getCashflowReport(
 
   let income = 0;
   let expense = 0;
+  let regularIncome = 0;
+  let regularExpense = 0;
+  let investmentIncome = 0;
+  let investmentExpense = 0;
+  let regularTransactionCount = 0;
+  let investmentTransactionCount = 0;
   const monthly = new Map<string, { income: number; expense: number }>();
   const categories = new Map<string, { categoryName: string; categoryType: string; total: number }>();
 
@@ -196,18 +252,62 @@ export async function getCashflowReport(
       income: 0,
       expense: 0
     };
+    const isInvestmentAccount = transaction.account?.accountType === "INVESTMENT_CASH_ACCOUNT";
+    const description = transaction.description ?? "";
+
+    if (isInvestmentAccount) {
+      investmentTransactionCount += 1;
+    } else {
+      regularTransactionCount += 1;
+    }
 
     if (transaction.transactionType === "income") {
+      if (isInvestmentAccount) {
+        investmentIncome += amount;
+      } else {
+        regularIncome += amount;
+      }
+    }
+
+    if (transaction.transactionType === "expense") {
+      if (isInvestmentAccount) {
+        investmentExpense += amount;
+      } else {
+        regularExpense += amount;
+      }
+    }
+
+    const includeInvestmentByPreference =
+      (transaction.transactionType === "income" &&
+        isInvestmentDescriptor(description, "dividend") &&
+        preferences.includeDividendsInIncome) ||
+      (transaction.transactionType === "income" &&
+        isInvestmentDescriptor(description, "sale_proceeds") &&
+        preferences.includeStockSaleProceedsInIncome) ||
+      (transaction.transactionType === "expense" &&
+        isInvestmentDescriptor(description, "broker_fee") &&
+        preferences.includeBrokerFeesInExpenses);
+    const includeInGeneral = !isInvestmentAccount
+      ? true
+      : mode === CashflowMode.COMBINED
+        ? preferences.includeInvestmentCashInTotalCash || includeInvestmentByPreference
+        : includeInvestmentByPreference;
+
+    if (includeInGeneral && transaction.transactionType === "income") {
       income += amount;
       bucket.income += amount;
     }
 
-    if (transaction.transactionType === "expense") {
+    if (includeInGeneral && transaction.transactionType === "expense") {
       expense += amount;
       bucket.expense += amount;
     }
 
-    if ((transaction.transactionType === "income" || transaction.transactionType === "expense") && transaction.category) {
+    if (
+      includeInGeneral &&
+      (transaction.transactionType === "income" || transaction.transactionType === "expense") &&
+      transaction.category
+    ) {
       const categoryKey = `${transaction.category.categoryType}:${transaction.category.name}`;
       const existing = categories.get(categoryKey) ?? {
         categoryName: transaction.category.name,
@@ -223,13 +323,50 @@ export async function getCashflowReport(
   }
 
   return {
+    mode,
     summary: {
       periodStart: from.toISOString(),
       periodEnd: to.toISOString(),
       income: decimalToString(income) ?? "0",
       expense: decimalToString(expense) ?? "0",
       net: decimalToString(income - expense) ?? "0",
-      transactionCount: transactions.length
+      transactionCount: transactions.filter((transaction) => {
+        if (transaction.account?.accountType !== "INVESTMENT_CASH_ACCOUNT") {
+          return true;
+        }
+
+        const description = transaction.description ?? "";
+        const includeInvestmentByPreference =
+          (transaction.transactionType === "income" &&
+            isInvestmentDescriptor(description, "dividend") &&
+            preferences.includeDividendsInIncome) ||
+          (transaction.transactionType === "income" &&
+            isInvestmentDescriptor(description, "sale_proceeds") &&
+            preferences.includeStockSaleProceedsInIncome) ||
+          (transaction.transactionType === "expense" &&
+            isInvestmentDescriptor(description, "broker_fee") &&
+            preferences.includeBrokerFeesInExpenses);
+
+        if (mode === CashflowMode.COMBINED) {
+          return preferences.includeInvestmentCashInTotalCash || includeInvestmentByPreference;
+        }
+
+        return includeInvestmentByPreference;
+      }).length
+    },
+    streams: {
+      regular: {
+        income: decimalToString(regularIncome) ?? "0",
+        expense: decimalToString(regularExpense) ?? "0",
+        net: decimalToString(regularIncome - regularExpense) ?? "0",
+        transactionCount: regularTransactionCount
+      },
+      investment: {
+        income: decimalToString(investmentIncome) ?? "0",
+        expense: decimalToString(investmentExpense) ?? "0",
+        net: decimalToString(investmentIncome - investmentExpense) ?? "0",
+        transactionCount: investmentTransactionCount
+      }
     },
     monthly: [...monthly.entries()].map(([month, totals]) => ({
       month,
@@ -256,6 +393,7 @@ export async function getBalanceReport(
   const toRaw = typeof query.to === "string" ? query.to : undefined;
   const { from, to } = resolveDateRange(fromRaw, toRaw);
   const monthKeys = buildMonthlyKeys(from, to);
+  const preferences = await getOrCreateReportPreference(userId);
 
   const [accounts, currentHoldings, accountSnapshots, holdingSnapshots] = await Promise.all([
     prisma.account.findMany({
@@ -299,7 +437,9 @@ export async function getBalanceReport(
       include: {
         account: {
           select: {
-            id: true
+            id: true,
+            accountType: true,
+            includeInTotalCash: true
           }
         }
       },
@@ -333,6 +473,13 @@ export async function getBalanceReport(
 
   const accountSnapshotsByAccount = new Map<string, typeof accountSnapshots>();
   for (const snapshot of accountSnapshots) {
+    const includeByAccount =
+      snapshot.account.includeInTotalCash &&
+      (snapshot.account.accountType !== "INVESTMENT_CASH_ACCOUNT" || preferences.includeInvestmentCashInTotalCash);
+    if (!includeByAccount) {
+      continue;
+    }
+
     const existing = accountSnapshotsByAccount.get(snapshot.account.id) ?? [];
     existing.push(snapshot);
     accountSnapshotsByAccount.set(snapshot.account.id, existing);
@@ -367,7 +514,16 @@ export async function getBalanceReport(
     };
   });
 
-  const totalCash = accounts.reduce((sum, account) => sum + decimalToNumber(account.snapshots[0]?.balance), 0);
+  const totalCash = accounts.reduce((sum, account) => {
+    const includeByAccount =
+      account.includeInTotalCash &&
+      (account.accountType !== "INVESTMENT_CASH_ACCOUNT" || preferences.includeInvestmentCashInTotalCash);
+    if (!includeByAccount) {
+      return sum;
+    }
+
+    return sum + decimalToNumber(account.snapshots[0]?.balance);
+  }, 0);
   const totalInvestments = currentHoldings.reduce((sum, holding) => sum + Number(holding.marketValue ?? 0), 0);
 
   return {
@@ -382,9 +538,18 @@ export async function getBalanceReport(
       name: account.name,
       institutionName: account.institutionName ?? null,
       accountType: account.accountType,
+      accountSubtype: account.accountSubtype ?? null,
+      accountNickname: account.accountNickname ?? null,
+      accountGroup: account.accountGroup ?? null,
+      investmentRole: account.investmentRole ?? null,
       currency: account.currency,
       maskedAccountNumber: account.maskedAccountNumber ?? null,
       externalReference: account.externalReference ?? null,
+      includeInTotalCash: account.includeInTotalCash,
+      includeInNetWorth: account.includeInNetWorth,
+      includeInDashboard: account.includeInDashboard,
+      includeInDailyCashflow: account.includeInDailyCashflow,
+      includeInInvestmentCashflow: account.includeInInvestmentCashflow,
       isActive: account.isActive,
       currentBalance: decimalToString(account.snapshots[0]?.balance),
       availableBalance: decimalToString(account.snapshots[0]?.availableBalance),

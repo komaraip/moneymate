@@ -78,6 +78,9 @@ export default async function AccountsPage() {
                       <p className="text-sm text-muted-foreground">
                         {account.institutionName ?? "Manual account"} - {getAccountTypeLabel(account.accountType)}
                       </p>
+                      {account.accountNickname ? (
+                        <p className="text-xs text-muted-foreground">Nickname: {account.accountNickname}</p>
+                      ) : null}
                     </div>
                     <div className="text-right">
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current balance</p>
@@ -89,6 +92,7 @@ export default async function AccountsPage() {
                   <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
                     <span>{account.maskedAccountNumber ?? "No masked account number yet"}</span>
                     <span>Snapshot: {formatDate(account.latestSnapshotDate)}</span>
+                    {account.accountGroup ? <span>Group: {account.accountGroup}</span> : null}
                   </div>
                 </Link>
               ))}

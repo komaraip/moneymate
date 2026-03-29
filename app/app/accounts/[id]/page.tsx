@@ -27,7 +27,7 @@ export default async function AccountDetailPage({
       <PageHeader
         eyebrow="Cashflow"
         title={detail.account.name}
-        description={`${detail.account.institutionName ?? "Manual account"} - ${getAccountTypeLabel(detail.account.accountType)} - ${detail.account.maskedAccountNumber ?? "No masked account number"}`}
+        description={`${detail.account.institutionName ?? "Manual account"} - ${getAccountTypeLabel(detail.account.accountType)} - ${detail.account.maskedAccountNumber ?? "No masked account number"}${detail.account.accountGroup ? ` - Group: ${detail.account.accountGroup}` : ""}`}
         action={
           <div className="rounded-2xl border border-border/70 bg-white/80 px-4 py-3 text-right">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Latest balance</p>

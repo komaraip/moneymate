@@ -130,9 +130,18 @@ export const accountSummarySchema = z.object({
   name: z.string(),
   institutionName: z.string().nullable(),
   accountType: z.string(),
+  accountSubtype: z.string().nullable(),
+  accountNickname: z.string().nullable(),
+  accountGroup: z.string().nullable(),
+  investmentRole: z.string().nullable(),
   currency: z.string(),
   maskedAccountNumber: z.string().nullable(),
   externalReference: z.string().nullable(),
+  includeInTotalCash: z.boolean(),
+  includeInNetWorth: z.boolean(),
+  includeInDashboard: z.boolean(),
+  includeInDailyCashflow: z.boolean(),
+  includeInInvestmentCashflow: z.boolean(),
   isActive: z.boolean(),
   currentBalance: z.string().nullable(),
   availableBalance: z.string().nullable(),
@@ -175,6 +184,7 @@ export const accountDetailSchema = z.object({
 });
 
 export const cashflowReportSchema = z.object({
+  mode: z.enum(["COMBINED", "SEPARATE"]),
   summary: z.object({
     periodStart: z.string(),
     periodEnd: z.string(),
@@ -182,6 +192,20 @@ export const cashflowReportSchema = z.object({
     expense: z.string(),
     net: z.string(),
     transactionCount: z.number()
+  }),
+  streams: z.object({
+    regular: z.object({
+      income: z.string(),
+      expense: z.string(),
+      net: z.string(),
+      transactionCount: z.number()
+    }),
+    investment: z.object({
+      income: z.string(),
+      expense: z.string(),
+      net: z.string(),
+      transactionCount: z.number()
+    })
   }),
   monthly: z.array(
     z.object({
@@ -198,6 +222,46 @@ export const cashflowReportSchema = z.object({
       total: z.string()
     })
   )
+});
+
+export const investmentCategorySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  iconToken: z.string().nullable(),
+  colorToken: z.string().nullable(),
+  isSystemDefault: z.boolean(),
+  isActive: z.boolean(),
+  includeInNetWorth: z.boolean(),
+  includeInDashboard: z.boolean(),
+  includeInReports: z.boolean(),
+  sortOrder: z.number()
+});
+
+export const brokerSchema = z.object({
+  id: z.string(),
+  investmentCategoryId: z.string().nullable(),
+  brokerName: z.string(),
+  brokerCode: z.string().nullable(),
+  legalEntityName: z.string().nullable(),
+  branchName: z.string().nullable(),
+  clientCode: z.string().nullable(),
+  sid: z.string().nullable(),
+  sre: z.string().nullable(),
+  rdnAccountId: z.string().nullable(),
+  defaultCurrency: z.string(),
+  country: z.string().nullable(),
+  isActive: z.boolean(),
+  notes: z.string().nullable()
+});
+
+export const reportPreferenceSchema = z.object({
+  defaultCashflowMode: z.enum(["COMBINED", "SEPARATE"]),
+  includeDividendsInIncome: z.boolean(),
+  includeStockSaleProceedsInIncome: z.boolean(),
+  includeBrokerFeesInExpenses: z.boolean(),
+  includeInvestmentCashInTotalCash: z.boolean()
 });
 
 export const balanceReportSchema = z.object({
@@ -316,3 +380,6 @@ export type CashflowReport = z.infer<typeof cashflowReportSchema>;
 export type BalanceReport = z.infer<typeof balanceReportSchema>;
 export type InvestmentReport = z.infer<typeof investmentReportSchema>;
 export type DocumentHealthReport = z.infer<typeof documentHealthReportSchema>;
+export type InvestmentCategoryItem = z.infer<typeof investmentCategorySchema>;
+export type BrokerItem = z.infer<typeof brokerSchema>;
+export type ReportPreference = z.infer<typeof reportPreferenceSchema>;
