@@ -17,6 +17,7 @@ const navigation = [
   { href: "/app/review", label: "Review Queue" },
   { href: "/app/investments", label: "Investments" },
   { href: "/app/investments/activity", label: "Activity" },
+  { href: "/app/reports", label: "Reports" },
   { href: "/app/settings", label: "Settings" }
 ];
 

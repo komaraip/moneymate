@@ -20,6 +20,7 @@ import { classifyDocument } from "./classification";
 import { extractTextFromPdf } from "./pdf";
 
 const parserVersion = "stock-activity-v1";
+const lowParserConfidenceThreshold = 0.72;
 
 type PersistParseInput = {
   document: Document;
@@ -97,9 +98,16 @@ async function upsertInvestmentAccount(tx: Prisma.TransactionClient, document: D
 
 async function persistParsedDocument(input: PersistParseInput) {
   const parsed = parseStockActivityDocument(input.rawText);
+  const validationMessages = parsed.validationIssues.map((issue) => issue.message);
+  if (parsed.parserConfidence < lowParserConfidenceThreshold) {
+    validationMessages.push(
+      `Overall parser confidence is ${Math.round(parsed.parserConfidence * 100)}%, so this document needs review before approval.`
+    );
+  }
   const requiresReview =
     parsed.validationIssues.some((issue) => issue.severity === "error") ||
     parsed.securities.some((security) => security.rows.some((row) => row.requiresReview)) ||
+    parsed.parserConfidence < lowParserConfidenceThreshold ||
     !parsed.statementPeriod.start ||
     !parsed.statementPeriod.end;
 
@@ -144,7 +152,16 @@ async function persistParsedDocument(input: PersistParseInput) {
       {
         documentId: input.document.id,
         key: "validation_issues",
-        valueJson: parsed.validationIssues.map((issue) => issue.message) as Prisma.InputJsonValue
+        valueJson: validationMessages as Prisma.InputJsonValue
+      },
+      {
+        documentId: input.document.id,
+        key: "confidence_summary",
+        valueJson: {
+          parserConfidence: parsed.parserConfidence,
+          threshold: lowParserConfidenceThreshold,
+          requiresReview: parsed.parserConfidence < lowParserConfidenceThreshold
+        } as Prisma.InputJsonValue
       },
       {
         documentId: input.document.id,
@@ -405,6 +422,7 @@ export async function processDocumentById(documentId: string) {
         parseStatus:
           parsed.validationIssues.some((issue) => issue.severity === "error") ||
           parsed.securities.some((security) => security.rows.some((row) => row.requiresReview)) ||
+          parsed.parserConfidence < lowParserConfidenceThreshold ||
           !parsed.statementPeriod.start ||
           !parsed.statementPeriod.end
             ? DocumentStatus.NEEDS_REVIEW

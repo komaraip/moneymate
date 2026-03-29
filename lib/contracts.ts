@@ -200,6 +200,79 @@ export const cashflowReportSchema = z.object({
   )
 });
 
+export const balanceReportSchema = z.object({
+  summary: z.object({
+    totalCash: z.string(),
+    totalInvestments: z.string(),
+    totalNetWorth: z.string()
+  }),
+  monthly: z.array(
+    z.object({
+      month: z.string(),
+      cashBalance: z.string(),
+      investmentValue: z.string(),
+      netWorth: z.string()
+    })
+  ),
+  accounts: z.array(accountSummarySchema)
+});
+
+export const investmentReportSchema = z.object({
+  summary: z.object({
+    holdingsValue: z.string(),
+    realizedProfitLoss: z.string(),
+    activityCount: z.number(),
+    uniqueSecurities: z.number()
+  }),
+  monthlyActivity: z.array(
+    z.object({
+      month: z.string(),
+      activityCount: z.number(),
+      realizedProfitLoss: z.string()
+    })
+  ),
+  realizedBySecurity: z.array(
+    z.object({
+      ticker: z.string(),
+      securityName: z.string(),
+      realizedProfitLoss: z.string(),
+      activityCount: z.number()
+    })
+  ),
+  holdingsBreakdown: z.array(holdingSummarySchema)
+});
+
+export const documentHealthReportSchema = z.object({
+  summary: z.object({
+    totalDocuments: z.number(),
+    duplicateDocuments: z.number(),
+    needsReviewDocuments: z.number(),
+    failedDocuments: z.number(),
+    lowConfidenceDocuments: z.number(),
+    averageConfidence: z.number().nullable()
+  }),
+  statusBreakdown: z.array(
+    z.object({
+      status: z.string(),
+      count: z.number()
+    })
+  ),
+  duplicateCandidates: z.array(
+    z.object({
+      documentId: z.string(),
+      duplicateOfDocumentId: z.string(),
+      filename: z.string(),
+      duplicateFilename: z.string(),
+      uploadedAt: z.string(),
+      duplicateUploadedAt: z.string(),
+      confidence: z.number().nullable(),
+      duplicateConfidence: z.number().nullable(),
+      similarityScore: z.number()
+    })
+  ),
+  lowConfidenceDocuments: z.array(documentListItemSchema)
+});
+
 export const documentDetailSchema = z.object({
   document: documentListItemSchema.extend({
     storageKey: z.string(),
@@ -240,3 +313,6 @@ export type TransactionListItem = z.infer<typeof transactionListItemSchema>;
 export type PaginatedTransactions = z.infer<typeof paginatedTransactionsSchema>;
 export type AccountDetail = z.infer<typeof accountDetailSchema>;
 export type CashflowReport = z.infer<typeof cashflowReportSchema>;
+export type BalanceReport = z.infer<typeof balanceReportSchema>;
+export type InvestmentReport = z.infer<typeof investmentReportSchema>;
+export type DocumentHealthReport = z.infer<typeof documentHealthReportSchema>;

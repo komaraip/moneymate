@@ -36,6 +36,7 @@ export default async function DocumentDetailPage({
         <ConfidenceBadge confidence={detail.document.overallConfidence} />
         <Badge tone="neutral">{detail.document.documentType}</Badge>
         <Badge tone="accent">{detail.document.parserVersion ?? "No parser version"}</Badge>
+        {detail.document.duplicateOfDocumentId ? <Badge tone="warning">Duplicate of another upload</Badge> : null}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -144,4 +145,3 @@ export default async function DocumentDetailPage({
     </div>
   );
 }
-

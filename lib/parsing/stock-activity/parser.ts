@@ -235,11 +235,22 @@ export function parseStockActivityDocument(rawText: string): ParsedStockActivity
   }
 
   const allRows = sections.flatMap((section) => section.rows);
-  const parserConfidence = averageConfidence([
+  const baseConfidence = averageConfidence([
     ...allRows.map((row) => row.confidence),
     metadata.statementPeriod.start && metadata.statementPeriod.end ? 0.94 : 0.55,
     sections.length > 0 ? 0.92 : 0.2
   ]);
+  const warningPenalty = validationIssues.filter((issue) => issue.severity === "warning").length * 0.04;
+  const errorPenalty = validationIssues.filter((issue) => issue.severity === "error").length * 0.12;
+  const reviewPenalty =
+    allRows.length > 0 ? (allRows.filter((row) => row.requiresReview).length / allRows.length) * 0.2 : 0.1;
+  const unknownActivityPenalty =
+    allRows.length > 0
+      ? (allRows.filter((row) => row.activityType === "UNKNOWN_ACTIVITY").length / allRows.length) * 0.12
+      : 0;
+  const parserConfidence = Number(
+    Math.max(0.1, Math.min(0.99, baseConfidence - warningPenalty - errorPenalty - reviewPenalty - unknownActivityPenalty)).toFixed(4)
+  );
 
   return {
     documentType: "STOCK_ACTIVITY_STATEMENT",

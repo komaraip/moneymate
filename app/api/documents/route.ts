@@ -11,6 +11,8 @@ export async function GET(request: Request) {
         status: searchParams.get("status") ?? undefined,
         type: searchParams.get("type") ?? undefined,
         search: searchParams.get("search") ?? undefined,
+        duplicatesOnly: searchParams.get("duplicatesOnly") ?? undefined,
+        confidenceBelow: searchParams.get("confidenceBelow") ?? undefined,
         page: searchParams.get("page") ?? undefined,
         pageSize: searchParams.get("pageSize") ?? undefined
       })
@@ -29,4 +31,3 @@ export async function POST(request: Request) {
     return jsonError(error);
   }
 }
-

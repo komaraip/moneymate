@@ -1,11 +1,8 @@
 import { z } from "zod";
 import { cashAccountTypes } from "@/lib/finance";
+import { booleanQuerySchema } from "./shared";
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().nullable();
-const booleanQuerySchema = z
-  .enum(["true", "false"])
-  .optional()
-  .transform((value) => value === "true");
 
 export const createAccountSchema = z.object({
   name: z.string().trim().min(2).max(120),

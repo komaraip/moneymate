@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { booleanQuerySchema } from "./shared";
 
 export const uploadInitSchema = z.object({
   filename: z.string().min(1).max(255),
@@ -15,7 +16,8 @@ export const listDocumentsQuerySchema = z.object({
   status: z.string().optional(),
   type: z.string().optional(),
   search: z.string().optional(),
+  duplicatesOnly: booleanQuerySchema,
+  confidenceBelow: z.coerce.number().min(0).max(1).optional(),
   page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().positive().max(100).default(25)
+  pageSize: z.coerce.number().int().positive().max(1000).default(25)
 });
-

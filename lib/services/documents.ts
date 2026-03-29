@@ -119,6 +119,13 @@ export async function listDocuments(userId: string, query: Record<string, string
       userId,
       parseStatus: params.status ? (params.status as never) : undefined,
       documentType: params.type ? (params.type as never) : undefined,
+      duplicateOfDocumentId: params.duplicatesOnly ? { not: null } : undefined,
+      overallConfidence:
+        params.confidenceBelow !== undefined
+          ? {
+              lt: params.confidenceBelow
+            }
+          : undefined,
       filename: params.search
         ? {
             contains: params.search,
