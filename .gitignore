@@ -1,0 +1,12 @@
+node_modules
+.next
+coverage
+playwright-report
+test-results
+dist
+tmp
+.env
+.env.local
+.env.*.local
+prisma/dev.db
+

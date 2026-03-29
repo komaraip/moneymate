@@ -1,0 +1,493 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UploadSource {
+  WEB
+  API
+  MANUAL
+}
+
+enum DocumentType {
+  UNKNOWN
+  BANK_STATEMENT
+  EWALLET_STATEMENT
+  CREDIT_CARD_STATEMENT
+  SALARY_SLIP
+  RECEIPT
+  STOCK_ACTIVITY_STATEMENT
+  PORTFOLIO_SUMMARY
+  DIVIDEND_STATEMENT
+  TAX_DOCUMENT
+  MANUAL_ENTRY
+}
+
+enum DocumentStatus {
+  DRAFT
+  UPLOADED
+  PROCESSING
+  PARSED
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+  DUPLICATE
+  FAILED
+}
+
+enum ExtractionJobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum ExtractionStage {
+  UPLOAD
+  FINGERPRINTING
+  TEXT_EXTRACTION
+  CLASSIFICATION
+  STRUCTURED_PARSING
+  NORMALIZATION
+  REVIEW_PREP
+  COMPLETED
+}
+
+enum AccountType {
+  BANK_ACCOUNT
+  EWALLET_ACCOUNT
+  CREDIT_ACCOUNT
+  INVESTMENT_CASH_ACCOUNT
+  BROKERAGE_ACCOUNT
+  MANUAL_CASH_ACCOUNT
+}
+
+enum CategoryType {
+  EXPENSE
+  INCOME
+  TRANSFER
+  INVESTMENT
+  ADJUSTMENT
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  IGNORED
+}
+
+enum TradeActivityType {
+  BEGINNING_BALANCE
+  END_BALANCE
+  BUY
+  SELL
+  IPO_ALLOTMENT
+  DIVIDEND
+  WARRANT_DISTRIBUTION
+  WARRANT_EXPIRY
+  CORPORATE_DISTRIBUTION
+  CORPORATE_ACTION
+  UNKNOWN_ACTIVITY
+}
+
+enum AuditActionType {
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+  LOGIN
+  LOGOUT
+  UPLOAD
+  REPROCESS
+}
+
+enum ActorType {
+  USER
+  SYSTEM
+  WORKER
+}
+
+enum SourceType {
+  DOCUMENT
+  MANUAL
+  SYSTEM
+}
+
+enum AdjustmentTargetType {
+  DOCUMENT
+  PARSED_FIELD
+  TRADE_ACTIVITY
+  HOLDING_SNAPSHOT
+  TRANSACTION
+  ACCOUNT_SNAPSHOT
+}
+
+enum SessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  passwordHash       String              @map("password_hash")
+  displayName        String?             @map("display_name")
+  preferredCurrency  String              @default("IDR") @map("preferred_currency")
+  locale             String              @default("en-ID")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  sessions           Session[]
+  documents          Document[]
+  accounts           Account[]
+  transactions       Transaction[]
+  categories         Category[]
+  securities         Security[]
+  investmentAccounts InvestmentAccount[]
+  tradeActivities    TradeActivity[]
+  holdingSnapshots   HoldingSnapshot[]
+  manualAdjustments  ManualAdjustment[]
+  auditEvents        AuditEvent[]
+
+  @@map("users")
+}
+
+model Session {
+  id         String        @id @default(cuid())
+  userId     String        @map("user_id")
+  tokenHash  String        @unique @map("token_hash")
+  expiresAt  DateTime      @map("expires_at")
+  lastSeenAt DateTime?     @map("last_seen_at")
+  ipAddress  String?       @map("ip_address")
+  userAgent  String?       @map("user_agent")
+  status     SessionStatus @default(ACTIVE)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Document {
+  id                    String           @id @default(cuid())
+  userId                String           @map("user_id")
+  filename              String
+  originalMimeType      String           @map("original_mime_type")
+  storageKey            String           @unique @map("storage_key")
+  sha256Hash            String?          @map("sha256_hash")
+  fileSizeBytes         Int              @map("file_size_bytes")
+  uploadSource          UploadSource     @default(WEB) @map("upload_source")
+  documentType          DocumentType     @default(UNKNOWN) @map("document_type")
+  statementStartDate    DateTime?        @map("statement_start_date")
+  statementEndDate      DateTime?        @map("statement_end_date")
+  parseStatus           DocumentStatus   @default(DRAFT) @map("parse_status")
+  duplicateOfDocumentId String?          @map("duplicate_of_document_id")
+  parserVersion         String?          @map("parser_version")
+  overallConfidence     Float?           @map("overall_confidence")
+  needsReview           Boolean          @default(false) @map("needs_review")
+  uploadedAt            DateTime         @default(now()) @map("uploaded_at")
+  processedAt           DateTime?        @map("processed_at")
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  duplicateOf           Document?        @relation("DocumentDuplicates", fields: [duplicateOfDocumentId], references: [id], onDelete: SetNull)
+  duplicates            Document[]       @relation("DocumentDuplicates")
+  metadata              DocumentMetadata[]
+  extractionJobs        ExtractionJob[]
+  parsedFields          ParsedField[]
+  transactions          Transaction[]
+  tradeActivities       TradeActivity[]
+  holdingSnapshots      HoldingSnapshot[]
+  accountSnapshots      AccountSnapshot[]
+
+  @@index([userId, parseStatus, uploadedAt(sort: Desc)])
+  @@index([userId, documentType])
+  @@index([userId, sha256Hash])
+  @@map("documents")
+}
+
+model DocumentMetadata {
+  id         String   @id @default(cuid())
+  documentId String   @map("document_id")
+  key        String
+  valueText  String?  @map("value_text")
+  valueJson  Json?    @map("value_json")
+  createdAt  DateTime @default(now()) @map("created_at")
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("document_metadata")
+}
+
+model ExtractionJob {
+  id            String              @id @default(cuid())
+  documentId    String              @map("document_id")
+  status        ExtractionJobStatus @default(PENDING)
+  stage         ExtractionStage     @default(UPLOAD)
+  errorMessage  String?             @map("error_message")
+  startedAt     DateTime?           @map("started_at")
+  finishedAt    DateTime?           @map("finished_at")
+  rawText       String?             @map("raw_text")
+  ocrText       String?             @map("ocr_text")
+  extractedJson Json?               @map("extracted_json")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  document      Document            @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  parsedFields  ParsedField[]
+
+  @@index([documentId, createdAt(sort: Desc)])
+  @@map("extraction_jobs")
+}
+
+model ParsedField {
+  id               String        @id @default(cuid())
+  documentId       String        @map("document_id")
+  extractionJobId  String        @map("extraction_job_id")
+  fieldPath        String        @map("field_path")
+  rawValue         String        @map("raw_value")
+  normalizedValue  Json?         @map("normalized_value")
+  confidence       Float?
+  requiresReview   Boolean       @default(false) @map("requires_review")
+  reviewStatus     ReviewStatus  @default(PENDING) @map("review_status")
+  pageNumber       Int?          @map("page_number")
+  sourceBboxJson   Json?         @map("source_bbox_json")
+  linkedEntityType String?       @map("linked_entity_type")
+  linkedEntityId   String?       @map("linked_entity_id")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  document         Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  extractionJob    ExtractionJob @relation(fields: [extractionJobId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, requiresReview, reviewStatus])
+  @@index([extractionJobId])
+  @@map("parsed_fields")
+}
+
+model Account {
+  id                  String             @id @default(cuid())
+  userId              String             @map("user_id")
+  name                String
+  institutionName     String?            @map("institution_name")
+  accountType         AccountType        @map("account_type")
+  accountSubtype      String?            @map("account_subtype")
+  currency            String             @default("IDR")
+  maskedAccountNumber String?            @map("masked_account_number")
+  externalReference   String?            @map("external_reference")
+  isActive            Boolean            @default(true) @map("is_active")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshots           AccountSnapshot[]
+  transactions        Transaction[]
+  investmentAccount   InvestmentAccount?
+
+  @@index([userId, accountType])
+  @@map("accounts")
+}
+
+model AccountSnapshot {
+  id               String     @id @default(cuid())
+  accountId        String     @map("account_id")
+  snapshotDate     DateTime   @map("snapshot_date")
+  balance          Decimal    @db.Decimal(24, 4)
+  availableBalance Decimal?   @map("available_balance") @db.Decimal(24, 4)
+  sourceDocumentId String?    @map("source_document_id")
+  sourceType       SourceType @default(DOCUMENT) @map("source_type")
+  confidence       Float?
+  createdAt        DateTime   @default(now()) @map("created_at")
+  account          Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  sourceDocument   Document?  @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, snapshotDate(sort: Desc)])
+  @@map("account_snapshots")
+}
+
+model Transaction {
+  id                    String       @id @default(cuid())
+  userId                String       @map("user_id")
+  accountId             String?      @map("account_id")
+  sourceDocumentId      String?      @map("source_document_id")
+  sourceRowId           String?      @map("source_row_id")
+  sourceType            SourceType   @default(DOCUMENT) @map("source_type")
+  transactionType       String       @map("transaction_type")
+  direction             String
+  transactionDate       DateTime     @map("transaction_date")
+  postingDate           DateTime?    @map("posting_date")
+  amount                Decimal      @db.Decimal(18, 2)
+  currency              String       @default("IDR")
+  description           String
+  normalizedDescription String?      @map("normalized_description")
+  categoryId            String?      @map("category_id")
+  merchantName          String?      @map("merchant_name")
+  counterpartyName      String?      @map("counterparty_name")
+  reviewStatus          ReviewStatus @default(PENDING) @map("review_status")
+  confidence            Float?
+  isManual              Boolean      @default(false) @map("is_manual")
+  notes                 String?
+  tags                  Json?
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account               Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  sourceDocument        Document?    @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  category              Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, transactionDate(sort: Desc)])
+  @@index([sourceDocumentId])
+  @@map("transactions")
+}
+
+model Category {
+  id               String       @id @default(cuid())
+  userId           String       @map("user_id")
+  name             String
+  parentCategoryId String?      @map("parent_category_id")
+  categoryType     CategoryType @map("category_type")
+  colorToken       String?      @map("color_token")
+  isSystem         Boolean      @default(false) @map("is_system")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentCategory   Category?    @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
+  childCategories  Category[]   @relation("CategoryHierarchy")
+  transactions     Transaction[]
+
+  @@unique([userId, name, categoryType])
+  @@map("categories")
+}
+
+model Security {
+  id               String            @id @default(cuid())
+  userId           String            @map("user_id")
+  ticker           String
+  securityName     String            @map("security_name")
+  exchange         String?
+  instrumentType   String?           @map("instrument_type")
+  currency         String            @default("IDR")
+  isActive         Boolean           @default(true) @map("is_active")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tradeActivities  TradeActivity[]
+  holdingSnapshots HoldingSnapshot[]
+
+  @@unique([userId, ticker])
+  @@map("securities")
+}
+
+model InvestmentAccount {
+  id               String            @id @default(cuid())
+  userId           String            @map("user_id")
+  accountId        String?           @unique @map("account_id")
+  brokerName       String?           @map("broker_name")
+  sid              String?
+  clientCode       String?           @map("client_code")
+  sre              String?
+  rdn              String?
+  officeName       String?           @map("office_name")
+  salesperson      String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account          Account?          @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  tradeActivities  TradeActivity[]
+  holdingSnapshots HoldingSnapshot[]
+
+  @@index([userId, clientCode])
+  @@map("investment_accounts")
+}
+
+model TradeActivity {
+  id                  String            @id @default(cuid())
+  userId              String            @map("user_id")
+  investmentAccountId String            @map("investment_account_id")
+  securityId          String            @map("security_id")
+  sourceDocumentId    String            @map("source_document_id")
+  activityDate        DateTime?         @map("activity_date")
+  settleDate          DateTime?         @map("settle_date")
+  externalReference   String?           @map("external_reference")
+  activityType        TradeActivityType @map("activity_type")
+  rawDescription      String            @map("raw_description")
+  quantity            Decimal?          @db.Decimal(24, 6)
+  price               Decimal?          @db.Decimal(24, 6)
+  balanceAfter        Decimal?          @map("balance_after") @db.Decimal(24, 6)
+  averagePriceAfter   Decimal?          @map("average_price_after") @db.Decimal(24, 6)
+  marketValueAfter    Decimal?          @map("market_value_after") @db.Decimal(24, 6)
+  realizedProfitLoss  Decimal?          @map("realized_profit_loss") @db.Decimal(24, 6)
+  currency            String            @default("IDR")
+  confidence          Float?
+  requiresReview      Boolean           @default(false) @map("requires_review")
+  reviewStatus        ReviewStatus      @default(PENDING) @map("review_status")
+  rawRowJson          Json              @map("raw_row_json")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investmentAccount   InvestmentAccount @relation(fields: [investmentAccountId], references: [id], onDelete: Cascade)
+  security            Security          @relation(fields: [securityId], references: [id], onDelete: Cascade)
+  sourceDocument      Document          @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, activityDate(sort: Desc)])
+  @@index([sourceDocumentId])
+  @@index([securityId, reviewStatus, activityDate(sort: Desc)])
+  @@map("trade_activities")
+}
+
+model HoldingSnapshot {
+  id                  String            @id @default(cuid())
+  userId              String            @map("user_id")
+  investmentAccountId String            @map("investment_account_id")
+  securityId          String            @map("security_id")
+  snapshotDate        DateTime          @map("snapshot_date")
+  quantity            Decimal           @db.Decimal(24, 6)
+  averageCost         Decimal?          @map("average_cost") @db.Decimal(24, 6)
+  marketValue         Decimal?          @map("market_value") @db.Decimal(24, 6)
+  sourceDocumentId    String            @map("source_document_id")
+  reviewStatus        ReviewStatus      @default(PENDING) @map("review_status")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investmentAccount   InvestmentAccount @relation(fields: [investmentAccountId], references: [id], onDelete: Cascade)
+  security            Security          @relation(fields: [securityId], references: [id], onDelete: Cascade)
+  sourceDocument      Document          @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, snapshotDate(sort: Desc)])
+  @@index([securityId, reviewStatus, snapshotDate(sort: Desc)])
+  @@map("holding_snapshots")
+}
+
+model ManualAdjustment {
+  id         String               @id @default(cuid())
+  userId     String               @map("user_id")
+  targetType AdjustmentTargetType @map("target_type")
+  targetId   String               @map("target_id")
+  reason     String
+  deltaJson  Json                 @map("delta_json")
+  createdAt  DateTime             @default(now()) @map("created_at")
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, targetType, targetId])
+  @@map("manual_adjustments")
+}
+
+model AuditEvent {
+  id           String          @id @default(cuid())
+  userId       String?         @map("user_id")
+  entityType   String          @map("entity_type")
+  entityId     String          @map("entity_id")
+  actionType   AuditActionType @map("action_type")
+  beforeJson   Json?           @map("before_json")
+  afterJson    Json?           @map("after_json")
+  actorType    ActorType       @map("actor_type")
+  metadataJson Json?           @map("metadata_json")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  user         User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("audit_events")
+}

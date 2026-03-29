@@ -1,0 +1,17 @@
+CLIENT STOCK ACTIVITY
+Period 01-Jan-2024 to 31-Dec-2024
+SID: SID-12345
+Client Code: ABC001
+SRE / RDN: SRE-001
+Office: Jakarta
+Salesperson: Retail Desk
+
+ACRO Acropolis Corporation IDR
+Date Settle Ref Description Price Volume Balance AvgPrice StockValue ProfitLoss
+01-Jan-2024 03-Jan-2024 REF001 Beginning Balance 0 0 1000 150 150000 0
+05-Jan-2024 07-Jan-2024 REF002 Buy Market 100 200 1200 158 189600 0
+09-Jan-2024 11-Jan-2024 REF003 Sell Regular 110 -100 1100 158 173800 1000
+31-Dec-2024 31-Dec-2024 REF004 End Balance 0 0 1100 158 173800 0
+Total 173800
+Grand Total 173800
+
