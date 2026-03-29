@@ -9,4 +9,5 @@ tmp
 .env.local
 .env.*.local
 prisma/dev.db
+docs
 
