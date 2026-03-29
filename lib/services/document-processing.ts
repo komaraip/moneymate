@@ -18,6 +18,7 @@ import { AppError } from "@/lib/utils/errors";
 import { toJsonSafe } from "@/lib/utils/json";
 import { classifyDocument } from "./classification";
 import { extractTextFromPdf } from "./pdf";
+import { buildRuleSearchText, findMatchingDocumentMappingRule } from "./rules";
 
 const parserVersion = "stock-activity-v1";
 const lowParserConfidenceThreshold = 0.72;
@@ -26,6 +27,13 @@ type PersistParseInput = {
   document: Document;
   extractionJobId: string;
   rawText: string;
+};
+
+type AppliedDocumentMapping = {
+  id: string;
+  brokerId: string | null;
+  investmentAccountId: string | null;
+  categoryId: string | null;
 };
 
 async function updateJobStage(jobId: string, stage: ExtractionStage, status = ExtractionJobStatus.RUNNING) {
@@ -63,31 +71,126 @@ async function ensureStocksInvestmentCategory(tx: Prisma.TransactionClient, user
   });
 }
 
-async function upsertInvestmentAccount(tx: Prisma.TransactionClient, document: Document, parsed: ReturnType<typeof parseStockActivityDocument>) {
-  const stocksCategory = await ensureStocksInvestmentCategory(tx, document.userId);
-  const brokerName = parsed.accountMetadata.office?.trim() || "Imported broker profile";
-  const broker = await tx.broker.upsert({
+async function resolveDocumentMappingRule(
+  userId: string,
+  rawText: string,
+  parsed: ReturnType<typeof parseStockActivityDocument>
+) {
+  const rules = await prisma.documentMappingRule.findMany({
     where: {
-      userId_brokerName: {
-        userId: document.userId,
-        brokerName
-      }
-    },
-    update: {
-      investmentCategoryId: stocksCategory.id,
-      clientCode: parsed.accountMetadata.clientCode ?? undefined,
-      sid: parsed.accountMetadata.sid ?? undefined,
-      sre: parsed.accountMetadata.sre ?? undefined
-    },
-    create: {
-      userId: document.userId,
-      investmentCategoryId: stocksCategory.id,
-      brokerName,
-      clientCode: parsed.accountMetadata.clientCode,
-      sid: parsed.accountMetadata.sid,
-      sre: parsed.accountMetadata.sre
+      userId
     }
   });
+
+  const searchText = buildRuleSearchText([
+    rawText,
+    parsed.accountMetadata.office,
+    parsed.accountMetadata.clientCode,
+    parsed.accountMetadata.sid,
+    parsed.accountMetadata.sre,
+    parsed.accountMetadata.rdn,
+    parsed.securities.map((security) => security.ticker).join(" "),
+    parsed.securities.map((security) => security.securityName).join(" ")
+  ]);
+  const matchedRule = findMatchingDocumentMappingRule(rules, searchText);
+  if (!matchedRule) {
+    return null;
+  }
+
+  return {
+    id: matchedRule.id,
+    brokerId: matchedRule.brokerId,
+    investmentAccountId: matchedRule.investmentAccountId,
+    categoryId: matchedRule.categoryId
+  } satisfies AppliedDocumentMapping;
+}
+
+async function upsertInvestmentAccount(
+  tx: Prisma.TransactionClient,
+  document: Document,
+  parsed: ReturnType<typeof parseStockActivityDocument>,
+  mappedRule: AppliedDocumentMapping | null
+) {
+  const mappedCategory = mappedRule?.categoryId
+    ? await tx.investmentCategory.findFirst({
+        where: {
+          id: mappedRule.categoryId,
+          userId: document.userId
+        }
+      })
+    : null;
+  const stocksCategory = mappedCategory ?? (await ensureStocksInvestmentCategory(tx, document.userId));
+
+  const brokerName = parsed.accountMetadata.office?.trim() || "Imported broker profile";
+  const mappedBroker = mappedRule?.brokerId
+    ? await tx.broker.findFirst({
+        where: {
+          id: mappedRule.brokerId,
+          userId: document.userId
+        }
+      })
+    : null;
+  const broker = mappedBroker
+    ? await tx.broker.update({
+        where: {
+          id: mappedBroker.id
+        },
+        data: {
+          investmentCategoryId: stocksCategory.id,
+          clientCode: parsed.accountMetadata.clientCode ?? undefined,
+          sid: parsed.accountMetadata.sid ?? undefined,
+          sre: parsed.accountMetadata.sre ?? undefined
+        }
+      })
+    : await tx.broker.upsert({
+        where: {
+          userId_brokerName: {
+            userId: document.userId,
+            brokerName
+          }
+        },
+        update: {
+          investmentCategoryId: stocksCategory.id,
+          clientCode: parsed.accountMetadata.clientCode ?? undefined,
+          sid: parsed.accountMetadata.sid ?? undefined,
+          sre: parsed.accountMetadata.sre ?? undefined
+        },
+        create: {
+          userId: document.userId,
+          investmentCategoryId: stocksCategory.id,
+          brokerName,
+          clientCode: parsed.accountMetadata.clientCode,
+          sid: parsed.accountMetadata.sid,
+          sre: parsed.accountMetadata.sre
+        }
+      });
+
+  const mappedInvestmentAccount = mappedRule?.investmentAccountId
+    ? await tx.investmentAccount.findFirst({
+        where: {
+          id: mappedRule.investmentAccountId,
+          userId: document.userId
+        }
+      })
+    : null;
+  if (mappedInvestmentAccount) {
+    return tx.investmentAccount.update({
+      where: {
+        id: mappedInvestmentAccount.id
+      },
+      data: {
+        investmentCategoryId: stocksCategory.id,
+        brokerId: broker.id,
+        brokerName: parsed.accountMetadata.office ?? broker.brokerName,
+        sid: parsed.accountMetadata.sid ?? mappedInvestmentAccount.sid,
+        clientCode: parsed.accountMetadata.clientCode ?? mappedInvestmentAccount.clientCode,
+        sre: parsed.accountMetadata.sre ?? mappedInvestmentAccount.sre,
+        rdn: parsed.accountMetadata.rdn ?? mappedInvestmentAccount.rdn,
+        officeName: parsed.accountMetadata.office ?? mappedInvestmentAccount.officeName,
+        salesperson: parsed.accountMetadata.salesperson ?? mappedInvestmentAccount.salesperson
+      }
+    });
+  }
 
   const uniqueReference = parsed.accountMetadata.clientCode ?? parsed.accountMetadata.sid ?? crypto.randomUUID();
   const identifierClauses = [
@@ -122,7 +225,7 @@ async function upsertInvestmentAccount(tx: Prisma.TransactionClient, document: D
       data: {
         investmentCategoryId: stocksCategory.id,
         brokerId: broker.id,
-        brokerName: brokerName ?? existing.brokerName,
+        brokerName: parsed.accountMetadata.office ?? existing.brokerName ?? broker.brokerName,
         sid: parsed.accountMetadata.sid ?? existing.sid,
         clientCode: parsed.accountMetadata.clientCode ?? existing.clientCode,
         sre: parsed.accountMetadata.sre ?? existing.sre,
@@ -138,7 +241,7 @@ async function upsertInvestmentAccount(tx: Prisma.TransactionClient, document: D
       userId: document.userId,
       investmentCategoryId: stocksCategory.id,
       brokerId: broker.id,
-      brokerName: parsed.accountMetadata.office ?? brokerName,
+      brokerName: parsed.accountMetadata.office ?? broker.brokerName,
       sid: parsed.accountMetadata.sid ?? uniqueReference,
       clientCode: parsed.accountMetadata.clientCode,
       sre: parsed.accountMetadata.sre,
@@ -151,6 +254,7 @@ async function upsertInvestmentAccount(tx: Prisma.TransactionClient, document: D
 
 async function persistParsedDocument(input: PersistParseInput) {
   const parsed = parseStockActivityDocument(input.rawText);
+  const mappedRule = await resolveDocumentMappingRule(input.document.userId, input.rawText, parsed);
   const validationMessages = parsed.validationIssues.map((issue) => issue.message);
   if (parsed.parserConfidence < lowParserConfidenceThreshold) {
     validationMessages.push(
@@ -165,7 +269,7 @@ async function persistParsedDocument(input: PersistParseInput) {
     !parsed.statementPeriod.end;
 
   await prisma.$transaction(async (tx) => {
-    const investmentAccount = await upsertInvestmentAccount(tx, input.document, parsed);
+    const investmentAccount = await upsertInvestmentAccount(tx, input.document, parsed, mappedRule);
 
     await tx.documentMetadata.deleteMany({
       where: {
@@ -222,6 +326,13 @@ async function persistParsedDocument(input: PersistParseInput) {
         valueText: parsed.grandTotals.grandTotal
       }
     ];
+    if (mappedRule) {
+      metadataRows.push({
+        documentId: input.document.id,
+        key: "applied_document_mapping_rule_id",
+        valueText: mappedRule.id
+      });
+    }
 
     for (const security of parsed.securities) {
       metadataRows.push({

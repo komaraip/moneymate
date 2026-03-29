@@ -34,7 +34,9 @@ export function CashflowPreferencesSettings({ preference }: CashflowPreferencesS
           includeDividendsInIncome: formData.get("includeDividendsInIncome") === "on",
           includeStockSaleProceedsInIncome: formData.get("includeStockSaleProceedsInIncome") === "on",
           includeBrokerFeesInExpenses: formData.get("includeBrokerFeesInExpenses") === "on",
-          includeInvestmentCashInTotalCash: formData.get("includeInvestmentCashInTotalCash") === "on"
+          includeInvestmentCashInTotalCash: formData.get("includeInvestmentCashInTotalCash") === "on",
+          includeRealizedPlInIncome: formData.get("includeRealizedPlInIncome") === "on",
+          includeUnrealizedPlInDashboard: formData.get("includeUnrealizedPlInDashboard") === "on"
         })
       });
 
@@ -90,6 +92,22 @@ export function CashflowPreferencesSettings({ preference }: CashflowPreferencesS
         />
         Include investment cash in combined cash totals
       </label>
+      <label className="flex items-center gap-3 text-sm text-foreground">
+        <input
+          type="checkbox"
+          name="includeRealizedPlInIncome"
+          defaultChecked={preference.includeRealizedPlInIncome}
+        />
+        Include realized P/L in general income
+      </label>
+      <label className="flex items-center gap-3 text-sm text-foreground">
+        <input
+          type="checkbox"
+          name="includeUnrealizedPlInDashboard"
+          defaultChecked={preference.includeUnrealizedPlInDashboard}
+        />
+        Include unrealized P/L in dashboard metrics
+      </label>
 
       {error ? (
         <p className="rounded-2xl bg-[hsl(var(--danger)/0.08)] px-4 py-3 text-sm text-[hsl(var(--danger))]">{error}</p>
@@ -103,4 +121,3 @@ export function CashflowPreferencesSettings({ preference }: CashflowPreferencesS
     </form>
   );
 }
-

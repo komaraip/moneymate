@@ -8,11 +8,21 @@ import { PageHeader } from "@/components/shared/page-header";
 import { requireUser } from "@/lib/auth/session";
 import { getManualTransactionTypeLabel } from "@/lib/finance";
 import { getDashboardSummary } from "@/lib/services/dashboard";
+import { listDashboardWidgetPreferences } from "@/lib/services/settings";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const summary = await getDashboardSummary(user.id);
+  const [summary, widgetPreferences] = await Promise.all([
+    getDashboardSummary(user.id),
+    listDashboardWidgetPreferences(user.id)
+  ]);
+  const visibleWidgets = new Set(widgetPreferences.filter((widget) => widget.isVisible).map((widget) => widget.widgetKey));
+  const showMetrics = visibleWidgets.has("metrics");
+  const showRecentDocuments = visibleWidgets.has("recent_documents");
+  const showReviewAlerts = visibleWidgets.has("review_alerts");
+  const showRecentActivities = visibleWidgets.has("recent_activities");
+  const showRecentCashTransactions = visibleWidgets.has("recent_cash_transactions");
 
   return (
     <div className="space-y-8">
@@ -22,194 +32,206 @@ export default async function DashboardPage() {
         description="A Phase 3 view of document processing health, approved portfolio activity, and manual cashflow tracking."
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Processed Documents" value={`${summary.metrics.processedDocuments}`} />
-        <MetricCard
-          label="Pending Review"
-          value={`${summary.metrics.pendingReviewItems}`}
-          tone={summary.metrics.pendingReviewItems > 0 ? "warning" : "success"}
-          trend={summary.metrics.pendingReviewItems > 0 ? "Needs attention" : "Clear"}
-        />
-        <MetricCard
-          label="Approved Holdings"
-          value={formatCurrency(summary.metrics.totalHoldingsValue)}
-          tone="accent"
-          trend="Approved only"
-        />
-        <MetricCard label="Tracked Securities" value={`${summary.metrics.uniqueSecurities}`} />
-        <MetricCard
-          label="Cash Balance"
-          value={formatCurrency(summary.metrics.totalCashBalance)}
-          tone="accent"
-          trend="Latest manual snapshots"
-        />
-        <MetricCard
-          label="This Period Income"
-          value={formatCurrency(summary.metrics.monthlyIncome)}
-          tone="success"
-        />
-        <MetricCard
-          label="This Period Expense"
-          value={formatCurrency(summary.metrics.monthlyExpenses)}
-          tone="warning"
-        />
-        <MetricCard
-          label="Net Cashflow"
-          value={formatCurrency(summary.metrics.monthlyNetCashflow)}
-          tone={Number(summary.metrics.monthlyNetCashflow) >= 0 ? "success" : "warning"}
-        />
-      </div>
+      {showMetrics ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard label="Processed Documents" value={`${summary.metrics.processedDocuments}`} />
+          <MetricCard
+            label="Pending Review"
+            value={`${summary.metrics.pendingReviewItems}`}
+            tone={summary.metrics.pendingReviewItems > 0 ? "warning" : "success"}
+            trend={summary.metrics.pendingReviewItems > 0 ? "Needs attention" : "Clear"}
+          />
+          <MetricCard
+            label="Approved Holdings"
+            value={formatCurrency(summary.metrics.totalHoldingsValue)}
+            tone="accent"
+            trend="Approved only"
+          />
+          <MetricCard label="Tracked Securities" value={`${summary.metrics.uniqueSecurities}`} />
+          <MetricCard
+            label="Cash Balance"
+            value={formatCurrency(summary.metrics.totalCashBalance)}
+            tone="accent"
+            trend="Latest manual snapshots"
+          />
+          <MetricCard
+            label="This Period Income"
+            value={formatCurrency(summary.metrics.monthlyIncome)}
+            tone="success"
+          />
+          <MetricCard
+            label="This Period Expense"
+            value={formatCurrency(summary.metrics.monthlyExpenses)}
+            tone="warning"
+          />
+          <MetricCard
+            label="Net Cashflow"
+            value={formatCurrency(summary.metrics.monthlyNetCashflow)}
+            tone={Number(summary.metrics.monthlyNetCashflow) >= 0 ? "success" : "warning"}
+          />
+        </div>
+      ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      {showRecentDocuments || showReviewAlerts ? (
+        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+          {showRecentDocuments ? (
+            <Card>
+              <CardHeader className="flex-col items-start gap-2">
+                <h2 className="text-xl font-semibold">Recent Documents</h2>
+                <p className="text-sm text-muted-foreground">Latest uploads and their parser readiness.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {summary.recentDocuments.length === 0 ? (
+                  <EmptyState
+                    title="No documents uploaded yet"
+                    description="Use the Documents page to upload a broker statement and start the review flow."
+                  />
+                ) : (
+                  summary.recentDocuments.map((document) => (
+                    <Link
+                      key={document.id}
+                      href={`/app/documents/${document.id}`}
+                      className="flex flex-col gap-3 rounded-[24px] border border-border/70 bg-white/60 p-4 transition hover:border-[hsl(var(--accent)/0.3)] hover:bg-white"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-foreground">{document.filename}</p>
+                          <p className="text-sm text-muted-foreground">{formatDate(document.uploadedAt)}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <DocumentStatusBadge status={document.parseStatus} />
+                          <ConfidenceBadge confidence={document.overallConfidence} />
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {showReviewAlerts ? (
+            <Card>
+              <CardHeader className="flex-col items-start gap-2">
+                <h2 className="text-xl font-semibold">Review Alerts</h2>
+                <p className="text-sm text-muted-foreground">Signals that still block trusted analytics.</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {summary.alerts.length === 0 ? (
+                  <p className="rounded-2xl bg-[hsl(var(--success)/0.08)] px-4 py-3 text-sm text-[hsl(var(--success))]">
+                    No active review alerts right now.
+                  </p>
+                ) : (
+                  summary.alerts.map((alert) => (
+                    <div
+                      key={alert}
+                      className="rounded-2xl bg-[hsl(var(--warning)/0.08)] px-4 py-3 text-sm text-[hsl(var(--warning))]"
+                    >
+                      {alert}
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showRecentActivities ? (
         <Card>
           <CardHeader className="flex-col items-start gap-2">
-            <h2 className="text-xl font-semibold">Recent Documents</h2>
-            <p className="text-sm text-muted-foreground">Latest uploads and their parser readiness.</p>
+            <h2 className="text-xl font-semibold">Recent Approved Activity</h2>
+            <p className="text-sm text-muted-foreground">Only approved activity rows appear here.</p>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {summary.recentDocuments.length === 0 ? (
+          <CardContent>
+            {summary.recentActivities.length === 0 ? (
               <EmptyState
-                title="No documents uploaded yet"
-                description="Use the Documents page to upload a broker statement and start the review flow."
+                title="No approved activity yet"
+                description="Approve a parsed stock statement and the investment timeline will appear here."
               />
             ) : (
-              summary.recentDocuments.map((document) => (
-                <Link
-                  key={document.id}
-                  href={`/app/documents/${document.id}`}
-                  className="flex flex-col gap-3 rounded-[24px] border border-border/70 bg-white/60 p-4 transition hover:border-[hsl(var(--accent)/0.3)] hover:bg-white"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-foreground">{document.filename}</p>
-                      <p className="text-sm text-muted-foreground">{formatDate(document.uploadedAt)}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <DocumentStatusBadge status={document.parseStatus} />
-                      <ConfidenceBadge confidence={document.overallConfidence} />
-                    </div>
-                  </div>
-                </Link>
-              ))
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    <tr>
+                      <th className="pb-3 pr-4">Security</th>
+                      <th className="pb-3 pr-4">Type</th>
+                      <th className="pb-3 pr-4">Date</th>
+                      <th className="pb-3 pr-4">Quantity</th>
+                      <th className="pb-3">Market Value</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {summary.recentActivities.map((activity) => (
+                      <tr key={`${activity.ticker}-${activity.id}`} className="align-top">
+                        <td className="py-3 pr-4">
+                          <div>
+                            <p className="font-medium">{activity.ticker}</p>
+                            <p className="text-muted-foreground">{activity.securityName}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 pr-4">{activity.activityType.replaceAll("_", " ")}</td>
+                        <td className="py-3 pr-4">{formatDate(activity.activityDate)}</td>
+                        <td className="py-3 pr-4">{activity.quantity ?? "-"}</td>
+                        <td className="py-3">{activity.marketValueAfter ?? "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </CardContent>
         </Card>
+      ) : null}
 
+      {showRecentCashTransactions ? (
         <Card>
           <CardHeader className="flex-col items-start gap-2">
-            <h2 className="text-xl font-semibold">Review Alerts</h2>
-            <p className="text-sm text-muted-foreground">Signals that still block trusted analytics.</p>
+            <h2 className="text-xl font-semibold">Recent Cash Transactions</h2>
+            <p className="text-sm text-muted-foreground">
+              Manual income, expense, transfer, and adjustment rows from your tracked cash accounts.
+            </p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {summary.alerts.length === 0 ? (
-              <p className="rounded-2xl bg-[hsl(var(--success)/0.08)] px-4 py-3 text-sm text-[hsl(var(--success))]">
-                No active review alerts right now.
-              </p>
+          <CardContent>
+            {summary.recentCashTransactions.length === 0 ? (
+              <EmptyState
+                title="No cash transactions yet"
+                description="Create an account and add a manual transaction to start building the cashflow timeline."
+              />
             ) : (
-              summary.alerts.map((alert) => (
-                <div
-                  key={alert}
-                  className="rounded-2xl bg-[hsl(var(--warning)/0.08)] px-4 py-3 text-sm text-[hsl(var(--warning))]"
-                >
-                  {alert}
-                </div>
-              ))
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    <tr>
+                      <th className="pb-3 pr-4">Account</th>
+                      <th className="pb-3 pr-4">Type</th>
+                      <th className="pb-3 pr-4">Date</th>
+                      <th className="pb-3 pr-4">Category</th>
+                      <th className="pb-3">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {summary.recentCashTransactions.map((transaction) => (
+                      <tr key={transaction.id} className="align-top">
+                        <td className="py-3 pr-4">
+                          <div>
+                            <p className="font-medium">{transaction.accountName ?? "Unassigned account"}</p>
+                            <p className="text-muted-foreground">{transaction.description}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 pr-4">{getManualTransactionTypeLabel(transaction.transactionType)}</td>
+                        <td className="py-3 pr-4">{formatDate(transaction.transactionDate)}</td>
+                        <td className="py-3 pr-4">{transaction.categoryName ?? "-"}</td>
+                        <td className="py-3">{formatCurrency(transaction.amount, transaction.currency)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </CardContent>
         </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="flex-col items-start gap-2">
-          <h2 className="text-xl font-semibold">Recent Approved Activity</h2>
-          <p className="text-sm text-muted-foreground">Only approved activity rows appear here.</p>
-        </CardHeader>
-        <CardContent>
-          {summary.recentActivities.length === 0 ? (
-            <EmptyState
-              title="No approved activity yet"
-              description="Approve a parsed stock statement and the investment timeline will appear here."
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  <tr>
-                    <th className="pb-3 pr-4">Security</th>
-                    <th className="pb-3 pr-4">Type</th>
-                    <th className="pb-3 pr-4">Date</th>
-                    <th className="pb-3 pr-4">Quantity</th>
-                    <th className="pb-3">Market Value</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {summary.recentActivities.map((activity) => (
-                    <tr key={`${activity.ticker}-${activity.id}`} className="align-top">
-                      <td className="py-3 pr-4">
-                        <div>
-                          <p className="font-medium">{activity.ticker}</p>
-                          <p className="text-muted-foreground">{activity.securityName}</p>
-                        </div>
-                      </td>
-                      <td className="py-3 pr-4">{activity.activityType.replaceAll("_", " ")}</td>
-                      <td className="py-3 pr-4">{formatDate(activity.activityDate)}</td>
-                      <td className="py-3 pr-4">{activity.quantity ?? "-"}</td>
-                      <td className="py-3">{activity.marketValueAfter ?? "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex-col items-start gap-2">
-          <h2 className="text-xl font-semibold">Recent Cash Transactions</h2>
-          <p className="text-sm text-muted-foreground">
-            Manual income, expense, transfer, and adjustment rows from your tracked cash accounts.
-          </p>
-        </CardHeader>
-        <CardContent>
-          {summary.recentCashTransactions.length === 0 ? (
-            <EmptyState
-              title="No cash transactions yet"
-              description="Create an account and add a manual transaction to start building the cashflow timeline."
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  <tr>
-                    <th className="pb-3 pr-4">Account</th>
-                    <th className="pb-3 pr-4">Type</th>
-                    <th className="pb-3 pr-4">Date</th>
-                    <th className="pb-3 pr-4">Category</th>
-                    <th className="pb-3">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {summary.recentCashTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="align-top">
-                      <td className="py-3 pr-4">
-                        <div>
-                          <p className="font-medium">{transaction.accountName ?? "Unassigned account"}</p>
-                          <p className="text-muted-foreground">{transaction.description}</p>
-                        </div>
-                      </td>
-                      <td className="py-3 pr-4">{getManualTransactionTypeLabel(transaction.transactionType)}</td>
-                      <td className="py-3 pr-4">{formatDate(transaction.transactionDate)}</td>
-                      <td className="py-3 pr-4">{transaction.categoryName ?? "-"}</td>
-                      <td className="py-3">{formatCurrency(transaction.amount, transaction.currency)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      ) : null}
     </div>
   );
 }

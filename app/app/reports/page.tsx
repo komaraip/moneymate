@@ -10,12 +10,14 @@ import { FiltersBar } from "@/components/shared/filters-bar";
 import { Input } from "@/components/shared/input";
 import { PageHeader } from "@/components/shared/page-header";
 import { requireUser } from "@/lib/auth/session";
+import { resolveDateRangePresetWindow, toDateInputValue } from "@/lib/services/date-range";
 import {
   getBalanceReport,
   getCashflowReport,
   getDocumentHealthReport,
   getInvestmentReport
 } from "@/lib/services/reporting";
+import { getDashboardPreference } from "@/lib/services/settings";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 
 function pickQueryValue(value: string | string[] | undefined) {
@@ -53,8 +55,10 @@ export default async function ReportsPage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const from = pickQueryValue(params.from);
-  const to = pickQueryValue(params.to);
+  const dashboardPreference = await getDashboardPreference(user.id);
+  const fallbackDateRange = resolveDateRangePresetWindow(dashboardPreference.defaultDateRange);
+  const from = pickQueryValue(params.from) ?? toDateInputValue(fallbackDateRange.from);
+  const to = pickQueryValue(params.to) ?? toDateInputValue(fallbackDateRange.to);
   const mode = pickQueryValue(params.mode);
 
   const [cashflow, balance, investments, documentHealth] = await Promise.all([
@@ -155,6 +159,16 @@ export default async function ReportsPage({
         <MetricCard
           label="Investment Cashflow Net"
           value={formatCurrency(cashflow.streams.investment.net)}
+          tone="accent"
+        />
+        <MetricCard
+          label="Internal Transfers Excluded"
+          value={`${cashflow.ruleSummary.transfer.excludedCount}`}
+          tone={cashflow.ruleSummary.transfer.excludedCount > 0 ? "warning" : "success"}
+        />
+        <MetricCard
+          label="Rule Matches"
+          value={`${cashflow.ruleSummary.classification.matchedCount + cashflow.ruleSummary.transfer.matchedCount}`}
           tone="accent"
         />
       </div>

@@ -7,6 +7,12 @@ import {
 } from "@/lib/contracts";
 import { prisma } from "@/lib/db/prisma";
 import { cashAccountTypes } from "@/lib/finance";
+import { resolveDateRangePresetWindow } from "@/lib/services/date-range";
+import {
+  buildRuleSearchText,
+  findMatchingClassificationRule,
+  findMatchingTransferRule
+} from "@/lib/services/rules";
 import { decimalToNumber, decimalToString } from "@/lib/utils/decimal";
 import { listDocuments } from "./documents";
 import { getApprovedHoldings } from "./investments";
@@ -41,7 +47,11 @@ function formatMonthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function resolveDateRange(fromRaw?: string, toRaw?: string) {
+function resolveDateRange(fromRaw?: string, toRaw?: string, defaultPreset?: "DAYS_30" | "DAYS_90" | "MONTHS_6" | "MONTHS_12") {
+  if (!fromRaw && !toRaw && defaultPreset) {
+    return resolveDateRangePresetWindow(defaultPreset);
+  }
+
   const now = new Date();
   const parsedTo = parseOptionalDate(toRaw) ?? endOfMonth(now);
   const parsedFrom = parseOptionalDate(fromRaw) ?? startOfMonth(addMonths(parsedTo, -5));
@@ -182,9 +192,26 @@ async function getOrCreateReportPreference(userId: string) {
       includeDividendsInIncome: true,
       includeStockSaleProceedsInIncome: false,
       includeBrokerFeesInExpenses: false,
-      includeInvestmentCashInTotalCash: true
+      includeInvestmentCashInTotalCash: true,
+      includeRealizedPlInIncome: false,
+      includeUnrealizedPlInDashboard: false
     }
   });
+}
+
+async function getDefaultRangePreset(userId: string) {
+  const preference = await prisma.dashboardPreference.upsert({
+    where: {
+      userId
+    },
+    update: {},
+    create: {
+      userId,
+      defaultDateRange: "DAYS_90"
+    }
+  });
+
+  return preference.defaultDateRange as "DAYS_30" | "DAYS_90" | "MONTHS_6" | "MONTHS_12";
 }
 
 export async function getCashflowReport(
@@ -193,39 +220,72 @@ export async function getCashflowReport(
 ): Promise<CashflowReport> {
   const fromRaw = typeof query.from === "string" ? query.from : undefined;
   const toRaw = typeof query.to === "string" ? query.to : undefined;
-  const { from, to } = resolveDateRange(fromRaw, toRaw);
   const requestedModeRaw = typeof query.mode === "string" ? query.mode.toUpperCase() : undefined;
-  const preferences = await getOrCreateReportPreference(userId);
+  const [preferences, defaultRangePreset] = await Promise.all([getOrCreateReportPreference(userId), getDefaultRangePreset(userId)]);
+  const { from, to } = resolveDateRange(fromRaw, toRaw, defaultRangePreset);
   const mode =
     requestedModeRaw === CashflowMode.COMBINED || requestedModeRaw === CashflowMode.SEPARATE
       ? (requestedModeRaw as CashflowMode)
       : preferences.defaultCashflowMode;
 
-  const transactions = await prisma.transaction.findMany({
-    where: {
-      userId,
-      transactionDate: {
-        gte: from,
-        lte: to
-      }
-    },
-    include: {
-      category: {
-        select: {
-          name: true,
-          categoryType: true
+  const [transactions, classificationRules, transferRules, realizedActivities] = await Promise.all([
+    prisma.transaction.findMany({
+      where: {
+        userId,
+        transactionDate: {
+          gte: from,
+          lte: to
         }
       },
-      account: {
-        select: {
-          accountType: true
+      include: {
+        category: {
+          select: {
+            name: true,
+            categoryType: true
+          }
+        },
+        account: {
+          select: {
+            name: true,
+            accountType: true
+          }
         }
+      },
+      orderBy: {
+        transactionDate: "asc"
       }
-    },
-    orderBy: {
-      transactionDate: "asc"
-    }
-  });
+    }),
+    prisma.classificationRule.findMany({
+      where: {
+        userId,
+        scope: "CASHFLOW"
+      }
+    }),
+    prisma.transferRule.findMany({
+      where: {
+        userId
+      }
+    }),
+    preferences.includeRealizedPlInIncome
+      ? prisma.tradeActivity.findMany({
+          where: {
+            userId,
+            reviewStatus: ReviewStatus.APPROVED,
+            activityDate: {
+              gte: from,
+              lte: to
+            },
+            realizedProfitLoss: {
+              not: null
+            }
+          },
+          select: {
+            realizedProfitLoss: true,
+            activityDate: true
+          }
+        })
+      : Promise.resolve([])
+  ]);
 
   let income = 0;
   let expense = 0;
@@ -235,6 +295,12 @@ export async function getCashflowReport(
   let investmentExpense = 0;
   let regularTransactionCount = 0;
   let investmentTransactionCount = 0;
+  let includedTransactionCount = 0;
+  let matchedClassificationCount = 0;
+  let matchedTransferCount = 0;
+  let excludedTransferCount = 0;
+  const appliedClassificationRuleIds = new Set<string>();
+  const appliedTransferRuleIds = new Set<string>();
   const monthly = new Map<string, { income: number; expense: number }>();
   const categories = new Map<string, { categoryName: string; categoryType: string; total: number }>();
 
@@ -254,6 +320,10 @@ export async function getCashflowReport(
     };
     const isInvestmentAccount = transaction.account?.accountType === "INVESTMENT_CASH_ACCOUNT";
     const description = transaction.description ?? "";
+    const categoryName = transaction.category?.name ?? null;
+    const categoryType = transaction.category?.categoryType ?? null;
+    const rawTransactionType = transaction.transactionType.toLowerCase();
+    let effectiveTransactionType = rawTransactionType;
 
     if (isInvestmentAccount) {
       investmentTransactionCount += 1;
@@ -261,30 +331,14 @@ export async function getCashflowReport(
       regularTransactionCount += 1;
     }
 
-    if (transaction.transactionType === "income") {
-      if (isInvestmentAccount) {
-        investmentIncome += amount;
-      } else {
-        regularIncome += amount;
-      }
-    }
-
-    if (transaction.transactionType === "expense") {
-      if (isInvestmentAccount) {
-        investmentExpense += amount;
-      } else {
-        regularExpense += amount;
-      }
-    }
-
     const includeInvestmentByPreference =
-      (transaction.transactionType === "income" &&
+      (rawTransactionType === "income" &&
         isInvestmentDescriptor(description, "dividend") &&
         preferences.includeDividendsInIncome) ||
-      (transaction.transactionType === "income" &&
+      (rawTransactionType === "income" &&
         isInvestmentDescriptor(description, "sale_proceeds") &&
         preferences.includeStockSaleProceedsInIncome) ||
-      (transaction.transactionType === "expense" &&
+      (rawTransactionType === "expense" &&
         isInvestmentDescriptor(description, "broker_fee") &&
         preferences.includeBrokerFeesInExpenses);
     const includeInGeneral = !isInvestmentAccount
@@ -293,25 +347,97 @@ export async function getCashflowReport(
         ? preferences.includeInvestmentCashInTotalCash || includeInvestmentByPreference
         : includeInvestmentByPreference;
 
-    if (includeInGeneral && transaction.transactionType === "income") {
+    const classificationMatch = findMatchingClassificationRule(classificationRules, {
+      scope: "CASHFLOW",
+      text: buildRuleSearchText([
+        description,
+        transaction.merchantName,
+        transaction.counterpartyName,
+        transaction.account?.name,
+        categoryName
+      ])
+    });
+    let includeInGeneralWithRule = includeInGeneral;
+    let overriddenCategoryName = categoryName;
+
+    if (classificationMatch) {
+      matchedClassificationCount += 1;
+      appliedClassificationRuleIds.add(classificationMatch.id);
+
+      if (classificationMatch.actionType === "INCLUDE_IN_GENERAL_CASHFLOW") {
+        includeInGeneralWithRule = true;
+      }
+
+      if (classificationMatch.actionType === "EXCLUDE_FROM_GENERAL_CASHFLOW") {
+        includeInGeneralWithRule = false;
+      }
+
+      if (classificationMatch.actionType === "FORCE_TRANSACTION_TYPE" && classificationMatch.actionValue) {
+        effectiveTransactionType = classificationMatch.actionValue.toLowerCase();
+      }
+
+      if (classificationMatch.actionType === "FORCE_CATEGORY_NAME" && classificationMatch.actionValue) {
+        overriddenCategoryName = classificationMatch.actionValue;
+      }
+    }
+
+    const transferMatch = findMatchingTransferRule(transferRules, {
+      text: buildRuleSearchText([description, transaction.counterpartyName, transaction.account?.name]),
+      accountName: transaction.account?.name ?? null,
+      counterpartyName: transaction.counterpartyName
+    });
+    const excludedAsInternalTransfer = Boolean(transferMatch?.excludeAsInternalTransfer);
+    if (transferMatch) {
+      matchedTransferCount += 1;
+      appliedTransferRuleIds.add(transferMatch.id);
+    }
+
+    if (excludedAsInternalTransfer) {
+      excludedTransferCount += 1;
+      monthly.set(monthKey, bucket);
+      continue;
+    }
+
+    if (effectiveTransactionType === "income") {
+      if (isInvestmentAccount) {
+        investmentIncome += amount;
+      } else {
+        regularIncome += amount;
+      }
+    }
+
+    if (effectiveTransactionType === "expense") {
+      if (isInvestmentAccount) {
+        investmentExpense += amount;
+      } else {
+        regularExpense += amount;
+      }
+    }
+
+    if (includeInGeneralWithRule && effectiveTransactionType === "income") {
       income += amount;
       bucket.income += amount;
+      includedTransactionCount += 1;
     }
 
-    if (includeInGeneral && transaction.transactionType === "expense") {
+    if (includeInGeneralWithRule && effectiveTransactionType === "expense") {
       expense += amount;
       bucket.expense += amount;
+      includedTransactionCount += 1;
     }
 
-    if (
-      includeInGeneral &&
-      (transaction.transactionType === "income" || transaction.transactionType === "expense") &&
-      transaction.category
-    ) {
-      const categoryKey = `${transaction.category.categoryType}:${transaction.category.name}`;
+    const effectiveCategoryType =
+      effectiveTransactionType === "income"
+        ? "INCOME"
+        : effectiveTransactionType === "expense"
+          ? "EXPENSE"
+          : categoryType ?? "TRANSFER";
+
+    if (includeInGeneralWithRule && (effectiveTransactionType === "income" || effectiveTransactionType === "expense") && overriddenCategoryName) {
+      const categoryKey = `${effectiveCategoryType}:${overriddenCategoryName}`;
       const existing = categories.get(categoryKey) ?? {
-        categoryName: transaction.category.name,
-        categoryType: transaction.category.categoryType,
+        categoryName: overriddenCategoryName,
+        categoryType: effectiveCategoryType,
         total: 0
       };
 
@@ -322,6 +448,39 @@ export async function getCashflowReport(
     monthly.set(monthKey, bucket);
   }
 
+  if (preferences.includeRealizedPlInIncome) {
+    for (const activity of realizedActivities) {
+      if (!activity.activityDate) {
+        continue;
+      }
+
+      const realized = decimalToNumber(activity.realizedProfitLoss);
+      if (realized <= 0) {
+        continue;
+      }
+
+      const monthKey = formatMonthKey(activity.activityDate);
+      const bucket = monthly.get(monthKey) ?? {
+        income: 0,
+        expense: 0
+      };
+      income += realized;
+      investmentIncome += realized;
+      bucket.income += realized;
+      includedTransactionCount += 1;
+      monthly.set(monthKey, bucket);
+
+      const categoryKey = "INCOME:Realized P/L";
+      const existing = categories.get(categoryKey) ?? {
+        categoryName: "Realized P/L",
+        categoryType: "INCOME",
+        total: 0
+      };
+      existing.total += realized;
+      categories.set(categoryKey, existing);
+    }
+  }
+
   return {
     mode,
     summary: {
@@ -330,29 +489,7 @@ export async function getCashflowReport(
       income: decimalToString(income) ?? "0",
       expense: decimalToString(expense) ?? "0",
       net: decimalToString(income - expense) ?? "0",
-      transactionCount: transactions.filter((transaction) => {
-        if (transaction.account?.accountType !== "INVESTMENT_CASH_ACCOUNT") {
-          return true;
-        }
-
-        const description = transaction.description ?? "";
-        const includeInvestmentByPreference =
-          (transaction.transactionType === "income" &&
-            isInvestmentDescriptor(description, "dividend") &&
-            preferences.includeDividendsInIncome) ||
-          (transaction.transactionType === "income" &&
-            isInvestmentDescriptor(description, "sale_proceeds") &&
-            preferences.includeStockSaleProceedsInIncome) ||
-          (transaction.transactionType === "expense" &&
-            isInvestmentDescriptor(description, "broker_fee") &&
-            preferences.includeBrokerFeesInExpenses);
-
-        if (mode === CashflowMode.COMBINED) {
-          return preferences.includeInvestmentCashInTotalCash || includeInvestmentByPreference;
-        }
-
-        return includeInvestmentByPreference;
-      }).length
+      transactionCount: includedTransactionCount
     },
     streams: {
       regular: {
@@ -381,7 +518,18 @@ export async function getCashflowReport(
         categoryName: entry.categoryName,
         categoryType: entry.categoryType,
         total: decimalToString(entry.total) ?? "0"
-      }))
+      })),
+    ruleSummary: {
+      classification: {
+        matchedCount: matchedClassificationCount,
+        appliedRuleIds: [...appliedClassificationRuleIds]
+      },
+      transfer: {
+        matchedCount: matchedTransferCount,
+        excludedCount: excludedTransferCount,
+        appliedRuleIds: [...appliedTransferRuleIds]
+      }
+    }
   };
 }
 
@@ -391,7 +539,8 @@ export async function getBalanceReport(
 ): Promise<BalanceReport> {
   const fromRaw = typeof query.from === "string" ? query.from : undefined;
   const toRaw = typeof query.to === "string" ? query.to : undefined;
-  const { from, to } = resolveDateRange(fromRaw, toRaw);
+  const defaultRangePreset = await getDefaultRangePreset(userId);
+  const { from, to } = resolveDateRange(fromRaw, toRaw, defaultRangePreset);
   const monthKeys = buildMonthlyKeys(from, to);
   const preferences = await getOrCreateReportPreference(userId);
 
@@ -565,7 +714,8 @@ export async function getInvestmentReport(
 ): Promise<InvestmentReport> {
   const fromRaw = typeof query.from === "string" ? query.from : undefined;
   const toRaw = typeof query.to === "string" ? query.to : undefined;
-  const { from, to } = resolveDateRange(fromRaw, toRaw);
+  const defaultRangePreset = await getDefaultRangePreset(userId);
+  const { from, to } = resolveDateRange(fromRaw, toRaw, defaultRangePreset);
   const holdings = await getApprovedHoldings(userId);
 
   const activities = await prisma.tradeActivity.findMany({

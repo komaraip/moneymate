@@ -80,6 +80,31 @@ enum CashflowMode {
   SEPARATE
 }
 
+enum RuleMatchMode {
+  CONTAINS
+  EXACT
+  REGEX
+}
+
+enum ClassificationRuleScope {
+  CASHFLOW
+  INGESTION
+}
+
+enum ClassificationRuleActionType {
+  INCLUDE_IN_GENERAL_CASHFLOW
+  EXCLUDE_FROM_GENERAL_CASHFLOW
+  FORCE_TRANSACTION_TYPE
+  FORCE_CATEGORY_NAME
+}
+
+enum DashboardDateRangePreset {
+  DAYS_30
+  DAYS_90
+  MONTHS_6
+  MONTHS_12
+}
+
 enum ReviewStatus {
   PENDING
   APPROVED
@@ -156,7 +181,12 @@ model User {
   categories         Category[]
   investmentCategories InvestmentCategory[]
   brokers            Broker[]
+  classificationRules ClassificationRule[]
+  transferRules      TransferRule[]
+  documentMappingRules DocumentMappingRule[]
   reportPreference   ReportPreference?
+  dashboardPreference DashboardPreference?
+  dashboardWidgetPreferences DashboardWidgetPreference[]
   securities         Security[]
   investmentAccounts InvestmentAccount[]
   tradeActivities    TradeActivity[]
@@ -398,6 +428,7 @@ model InvestmentCategory {
   user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   brokers             Broker[]
   investmentAccounts  InvestmentAccount[]
+  documentMappingRules DocumentMappingRule[] @relation("DocumentMappingRuleCategory")
 
   @@unique([userId, slug])
   @@unique([userId, name])
@@ -426,6 +457,7 @@ model Broker {
   user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   investmentCategory   InvestmentCategory? @relation(fields: [investmentCategoryId], references: [id], onDelete: SetNull)
   investmentAccounts   InvestmentAccount[]
+  documentMappingRules DocumentMappingRule[] @relation("DocumentMappingRuleBroker")
 
   @@unique([userId, brokerName])
   @@index([userId, brokerCode])
@@ -440,11 +472,100 @@ model ReportPreference {
   includeStockSaleProceedsInIncome   Boolean      @default(false) @map("include_stock_sale_proceeds_in_income")
   includeBrokerFeesInExpenses        Boolean      @default(false) @map("include_broker_fees_in_expenses")
   includeInvestmentCashInTotalCash   Boolean      @default(true) @map("include_investment_cash_in_total_cash")
+  includeRealizedPlInIncome          Boolean      @default(false) @map("include_realized_pl_in_income")
+  includeUnrealizedPlInDashboard     Boolean      @default(false) @map("include_unrealized_pl_in_dashboard")
   createdAt                          DateTime     @default(now()) @map("created_at")
   updatedAt                          DateTime     @updatedAt @map("updated_at")
   user                               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("report_preferences")
+}
+
+model ClassificationRule {
+  id                String                       @id @default(cuid())
+  userId            String                       @map("user_id")
+  scope             ClassificationRuleScope      @default(CASHFLOW)
+  pattern           String
+  matchMode         RuleMatchMode                @default(CONTAINS) @map("match_mode")
+  actionType        ClassificationRuleActionType @map("action_type")
+  actionValue       String?                      @map("action_value")
+  priority          Int                          @default(100)
+  isActive          Boolean                      @default(true) @map("is_active")
+  createdAt         DateTime                     @default(now()) @map("created_at")
+  updatedAt         DateTime                     @updatedAt @map("updated_at")
+  user              User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scope, isActive, priority, createdAt(sort: Asc)])
+  @@map("classification_rules")
+}
+
+model TransferRule {
+  id                        String        @id @default(cuid())
+  userId                    String        @map("user_id")
+  pattern                   String
+  matchMode                 RuleMatchMode @default(CONTAINS) @map("match_mode")
+  accountPattern            String?       @map("account_pattern")
+  accountMatchMode          RuleMatchMode @default(CONTAINS) @map("account_match_mode")
+  counterpartyPattern       String?       @map("counterparty_pattern")
+  counterpartyMatchMode     RuleMatchMode @default(CONTAINS) @map("counterparty_match_mode")
+  excludeAsInternalTransfer Boolean       @default(true) @map("exclude_as_internal_transfer")
+  priority                  Int           @default(100)
+  isActive                  Boolean       @default(true) @map("is_active")
+  createdAt                 DateTime      @default(now()) @map("created_at")
+  updatedAt                 DateTime      @updatedAt @map("updated_at")
+  user                      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive, priority, createdAt(sort: Asc)])
+  @@map("transfer_rules")
+}
+
+model DocumentMappingRule {
+  id                  String             @id @default(cuid())
+  userId              String             @map("user_id")
+  pattern             String
+  matchMode           RuleMatchMode      @default(CONTAINS) @map("match_mode")
+  brokerId            String?            @map("broker_id")
+  investmentAccountId String?            @map("investment_account_id")
+  categoryId          String?            @map("category_id")
+  priority            Int                @default(100)
+  isActive            Boolean            @default(true) @map("is_active")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  broker              Broker?            @relation("DocumentMappingRuleBroker", fields: [brokerId], references: [id], onDelete: SetNull)
+  investmentAccount   InvestmentAccount? @relation("DocumentMappingRuleInvestmentAccount", fields: [investmentAccountId], references: [id], onDelete: SetNull)
+  category            InvestmentCategory? @relation("DocumentMappingRuleCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isActive, priority, createdAt(sort: Asc)])
+  @@index([brokerId])
+  @@index([investmentAccountId])
+  @@index([categoryId])
+  @@map("document_mapping_rules")
+}
+
+model DashboardPreference {
+  id               String                   @id @default(cuid())
+  userId           String                   @unique @map("user_id")
+  defaultDateRange DashboardDateRangePreset @default(DAYS_90) @map("default_date_range")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("dashboard_preferences")
+}
+
+model DashboardWidgetPreference {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  widgetKey String   @map("widget_key")
+  isVisible Boolean  @default(true) @map("is_visible")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, widgetKey])
+  @@index([userId, widgetKey])
+  @@map("dashboard_widget_preferences")
 }
 
 model Security {
@@ -489,6 +610,7 @@ model InvestmentAccount {
   investmentCategory InvestmentCategory? @relation(fields: [investmentCategoryId], references: [id], onDelete: SetNull)
   broker           Broker?           @relation(fields: [brokerId], references: [id], onDelete: SetNull)
   account          Account?          @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  documentMappingRules DocumentMappingRule[] @relation("DocumentMappingRuleInvestmentAccount")
   tradeActivities  TradeActivity[]
   holdingSnapshots HoldingSnapshot[]
 

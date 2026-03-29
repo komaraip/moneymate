@@ -221,7 +221,80 @@ export const cashflowReportSchema = z.object({
       categoryType: z.string(),
       total: z.string()
     })
+  ),
+  ruleSummary: z.object({
+    classification: z.object({
+      matchedCount: z.number(),
+      appliedRuleIds: z.array(z.string())
+    }),
+    transfer: z.object({
+      matchedCount: z.number(),
+      excludedCount: z.number(),
+      appliedRuleIds: z.array(z.string())
+    })
   )
+});
+
+export const ruleMatchModeSchema = z.enum(["CONTAINS", "EXACT", "REGEX"]);
+
+export const classificationRuleSchema = z.object({
+  id: z.string(),
+  scope: z.enum(["CASHFLOW", "INGESTION"]),
+  pattern: z.string(),
+  matchMode: ruleMatchModeSchema,
+  actionType: z.enum([
+    "INCLUDE_IN_GENERAL_CASHFLOW",
+    "EXCLUDE_FROM_GENERAL_CASHFLOW",
+    "FORCE_TRANSACTION_TYPE",
+    "FORCE_CATEGORY_NAME"
+  ]),
+  actionValue: z.string().nullable(),
+  priority: z.number(),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+
+export const transferRuleSchema = z.object({
+  id: z.string(),
+  pattern: z.string(),
+  matchMode: ruleMatchModeSchema,
+  accountPattern: z.string().nullable(),
+  accountMatchMode: ruleMatchModeSchema,
+  counterpartyPattern: z.string().nullable(),
+  counterpartyMatchMode: ruleMatchModeSchema,
+  excludeAsInternalTransfer: z.boolean(),
+  priority: z.number(),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+
+export const documentMappingRuleSchema = z.object({
+  id: z.string(),
+  pattern: z.string(),
+  matchMode: ruleMatchModeSchema,
+  brokerId: z.string().nullable(),
+  brokerName: z.string().nullable(),
+  investmentAccountId: z.string().nullable(),
+  investmentAccountName: z.string().nullable(),
+  categoryId: z.string().nullable(),
+  categoryName: z.string().nullable(),
+  priority: z.number(),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+
+export const dashboardDateRangePresetSchema = z.enum(["DAYS_30", "DAYS_90", "MONTHS_6", "MONTHS_12"]);
+
+export const dashboardPreferenceSchema = z.object({
+  defaultDateRange: dashboardDateRangePresetSchema
+});
+
+export const dashboardWidgetPreferenceSchema = z.object({
+  widgetKey: z.string(),
+  isVisible: z.boolean()
 });
 
 export const investmentCategorySchema = z.object({
@@ -261,7 +334,9 @@ export const reportPreferenceSchema = z.object({
   includeDividendsInIncome: z.boolean(),
   includeStockSaleProceedsInIncome: z.boolean(),
   includeBrokerFeesInExpenses: z.boolean(),
-  includeInvestmentCashInTotalCash: z.boolean()
+  includeInvestmentCashInTotalCash: z.boolean(),
+  includeRealizedPlInIncome: z.boolean(),
+  includeUnrealizedPlInDashboard: z.boolean()
 });
 
 export const balanceReportSchema = z.object({
@@ -383,3 +458,8 @@ export type DocumentHealthReport = z.infer<typeof documentHealthReportSchema>;
 export type InvestmentCategoryItem = z.infer<typeof investmentCategorySchema>;
 export type BrokerItem = z.infer<typeof brokerSchema>;
 export type ReportPreference = z.infer<typeof reportPreferenceSchema>;
+export type ClassificationRuleItem = z.infer<typeof classificationRuleSchema>;
+export type TransferRuleItem = z.infer<typeof transferRuleSchema>;
+export type DocumentMappingRuleItem = z.infer<typeof documentMappingRuleSchema>;
+export type DashboardPreference = z.infer<typeof dashboardPreferenceSchema>;
+export type DashboardWidgetPreference = z.infer<typeof dashboardWidgetPreferenceSchema>;
