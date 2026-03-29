@@ -77,7 +77,11 @@ export const dashboardSummarySchema = z.object({
     processedDocuments: z.number(),
     pendingReviewItems: z.number(),
     totalHoldingsValue: z.string(),
-    uniqueSecurities: z.number()
+    uniqueSecurities: z.number(),
+    totalCashBalance: z.string(),
+    monthlyIncome: z.string(),
+    monthlyExpenses: z.string(),
+    monthlyNetCashflow: z.string()
   }),
   recentDocuments: z.array(documentListItemSchema),
   recentActivities: z.array(
@@ -86,7 +90,114 @@ export const dashboardSummarySchema = z.object({
       securityName: z.string()
     })
   ),
+  recentCashTransactions: z.array(
+    z.object({
+      id: z.string(),
+      accountId: z.string().nullable(),
+      accountName: z.string().nullable(),
+      accountType: z.string().nullable(),
+      transactionType: z.string(),
+      direction: z.string(),
+      transactionDate: z.string(),
+      postingDate: z.string().nullable(),
+      amount: z.string(),
+      currency: z.string(),
+      description: z.string(),
+      categoryName: z.string().nullable(),
+      merchantName: z.string().nullable(),
+      counterpartyName: z.string().nullable(),
+      reviewStatus: z.string(),
+      isManual: z.boolean(),
+      notes: z.string().nullable(),
+      sourceDocumentId: z.string().nullable()
+    })
+  ),
   alerts: z.array(z.string())
+});
+
+export const accountSnapshotItemSchema = z.object({
+  id: z.string(),
+  snapshotDate: z.string(),
+  balance: z.string(),
+  availableBalance: z.string().nullable(),
+  sourceType: z.string(),
+  sourceDocumentId: z.string().nullable(),
+  confidence: z.number().nullable()
+});
+
+export const accountSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  institutionName: z.string().nullable(),
+  accountType: z.string(),
+  currency: z.string(),
+  maskedAccountNumber: z.string().nullable(),
+  externalReference: z.string().nullable(),
+  isActive: z.boolean(),
+  currentBalance: z.string().nullable(),
+  availableBalance: z.string().nullable(),
+  latestSnapshotDate: z.string().nullable(),
+  latestSourceType: z.string().nullable()
+});
+
+export const transactionListItemSchema = z.object({
+  id: z.string(),
+  accountId: z.string().nullable(),
+  accountName: z.string().nullable(),
+  accountType: z.string().nullable(),
+  transactionType: z.string(),
+  direction: z.string(),
+  transactionDate: z.string(),
+  postingDate: z.string().nullable(),
+  amount: z.string(),
+  currency: z.string(),
+  description: z.string(),
+  categoryName: z.string().nullable(),
+  merchantName: z.string().nullable(),
+  counterpartyName: z.string().nullable(),
+  reviewStatus: z.string(),
+  isManual: z.boolean(),
+  notes: z.string().nullable(),
+  sourceDocumentId: z.string().nullable()
+});
+
+export const paginatedTransactionsSchema = z.object({
+  items: z.array(transactionListItemSchema),
+  total: z.number(),
+  page: z.number(),
+  pageSize: z.number()
+});
+
+export const accountDetailSchema = z.object({
+  account: accountSummarySchema,
+  snapshots: z.array(accountSnapshotItemSchema),
+  recentTransactions: z.array(transactionListItemSchema)
+});
+
+export const cashflowReportSchema = z.object({
+  summary: z.object({
+    periodStart: z.string(),
+    periodEnd: z.string(),
+    income: z.string(),
+    expense: z.string(),
+    net: z.string(),
+    transactionCount: z.number()
+  }),
+  monthly: z.array(
+    z.object({
+      month: z.string(),
+      income: z.string(),
+      expense: z.string(),
+      net: z.string()
+    })
+  ),
+  categories: z.array(
+    z.object({
+      categoryName: z.string(),
+      categoryType: z.string(),
+      total: z.string()
+    })
+  )
 });
 
 export const documentDetailSchema = z.object({
@@ -123,4 +234,9 @@ export type HoldingSummary = z.infer<typeof holdingSummarySchema>;
 export type SecurityDetail = z.infer<typeof securityDetailSchema>;
 export type DashboardSummary = z.infer<typeof dashboardSummarySchema>;
 export type DocumentDetail = z.infer<typeof documentDetailSchema>;
-
+export type AccountSummary = z.infer<typeof accountSummarySchema>;
+export type AccountSnapshotItem = z.infer<typeof accountSnapshotItemSchema>;
+export type TransactionListItem = z.infer<typeof transactionListItemSchema>;
+export type PaginatedTransactions = z.infer<typeof paginatedTransactionsSchema>;
+export type AccountDetail = z.infer<typeof accountDetailSchema>;
+export type CashflowReport = z.infer<typeof cashflowReportSchema>;

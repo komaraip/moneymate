@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/shared/card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { requireUser } from "@/lib/auth/session";
+import { getManualTransactionTypeLabel } from "@/lib/finance";
 import { getDashboardSummary } from "@/lib/services/dashboard";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 
@@ -18,7 +19,7 @@ export default async function DashboardPage() {
       <PageHeader
         eyebrow="Operations"
         title="Dashboard"
-        description="A Phase 2 view of document processing health, review workload, and approved portfolio activity."
+        description="A Phase 3 view of document processing health, approved portfolio activity, and manual cashflow tracking."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -36,6 +37,27 @@ export default async function DashboardPage() {
           trend="Approved only"
         />
         <MetricCard label="Tracked Securities" value={`${summary.metrics.uniqueSecurities}`} />
+        <MetricCard
+          label="Cash Balance"
+          value={formatCurrency(summary.metrics.totalCashBalance)}
+          tone="accent"
+          trend="Latest manual snapshots"
+        />
+        <MetricCard
+          label="This Period Income"
+          value={formatCurrency(summary.metrics.monthlyIncome)}
+          tone="success"
+        />
+        <MetricCard
+          label="This Period Expense"
+          value={formatCurrency(summary.metrics.monthlyExpenses)}
+          tone="warning"
+        />
+        <MetricCard
+          label="Net Cashflow"
+          value={formatCurrency(summary.metrics.monthlyNetCashflow)}
+          tone={Number(summary.metrics.monthlyNetCashflow) >= 0 ? "success" : "warning"}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -141,7 +163,53 @@ export default async function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="flex-col items-start gap-2">
+          <h2 className="text-xl font-semibold">Recent Cash Transactions</h2>
+          <p className="text-sm text-muted-foreground">
+            Manual income, expense, transfer, and adjustment rows from your tracked cash accounts.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {summary.recentCashTransactions.length === 0 ? (
+            <EmptyState
+              title="No cash transactions yet"
+              description="Create an account and add a manual transaction to start building the cashflow timeline."
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  <tr>
+                    <th className="pb-3 pr-4">Account</th>
+                    <th className="pb-3 pr-4">Type</th>
+                    <th className="pb-3 pr-4">Date</th>
+                    <th className="pb-3 pr-4">Category</th>
+                    <th className="pb-3">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {summary.recentCashTransactions.map((transaction) => (
+                    <tr key={transaction.id} className="align-top">
+                      <td className="py-3 pr-4">
+                        <div>
+                          <p className="font-medium">{transaction.accountName ?? "Unassigned account"}</p>
+                          <p className="text-muted-foreground">{transaction.description}</p>
+                        </div>
+                      </td>
+                      <td className="py-3 pr-4">{getManualTransactionTypeLabel(transaction.transactionType)}</td>
+                      <td className="py-3 pr-4">{formatDate(transaction.transactionDate)}</td>
+                      <td className="py-3 pr-4">{transaction.categoryName ?? "-"}</td>
+                      <td className="py-3">{formatCurrency(transaction.amount, transaction.currency)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

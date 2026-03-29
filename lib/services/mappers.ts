@@ -1,9 +1,20 @@
-import { ParsedField, Prisma, ReviewStatus, TradeActivity } from "@prisma/client";
 import {
+  Account,
+  AccountSnapshot,
+  ParsedField,
+  Prisma,
+  ReviewStatus,
+  TradeActivity,
+  Transaction
+} from "@prisma/client";
+import {
+  AccountSnapshotItem,
+  AccountSummary,
   DocumentDetail,
   DocumentListItem,
   ReviewQueueItem,
-  StockActivityRow
+  StockActivityRow,
+  TransactionListItem
 } from "@/lib/contracts";
 import { decimalToString } from "@/lib/utils/decimal";
 
@@ -38,6 +49,102 @@ export function mapDocumentListItem(document: DocumentSummaryLike): DocumentList
       start: document.statementStartDate?.toISOString() ?? null,
       end: document.statementEndDate?.toISOString() ?? null
     }
+  };
+}
+
+export function mapAccountSummary(
+  account: Pick<
+    Account,
+    | "id"
+    | "name"
+    | "institutionName"
+    | "accountType"
+    | "currency"
+    | "maskedAccountNumber"
+    | "externalReference"
+    | "isActive"
+  > & {
+    latestSnapshot?: Pick<AccountSnapshot, "balance" | "availableBalance" | "snapshotDate" | "sourceType"> | null;
+  }
+): AccountSummary {
+  return {
+    id: account.id,
+    name: account.name,
+    institutionName: account.institutionName ?? null,
+    accountType: account.accountType,
+    currency: account.currency,
+    maskedAccountNumber: account.maskedAccountNumber ?? null,
+    externalReference: account.externalReference ?? null,
+    isActive: account.isActive,
+    currentBalance: decimalToString(account.latestSnapshot?.balance),
+    availableBalance: decimalToString(account.latestSnapshot?.availableBalance),
+    latestSnapshotDate: account.latestSnapshot?.snapshotDate?.toISOString() ?? null,
+    latestSourceType: account.latestSnapshot?.sourceType ?? null
+  };
+}
+
+export function mapAccountSnapshot(snapshot: Pick<
+  AccountSnapshot,
+  "id" | "snapshotDate" | "balance" | "availableBalance" | "sourceType" | "sourceDocumentId" | "confidence"
+>): AccountSnapshotItem {
+  return {
+    id: snapshot.id,
+    snapshotDate: snapshot.snapshotDate.toISOString(),
+    balance: decimalToString(snapshot.balance) ?? "0",
+    availableBalance: decimalToString(snapshot.availableBalance),
+    sourceType: snapshot.sourceType,
+    sourceDocumentId: snapshot.sourceDocumentId ?? null,
+    confidence: snapshot.confidence ?? null
+  };
+}
+
+export function mapTransactionListItem(
+  transaction: Pick<
+    Transaction,
+    | "id"
+    | "accountId"
+    | "transactionType"
+    | "direction"
+    | "transactionDate"
+    | "postingDate"
+    | "amount"
+    | "currency"
+    | "description"
+    | "merchantName"
+    | "counterpartyName"
+    | "reviewStatus"
+    | "isManual"
+    | "notes"
+    | "sourceDocumentId"
+  > & {
+    account?: {
+      name: string;
+      accountType: string;
+    } | null;
+    category?: {
+      name: string;
+    } | null;
+  }
+): TransactionListItem {
+  return {
+    id: transaction.id,
+    accountId: transaction.accountId ?? null,
+    accountName: transaction.account?.name ?? null,
+    accountType: transaction.account?.accountType ?? null,
+    transactionType: transaction.transactionType,
+    direction: transaction.direction,
+    transactionDate: transaction.transactionDate.toISOString(),
+    postingDate: transaction.postingDate?.toISOString() ?? null,
+    amount: decimalToString(transaction.amount) ?? "0",
+    currency: transaction.currency,
+    description: transaction.description,
+    categoryName: transaction.category?.name ?? null,
+    merchantName: transaction.merchantName ?? null,
+    counterpartyName: transaction.counterpartyName ?? null,
+    reviewStatus: transaction.reviewStatus,
+    isManual: transaction.isManual,
+    notes: transaction.notes ?? null,
+    sourceDocumentId: transaction.sourceDocumentId ?? null
   };
 }
 
@@ -128,4 +235,3 @@ export function summariseValidationState(detail: DocumentDetail) {
 
   return ReviewStatus.APPROVED;
 }
-

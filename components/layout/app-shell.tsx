@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils/cn";
 
 const navigation = [
   { href: "/app/dashboard", label: "Dashboard" },
+  { href: "/app/accounts", label: "Accounts" },
+  { href: "/app/transactions", label: "Transactions" },
   { href: "/app/documents", label: "Documents" },
   { href: "/app/review", label: "Review Queue" },
   { href: "/app/investments", label: "Investments" },
@@ -47,11 +49,11 @@ export function AppShell({ children, user }: AppShellProps) {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-white/50">MoneyMate</p>
-                  <p className="text-lg font-semibold">Phase 2 Workspace</p>
+                  <p className="text-lg font-semibold">Phase 3 Workspace</p>
                 </div>
               </div>
               <p className="text-sm leading-6 text-white/68">
-                Upload statements, inspect parser output, and approve only what you trust.
+                Track trusted documents, cash accounts, and manual transactions in one workspace.
               </p>
             </div>
             <nav className="grid gap-2">
