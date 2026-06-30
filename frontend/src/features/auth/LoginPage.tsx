@@ -1,0 +1,73 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ApiError } from "../../lib/api";
+import { useAuth } from "./useAuth";
+
+export function LoginPage() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("owner@moneymate.local");
+  const [password, setPassword] = useState("changeme-local-demo");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+    try {
+      await login({ email, password });
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Login gagal");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-5 text-zinc-100">
+      <form
+        className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900/80 p-6"
+        onSubmit={(event) => void onSubmit(event)}
+      >
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
+          MoneyMate
+        </p>
+        <h1 className="mt-3 text-2xl font-semibold text-white">Masuk Dashboard</h1>
+        <p className="mt-2 text-sm text-zinc-400">
+          Gunakan akun owner lokal dari seed data.
+        </p>
+
+        <label className="mt-6 block text-sm text-zinc-300">
+          Email
+          <input
+            className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none focus:border-emerald-400"
+            onChange={(event) => setEmail(event.target.value)}
+            type="email"
+            value={email}
+          />
+        </label>
+        <label className="mt-4 block text-sm text-zinc-300">
+          Password
+          <input
+            className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none focus:border-emerald-400"
+            onChange={(event) => setPassword(event.target.value)}
+            type="password"
+            value={password}
+          />
+        </label>
+
+        {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
+
+        <button
+          className="mt-6 w-full rounded-lg bg-emerald-400 px-4 py-2 font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isSubmitting}
+          type="submit"
+        >
+          {isSubmitting ? "Memproses..." : "Masuk"}
+        </button>
+      </form>
+    </main>
+  );
+}

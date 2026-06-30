@@ -1,25 +1,31 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { DashboardLayout } from "./layouts/DashboardLayout";
-import { LoginPlaceholder } from "../features/auth/LoginPlaceholder";
+import { LoginPage } from "../features/auth/LoginPage";
 import { ProtectedRoute } from "../features/auth/ProtectedRoute";
 import { PlaceholderPage } from "../features/placeholder/PlaceholderPage";
+import { AuditLogPage } from "../features/mvp/pages/AuditLogPage";
+import { CashPage } from "../features/mvp/pages/CashPage";
+import { HoldingsPage } from "../features/mvp/pages/HoldingsPage";
+import { InstrumentsPage } from "../features/mvp/pages/InstrumentsPage";
+import { OverviewPage } from "../features/mvp/pages/OverviewPage";
+import { TransactionsPage } from "../features/mvp/pages/TransactionsPage";
 
 const dashboardChildren = [
-  { index: true, element: <PlaceholderPage title="Overview" /> },
-  { path: "portfolio", element: <PlaceholderPage title="Portfolio" /> },
-  { path: "orders", element: <PlaceholderPage title="Orders" /> },
-  { path: "cash", element: <PlaceholderPage title="Cash" /> },
-  { path: "instruments", element: <PlaceholderPage title="Instruments" /> },
+  { index: true, element: <OverviewPage /> },
+  { path: "portfolio", element: <HoldingsPage /> },
+  { path: "orders", element: <TransactionsPage /> },
+  { path: "cash", element: <CashPage /> },
+  { path: "instruments", element: <InstrumentsPage /> },
   { path: "asset-allocation", element: <PlaceholderPage title="Asset Allocation" /> },
   { path: "reports", element: <PlaceholderPage title="Reports" /> },
   { path: "import-data", element: <PlaceholderPage title="Import Data" /> },
   { path: "insights", element: <PlaceholderPage title="Insights" /> },
-  { path: "audit-log", element: <PlaceholderPage title="Audit Log" /> },
+  { path: "audit-log", element: <AuditLogPage /> },
   { path: "settings", element: <PlaceholderPage title="Settings" /> },
 ];
 
 export const router = createBrowserRouter([
-  { path: "/login", element: <LoginPlaceholder /> },
+  { path: "/login", element: <LoginPage /> },
   {
     path: "/",
     element: (
