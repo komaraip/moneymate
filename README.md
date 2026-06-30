@@ -68,6 +68,24 @@ $headers = @{ Authorization = "Bearer $($login.data.access_token)" }
 Invoke-RestMethod "http://localhost:8080/api/v1/holdings/recalculate?date=2026-06-30" -Method Post -Headers $headers
 ```
 
+Import CSV/XLSX from the UI:
+
+```txt
+http://localhost:5173/import-data
+```
+
+The import parser recognizes spreadsheet-like sections named `INVESTMENT`, `INVESMENT`, `PORTFOLIO`, `HOLDINGS`, `ORDERS`, `TRANSACTIONS`, `ASSET/VALUE`, and `CASH`.
+
+PowerShell API smoke path using `curl.exe` for multipart upload:
+
+```powershell
+$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"owner@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
+$token = $login.data.access_token
+$preview = curl.exe -s -X POST "http://localhost:8080/api/v1/imports/upload" -H "Authorization: Bearer $token" -F "file=@.\sample-assets.csv" | ConvertFrom-Json
+$jobId = $preview.data.job_id
+Invoke-RestMethod "http://localhost:8080/api/v1/imports/jobs/$jobId/confirm" -Method Post -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body "{}"
+```
+
 Stop services:
 
 ```powershell
@@ -141,6 +159,7 @@ docker compose config
 - Weighted-average holdings calculation in backend.
 - Dashboard overview, asset allocation, performance, and alerts APIs.
 - React protected dashboard shell and MVP screens.
+- CSV/XLSX import preview and confirm flow for holdings, orders, cash, asset summary rows, manual prices, import job rows, and import audit log.
 
 ## Known Limitations
 
@@ -148,15 +167,15 @@ docker compose config
 - Manual/mock prices only; dashboard labels data as not real-time.
 - Cash balances are manually managed; orders do not automatically move cash yet.
 - Frontend forms are intentionally basic and do not yet expose every edit/delete backend action.
-- Import CSV/XLSX preview is still pending.
+- Confirmed imports do not fetch market data. Imported prices remain manual, and holdings snapshots still follow the existing recalculation workflow.
 - No production deployment hardening, HTTPS termination, or managed secret workflow yet.
 
 ## Roadmap
 
 Recommended next phase:
 
-1. Add import CSV/XLSX preview and confirm flow.
-2. Expand frontend edit/delete flows for transactions, instruments, and cash accounts.
-3. Add OpenAPI documentation.
-4. Add frontend component tests and Playwright smoke tests.
-5. Add report/export endpoints.
+1. Expand frontend edit/delete flows for transactions, instruments, and cash accounts.
+2. Add OpenAPI documentation.
+3. Add frontend component tests and Playwright smoke tests.
+4. Add report/export endpoints.
+5. Consider automatic holdings recalculation after confirmed imports.

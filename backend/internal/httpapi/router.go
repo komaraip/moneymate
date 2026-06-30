@@ -12,6 +12,7 @@ import (
 	"moneymate/backend/internal/dashboard"
 	httpmw "moneymate/backend/internal/httpapi/middleware"
 	"moneymate/backend/internal/httpapi/response"
+	"moneymate/backend/internal/importer"
 	"moneymate/backend/internal/ledger"
 	"moneymate/backend/internal/masterdata"
 	"moneymate/backend/internal/portfolio"
@@ -48,6 +49,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service
 	ledgerHandler := ledger.NewHandler(db)
 	portfolioHandler := portfolio.NewHandler(db)
 	dashboardHandler := dashboard.NewHandler(db, cfg)
+	importHandler := importer.NewHandler(db)
 	protected := chi.NewRouter()
 	protected.Use(auth.RequireAuth(authService))
 	protected.Mount("/dashboard", dashboardHandler.Routes())
@@ -58,6 +60,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service
 	protected.Mount("/transactions", ledgerHandler.TransactionRoutes())
 	protected.Mount("/prices", ledgerHandler.PriceRoutes())
 	protected.Mount("/audit-logs", masterHandler.AuditRoutes())
+	protected.Mount("/imports", importHandler.Routes())
 	chiRouter.Mount("/api/v1", protected)
 
 	return chiRouter

@@ -5,6 +5,8 @@ import type {
   AuditLog,
   CashAccount,
   Holding,
+  ImportConfirmResult,
+  ImportPreview,
   Instrument,
   Overview,
   Transaction,
@@ -24,4 +26,10 @@ export const mvpApi = {
   createCashAccount: (body: unknown) => apiClient.post<CashAccount>("/api/v1/cash-accounts", body),
   createManualPrice: (body: unknown) => apiClient.post("/api/v1/prices/manual", body),
   auditLogs: () => apiClient.get<AuditLog[]>("/api/v1/audit-logs"),
+  uploadImport: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient.upload<ImportPreview>("/api/v1/imports/upload", formData);
+  },
+  confirmImport: (jobId: string) => apiClient.post<ImportConfirmResult>(`/api/v1/imports/jobs/${jobId}/confirm`, {}),
 };

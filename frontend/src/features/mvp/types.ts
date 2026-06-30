@@ -81,3 +81,38 @@ export type AuditLog = {
   created_at: string;
   ip_address?: string;
 };
+
+export type ImportPreviewSummary = {
+  total_rows: number;
+  valid_rows: number;
+  invalid_rows: number;
+};
+
+export type ImportPreviewRow = {
+  id: string;
+  section: "holdings" | "orders" | "asset_summary" | "cash";
+  row_number: number;
+  status: "valid" | "invalid" | "imported" | "skipped";
+  raw: Record<string, string>;
+  normalized: Record<string, string | number | boolean | null>;
+  errors: string[];
+};
+
+export type ImportPreview = {
+  job_id: string;
+  source_type: string;
+  original_filename: string;
+  detected_sections: ImportPreviewRow["section"][];
+  rows: ImportPreviewRow[];
+  summary: ImportPreviewSummary;
+};
+
+export type ImportConfirmResult = {
+  job_id: string;
+  status: string;
+  total_rows: number;
+  imported_rows: number;
+  skipped_rows: number;
+  failed_rows: number;
+  message: string;
+};

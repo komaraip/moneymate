@@ -6,6 +6,7 @@ import { PlaceholderPage } from "../features/placeholder/PlaceholderPage";
 import { AuditLogPage } from "../features/mvp/pages/AuditLogPage";
 import { CashPage } from "../features/mvp/pages/CashPage";
 import { HoldingsPage } from "../features/mvp/pages/HoldingsPage";
+import { ImportPage } from "../features/mvp/pages/ImportPage";
 import { InstrumentsPage } from "../features/mvp/pages/InstrumentsPage";
 import { OverviewPage } from "../features/mvp/pages/OverviewPage";
 import { TransactionsPage } from "../features/mvp/pages/TransactionsPage";
@@ -18,7 +19,7 @@ const dashboardChildren = [
   { path: "instruments", element: <InstrumentsPage /> },
   { path: "asset-allocation", element: <PlaceholderPage title="Asset Allocation" /> },
   { path: "reports", element: <PlaceholderPage title="Reports" /> },
-  { path: "import-data", element: <PlaceholderPage title="Import Data" /> },
+  { path: "import-data", element: <ImportPage /> },
   { path: "insights", element: <PlaceholderPage title="Insights" /> },
   { path: "audit-log", element: <AuditLogPage /> },
   { path: "settings", element: <PlaceholderPage title="Settings" /> },

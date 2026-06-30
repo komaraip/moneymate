@@ -20,4 +20,7 @@ export const queryKeys = {
   auditLogs: {
     all: ["audit-logs"] as const,
   },
+  imports: {
+    all: ["imports"] as const,
+  },
 };

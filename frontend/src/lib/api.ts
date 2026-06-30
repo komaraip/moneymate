@@ -13,6 +13,7 @@ type ApiEnvelope<T> = {
 type RequestOptions = {
   method?: string;
   body?: unknown;
+  multipart?: boolean;
   retryOnUnauthorized?: boolean;
 };
 
@@ -47,6 +48,10 @@ class ApiClient {
     return this.request<T>(path, { method: "POST", body });
   }
 
+  upload<T>(path: string, body: FormData) {
+    return this.request<T>(path, { method: "POST", body, multipart: true });
+  }
+
   put<T>(path: string, body: unknown) {
     return this.request<T>(path, { method: "PUT", body });
   }
@@ -56,14 +61,18 @@ class ApiClient {
   }
 
   private async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+    const headers: Record<string, string> = {
+      ...(this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {}),
+    };
+    if (!options.multipart) {
+      headers["Content-Type"] = "application/json";
+    }
+
     const response = await fetch(`${baseUrl}${path}`, {
       method: options.method ?? "GET",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...(this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {}),
-      },
-      body: options.body ? JSON.stringify(options.body) : undefined,
+      headers,
+      body: this.requestBody(options),
     });
 
     if (response.status === 401 && options.retryOnUnauthorized !== false) {
@@ -84,6 +93,16 @@ class ApiClient {
     }
 
     return envelope.data;
+  }
+
+  private requestBody(options: RequestOptions): BodyInit | undefined {
+    if (!options.body) {
+      return undefined;
+    }
+    if (options.multipart) {
+      return options.body as BodyInit;
+    }
+    return JSON.stringify(options.body);
   }
 
   private async refreshAccessToken() {
