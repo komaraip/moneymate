@@ -1,75 +1,78 @@
 # MoneyMate Admin Dashboard
 
-MoneyMate is a personal finance admin dashboard scaffold. This phase only sets up the local development foundation:
+MoneyMate is a local fullstack MVP for tracking personal finance data, portfolio holdings, manual prices, transactions, cash accounts, and dashboard summaries.
 
-- React + TypeScript + Vite frontend shell.
-- Minimal Go backend with `GET /healthz`.
-- PostgreSQL via Docker Compose.
-- Placeholder database migration folder.
-- Windows PowerShell and Docker-friendly commands.
+Current stack:
 
-Business features such as auth, CRUD, holdings calculation, imports, reports, audit logs, and full UI pages are intentionally not implemented yet.
+- Frontend: React, TypeScript, Vite, Tailwind CSS, TanStack Query.
+- Backend: Go, chi router, slog, PostgreSQL via pgx.
+- Local services: Docker Compose with PostgreSQL, backend API, frontend Vite server.
+
+Financial safety note: all prices are manual/mock in this MVP. The app does not provide buy/sell recommendations and does not claim real-time market data.
 
 ## Prerequisites
 
-Recommended for this phase:
-
-- Docker Desktop
-- Node.js 20+ if running the frontend outside Docker
-- Go only if running the backend outside Docker
+- Docker Desktop.
+- Node.js 20+ only if running frontend outside Docker.
+- Go only if running backend outside Docker.
 
 This workspace previously showed `go` and `make` may not be available on PATH, so Docker and PowerShell commands are the primary path.
 
-## Environment Files
+## Environment
 
-Copy the example file before running locally:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-The example values are local-only placeholders. Do not put production secrets in `.env.example`.
-
-Optional per-app examples are also available:
-
-```powershell
-Copy-Item backend\.env.example backend\.env
-Copy-Item frontend\.env.example frontend\.env
-```
-
-## Run Everything With Docker
-
-From the repository root:
+Create local env file:
 
 ```powershell
 Copy-Item .env.example .env
-docker compose up --build
 ```
 
-If another PostgreSQL service already uses port `5432`, override the host port:
+Safe local demo credentials:
+
+```txt
+Email: owner@moneymate.local
+Password: changeme-local-demo
+```
+
+These are local placeholders only. Do not use them in production.
+
+## First Run With Docker
+
+If port `5432` is already used by another PostgreSQL service, use `15432`:
 
 ```powershell
 $env:POSTGRES_PORT = "15432"
-docker compose up --build
-Remove-Item Env:POSTGRES_PORT
 ```
 
-Or use the PowerShell helper:
+Build services, run migrations, seed data, then start the app:
 
 ```powershell
-.\scripts\dev.ps1 -Build
+docker compose build backend migrate seed frontend
+docker compose up -d postgres
+docker compose run --rm migrate
+docker compose run --rm seed
+docker compose up -d backend frontend
 ```
 
 Open:
 
-- Frontend: `http://localhost:5173`
-- Backend health: `http://localhost:8080/healthz`
-- PostgreSQL: `localhost:5432`
+```txt
+Frontend: http://localhost:5173
+Backend health: http://localhost:8080/healthz
+```
+
+After login, click `Recalculate` on Portfolio or call:
+
+```powershell
+$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"owner@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
+$headers = @{ Authorization = "Bearer $($login.data.access_token)" }
+Invoke-RestMethod "http://localhost:8080/api/v1/holdings/recalculate?date=2026-06-30" -Method Post -Headers $headers
+```
 
 Stop services:
 
 ```powershell
 docker compose down
+Remove-Item Env:POSTGRES_PORT -ErrorAction SilentlyContinue
 ```
 
 Reset local database volume:
@@ -97,77 +100,63 @@ Copy-Item .env.example .env
 go run ./cmd/api
 ```
 
-When using Docker, rebuild the backend image after backend code changes:
+Migrate and seed without Docker, only if Go and PostgreSQL are available:
 
 ```powershell
-docker compose build backend
-docker compose up backend
+cd backend
+go run ./cmd/migrate
+go run ./cmd/seed
 ```
 
-## Health Check
+## Validation Commands
+
+Backend tests through Docker:
 
 ```powershell
-Invoke-RestMethod http://localhost:8080/healthz
+$backendPath = (Resolve-Path .\backend).Path
+docker run --rm -v "${backendPath}:/app" -w /app golang:1.26-alpine go test ./...
 ```
 
-Expected response:
-
-```json
-{
-  "status": "ok",
-  "service": "moneymate-backend",
-  "environment": "development"
-}
-```
-
-## Database Migrations
-
-Run migrations with Docker:
+Frontend build:
 
 ```powershell
-$env:POSTGRES_PORT = "15432"
-docker compose up -d postgres
-docker compose run --rm migrate
-Remove-Item Env:POSTGRES_PORT
+cd frontend
+npm run build
 ```
 
-## Seed Data
-
-Seed the local owner account after migrations:
+Compose validation:
 
 ```powershell
-$env:POSTGRES_PORT = "15432"
-docker compose run --rm seed
-Remove-Item Env:POSTGRES_PORT
+docker compose config
 ```
 
-Safe local demo credentials from `.env.example`:
+## Implemented MVP Foundation
 
-```txt
-Email: owner@moneymate.local
-Password: changeme-local-demo
-```
+- Auth login, refresh, logout, and `/me`.
+- Owner seed account with Argon2id password hash.
+- JWT access token and HTTP-only refresh cookie session.
+- RBAC middleware foundation.
+- PostgreSQL migrations for users, sessions, instruments, categories, transactions, cash accounts, prices, holdings, imports, and audit logs.
+- Instruments, asset categories, cash accounts, transactions, manual prices, holdings, dashboard, and audit APIs.
+- Weighted-average holdings calculation in backend.
+- Dashboard overview, asset allocation, performance, and alerts APIs.
+- React protected dashboard shell and MVP screens.
 
-These are local placeholders only. Do not use them in production.
+## Known Limitations
 
-## Current Project Structure
+- No external market data integration.
+- Manual/mock prices only; dashboard labels data as not real-time.
+- Cash balances are manually managed; orders do not automatically move cash yet.
+- Frontend forms are intentionally basic and do not yet expose every edit/delete backend action.
+- Import CSV/XLSX preview is still pending.
+- No production deployment hardening, HTTPS termination, or managed secret workflow yet.
 
-```txt
-MoneyMate/
-  docker-compose.yml
-  .env.example
-  Makefile
-  scripts/dev.ps1
-  backend/
-    cmd/api/
-    internal/config/
-    internal/httpapi/
-    db/migrations/
-  frontend/
-    src/app/
-    src/styles/
-```
+## Roadmap
 
-## Next Recommended Phase
+Recommended next phase:
 
-Phase 2 should add backend foundation for database connectivity, migration runner, typed response envelope, request logging, and OpenAPI scaffold before implementing auth or business CRUD.
+1. Add import CSV/XLSX preview and confirm flow.
+2. Expand frontend edit/delete flows for transactions, instruments, and cash accounts.
+3. Add OpenAPI documentation.
+4. Add frontend component tests and Playwright smoke tests.
+5. Add report/export endpoints.
