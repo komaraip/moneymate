@@ -11,9 +11,13 @@ import (
 	"moneymate/backend/internal/config"
 	httpmw "moneymate/backend/internal/httpapi/middleware"
 	"moneymate/backend/internal/httpapi/response"
+	"moneymate/backend/internal/masterdata"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service) http.Handler {
+func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service, db *pgxpool.Pool) http.Handler {
 	chiRouter := httpmw.NewChiRouter()
 	chiRouter.Use(chimiddleware.RequestID)
 	chiRouter.Use(chimiddleware.RealIP)
@@ -36,6 +40,15 @@ func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service
 		}, nil)
 	})
 	chiRouter.Mount("/api/v1/auth", auth.NewHandler(authService, cfg).Routes())
+
+	masterHandler := masterdata.NewHandler(db)
+	protected := chi.NewRouter()
+	protected.Use(auth.RequireAuth(authService))
+	protected.Mount("/instruments", masterHandler.InstrumentRoutes())
+	protected.Mount("/asset-categories", masterHandler.CategoryRoutes())
+	protected.Mount("/cash-accounts", masterHandler.CashRoutes())
+	protected.Mount("/audit-logs", masterHandler.AuditRoutes())
+	chiRouter.Mount("/api/v1", protected)
 
 	return chiRouter
 }

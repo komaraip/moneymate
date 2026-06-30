@@ -1,0 +1,620 @@
+package masterdata
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"moneymate/backend/internal/apperror"
+	"moneymate/backend/internal/audit"
+	"moneymate/backend/internal/auth"
+	"moneymate/backend/internal/domain"
+	"moneymate/backend/internal/httpapi/response"
+)
+
+type Handler struct {
+	db *pgxpool.Pool
+}
+
+func NewHandler(db *pgxpool.Pool) Handler {
+	return Handler{db: db}
+}
+
+func (h Handler) InstrumentRoutes() chi.Router {
+	router := chi.NewRouter()
+
+	router.Get("/", h.listInstruments)
+	router.Post("/", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.createInstrument)).ServeHTTP)
+	router.Get("/{id}", h.getInstrument)
+	router.Put("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.updateInstrument)).ServeHTTP)
+	router.Delete("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.deleteInstrument)).ServeHTTP)
+
+	return router
+}
+
+func (h Handler) CategoryRoutes() chi.Router {
+	router := chi.NewRouter()
+
+	router.Get("/", h.listCategories)
+	router.Post("/", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.createCategory)).ServeHTTP)
+	router.Put("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.updateCategory)).ServeHTTP)
+	router.Delete("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.deleteCategory)).ServeHTTP)
+
+	return router
+}
+
+func (h Handler) CashRoutes() chi.Router {
+	router := chi.NewRouter()
+
+	router.Get("/", h.listCashAccounts)
+	router.Post("/", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.createCashAccount)).ServeHTTP)
+	router.Get("/{id}", h.getCashAccount)
+	router.Put("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.updateCashAccount)).ServeHTTP)
+	router.Delete("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.deleteCashAccount)).ServeHTTP)
+
+	return router
+}
+
+func (h Handler) AuditRoutes() chi.Router {
+	router := chi.NewRouter()
+	router.Get("/", h.listAuditLogs)
+	return router
+}
+
+type instrumentInput struct {
+	Type        string   `json:"type"`
+	Ticker      *string  `json:"ticker"`
+	Name        string   `json:"name"`
+	Provider    *string  `json:"provider"`
+	Currency    string   `json:"currency"`
+	Exchange    *string  `json:"exchange"`
+	Country     *string  `json:"country"`
+	CategoryIDs []string `json:"category_ids"`
+}
+
+type categoryInput struct {
+	Name                    string   `json:"name"`
+	Description             *string  `json:"description"`
+	TargetAllocationPercent *float64 `json:"target_allocation_percent"`
+	ColorKey                *string  `json:"color_key"`
+	SortOrder               int      `json:"sort_order"`
+}
+
+type cashInput struct {
+	AccountName string  `json:"account_name"`
+	AccountType string  `json:"account_type"`
+	Currency    string  `json:"currency"`
+	Balance     float64 `json:"balance"`
+	Notes       *string `json:"notes"`
+}
+
+func (h Handler) listInstruments(w http.ResponseWriter, r *http.Request) {
+	search := strings.TrimSpace(r.URL.Query().Get("search"))
+	rows, err := h.db.Query(r.Context(), `
+		SELECT id::text, type, ticker, name, provider, currency, exchange, country, is_active, created_at, updated_at
+		FROM instruments
+		WHERE ($1 = '' OR ticker ILIKE '%' || $1 || '%' OR name ILIKE '%' || $1 || '%')
+		ORDER BY is_active DESC, type, ticker NULLS LAST, name
+	`, search)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat instrumen"))
+		return
+	}
+	defer rows.Close()
+
+	items := []domain.Instrument{}
+	for rows.Next() {
+		item, err := scanInstrument(rows)
+		if err != nil {
+			response.Error(w, r, internalErr(err, "Gagal membaca instrumen"))
+			return
+		}
+		items = append(items, item)
+	}
+
+	response.JSON(w, r, http.StatusOK, items, nil)
+}
+
+func (h Handler) getInstrument(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+
+	item, err := h.getInstrumentByID(r.Context(), id)
+	if err != nil {
+		response.Error(w, r, mapGetErr(err, "Instrumen tidak ditemukan"))
+		return
+	}
+
+	response.JSON(w, r, http.StatusOK, item, nil)
+}
+
+func (h Handler) createInstrument(w http.ResponseWriter, r *http.Request) {
+	var input instrumentInput
+	if err := response.DecodeJSON(r, &input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	if err := validateInstrument(input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+
+	var item domain.Instrument
+	err := h.db.QueryRow(r.Context(), `
+		INSERT INTO instruments (type, ticker, name, provider, currency, exchange, country)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id::text, type, ticker, name, provider, currency, exchange, country, is_active, created_at, updated_at
+	`, input.Type, cleanPtr(input.Ticker), strings.TrimSpace(input.Name), cleanPtr(input.Provider), strings.ToUpper(input.Currency), cleanPtr(input.Exchange), cleanPtr(input.Country)).Scan(
+		&item.ID, &item.Type, &item.Ticker, &item.Name, &item.Provider, &item.Currency, &item.Exchange, &item.Country, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
+	)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal membuat instrumen"))
+		return
+	}
+
+	h.writeAudit(r, "create", "instrument", item.ID, nil, item)
+	response.JSON(w, r, http.StatusCreated, item, nil)
+}
+
+func (h Handler) updateInstrument(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+	before, err := h.getInstrumentByID(r.Context(), id)
+	if err != nil {
+		response.Error(w, r, mapGetErr(err, "Instrumen tidak ditemukan"))
+		return
+	}
+
+	var input instrumentInput
+	if err := response.DecodeJSON(r, &input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	if err := validateInstrument(input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+
+	var item domain.Instrument
+	err = h.db.QueryRow(r.Context(), `
+		UPDATE instruments
+		SET type = $2, ticker = $3, name = $4, provider = $5, currency = $6, exchange = $7, country = $8, updated_at = now()
+		WHERE id = $1
+		RETURNING id::text, type, ticker, name, provider, currency, exchange, country, is_active, created_at, updated_at
+	`, id, input.Type, cleanPtr(input.Ticker), strings.TrimSpace(input.Name), cleanPtr(input.Provider), strings.ToUpper(input.Currency), cleanPtr(input.Exchange), cleanPtr(input.Country)).Scan(
+		&item.ID, &item.Type, &item.Ticker, &item.Name, &item.Provider, &item.Currency, &item.Exchange, &item.Country, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
+	)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal mengubah instrumen"))
+		return
+	}
+
+	h.writeAudit(r, "update", "instrument", item.ID, before, item)
+	response.JSON(w, r, http.StatusOK, item, nil)
+}
+
+func (h Handler) deleteInstrument(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+	before, err := h.getInstrumentByID(r.Context(), id)
+	if err != nil {
+		response.Error(w, r, mapGetErr(err, "Instrumen tidak ditemukan"))
+		return
+	}
+
+	_, err = h.db.Exec(r.Context(), `UPDATE instruments SET is_active = FALSE, updated_at = now() WHERE id = $1`, id)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal menonaktifkan instrumen"))
+		return
+	}
+
+	h.writeAudit(r, "delete", "instrument", id, before, map[string]any{"is_active": false})
+	response.JSON(w, r, http.StatusOK, map[string]string{"status": "deleted"}, nil)
+}
+
+func (h Handler) listCategories(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.db.Query(r.Context(), `
+		SELECT id::text, name, description, target_allocation_percent::float8, color_key, sort_order, created_at
+		FROM asset_categories
+		ORDER BY sort_order, name
+	`)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat kategori aset"))
+		return
+	}
+	defer rows.Close()
+
+	items := []domain.AssetCategory{}
+	for rows.Next() {
+		var item domain.AssetCategory
+		if err := rows.Scan(&item.ID, &item.Name, &item.Description, &item.TargetAllocationPercent, &item.ColorKey, &item.SortOrder, &item.CreatedAt); err != nil {
+			response.Error(w, r, internalErr(err, "Gagal membaca kategori aset"))
+			return
+		}
+		items = append(items, item)
+	}
+
+	response.JSON(w, r, http.StatusOK, items, nil)
+}
+
+func (h Handler) createCategory(w http.ResponseWriter, r *http.Request) {
+	var input categoryInput
+	if err := response.DecodeJSON(r, &input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	if strings.TrimSpace(input.Name) == "" {
+		response.Error(w, r, validation("Nama kategori wajib diisi"))
+		return
+	}
+
+	var item domain.AssetCategory
+	err := h.db.QueryRow(r.Context(), `
+		INSERT INTO asset_categories (name, description, target_allocation_percent, color_key, sort_order)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id::text, name, description, target_allocation_percent::float8, color_key, sort_order, created_at
+	`, strings.TrimSpace(input.Name), cleanPtr(input.Description), input.TargetAllocationPercent, cleanPtr(input.ColorKey), input.SortOrder).Scan(
+		&item.ID, &item.Name, &item.Description, &item.TargetAllocationPercent, &item.ColorKey, &item.SortOrder, &item.CreatedAt,
+	)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal membuat kategori aset"))
+		return
+	}
+
+	h.writeAudit(r, "create", "asset_category", item.ID, nil, item)
+	response.JSON(w, r, http.StatusCreated, item, nil)
+}
+
+func (h Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+	before, _ := h.getCategoryByID(r.Context(), id)
+
+	var input categoryInput
+	if err := response.DecodeJSON(r, &input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	if strings.TrimSpace(input.Name) == "" {
+		response.Error(w, r, validation("Nama kategori wajib diisi"))
+		return
+	}
+
+	var item domain.AssetCategory
+	err := h.db.QueryRow(r.Context(), `
+		UPDATE asset_categories
+		SET name = $2, description = $3, target_allocation_percent = $4, color_key = $5, sort_order = $6
+		WHERE id = $1
+		RETURNING id::text, name, description, target_allocation_percent::float8, color_key, sort_order, created_at
+	`, id, strings.TrimSpace(input.Name), cleanPtr(input.Description), input.TargetAllocationPercent, cleanPtr(input.ColorKey), input.SortOrder).Scan(
+		&item.ID, &item.Name, &item.Description, &item.TargetAllocationPercent, &item.ColorKey, &item.SortOrder, &item.CreatedAt,
+	)
+	if err != nil {
+		response.Error(w, r, mapGetErr(err, "Kategori aset tidak ditemukan"))
+		return
+	}
+
+	h.writeAudit(r, "update", "asset_category", item.ID, before, item)
+	response.JSON(w, r, http.StatusOK, item, nil)
+}
+
+func (h Handler) deleteCategory(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+	before, _ := h.getCategoryByID(r.Context(), id)
+
+	if _, err := h.db.Exec(r.Context(), `DELETE FROM asset_categories WHERE id = $1`, id); err != nil {
+		response.Error(w, r, internalErr(err, "Gagal menghapus kategori aset"))
+		return
+	}
+
+	h.writeAudit(r, "delete", "asset_category", id, before, nil)
+	response.JSON(w, r, http.StatusOK, map[string]string{"status": "deleted"}, nil)
+}
+
+func (h Handler) listCashAccounts(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.db.Query(r.Context(), `
+		SELECT id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
+		FROM cash_accounts
+		ORDER BY is_active DESC, account_name
+	`)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat akun cash"))
+		return
+	}
+	defer rows.Close()
+
+	items := []domain.CashAccount{}
+	for rows.Next() {
+		item, err := scanCash(rows)
+		if err != nil {
+			response.Error(w, r, internalErr(err, "Gagal membaca akun cash"))
+			return
+		}
+		items = append(items, item)
+	}
+
+	response.JSON(w, r, http.StatusOK, items, nil)
+}
+
+func (h Handler) getCashAccount(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+	item, err := h.getCashByID(r.Context(), id)
+	if err != nil {
+		response.Error(w, r, mapGetErr(err, "Akun cash tidak ditemukan"))
+		return
+	}
+
+	response.JSON(w, r, http.StatusOK, item, nil)
+}
+
+func (h Handler) createCashAccount(w http.ResponseWriter, r *http.Request) {
+	var input cashInput
+	if err := response.DecodeJSON(r, &input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	if err := validateCash(input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+
+	var item domain.CashAccount
+	err := h.db.QueryRow(r.Context(), `
+		INSERT INTO cash_accounts (account_name, account_type, currency, balance, notes)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
+	`, strings.TrimSpace(input.AccountName), defaultString(input.AccountType, "bank"), strings.ToUpper(input.Currency), input.Balance, cleanPtr(input.Notes)).Scan(
+		&item.ID, &item.AccountName, &item.AccountType, &item.Currency, &item.Balance, &item.Notes, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
+	)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal membuat akun cash"))
+		return
+	}
+
+	h.writeAudit(r, "create", "cash_account", item.ID, nil, item)
+	response.JSON(w, r, http.StatusCreated, item, nil)
+}
+
+func (h Handler) updateCashAccount(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+	before, err := h.getCashByID(r.Context(), id)
+	if err != nil {
+		response.Error(w, r, mapGetErr(err, "Akun cash tidak ditemukan"))
+		return
+	}
+
+	var input cashInput
+	if err := response.DecodeJSON(r, &input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	if err := validateCash(input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+
+	var item domain.CashAccount
+	err = h.db.QueryRow(r.Context(), `
+		UPDATE cash_accounts
+		SET account_name = $2, account_type = $3, currency = $4, balance = $5, notes = $6, updated_at = now()
+		WHERE id = $1
+		RETURNING id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
+	`, id, strings.TrimSpace(input.AccountName), defaultString(input.AccountType, "bank"), strings.ToUpper(input.Currency), input.Balance, cleanPtr(input.Notes)).Scan(
+		&item.ID, &item.AccountName, &item.AccountType, &item.Currency, &item.Balance, &item.Notes, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
+	)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal mengubah akun cash"))
+		return
+	}
+
+	h.writeAudit(r, "update", "cash_account", item.ID, before, item)
+	response.JSON(w, r, http.StatusOK, item, nil)
+}
+
+func (h Handler) deleteCashAccount(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+	before, err := h.getCashByID(r.Context(), id)
+	if err != nil {
+		response.Error(w, r, mapGetErr(err, "Akun cash tidak ditemukan"))
+		return
+	}
+
+	if _, err := h.db.Exec(r.Context(), `UPDATE cash_accounts SET is_active = FALSE, updated_at = now() WHERE id = $1`, id); err != nil {
+		response.Error(w, r, internalErr(err, "Gagal menonaktifkan akun cash"))
+		return
+	}
+
+	h.writeAudit(r, "delete", "cash_account", id, before, map[string]any{"is_active": false})
+	response.JSON(w, r, http.StatusOK, map[string]string{"status": "deleted"}, nil)
+}
+
+func (h Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.db.Query(r.Context(), `
+		SELECT id::text, actor_user_id::text, action, entity_type, entity_id::text, before_json, after_json, ip_address, user_agent, created_at
+		FROM audit_logs
+		ORDER BY created_at DESC
+		LIMIT 100
+	`)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat audit log"))
+		return
+	}
+	defer rows.Close()
+
+	items := []domain.AuditLog{}
+	for rows.Next() {
+		var item domain.AuditLog
+		var beforeBytes, afterBytes []byte
+		if err := rows.Scan(&item.ID, &item.ActorUserID, &item.Action, &item.EntityType, &item.EntityID, &beforeBytes, &afterBytes, &item.IPAddress, &item.UserAgent, &item.CreatedAt); err != nil {
+			response.Error(w, r, internalErr(err, "Gagal membaca audit log"))
+			return
+		}
+		item.BeforeJSON = decodeJSON(beforeBytes)
+		item.AfterJSON = decodeJSON(afterBytes)
+		items = append(items, item)
+	}
+
+	response.JSON(w, r, http.StatusOK, items, nil)
+}
+
+func (h Handler) getInstrumentByID(ctx context.Context, id string) (domain.Instrument, error) {
+	return scanInstrument(h.db.QueryRow(ctx, `
+		SELECT id::text, type, ticker, name, provider, currency, exchange, country, is_active, created_at, updated_at
+		FROM instruments
+		WHERE id = $1
+	`, id))
+}
+
+func (h Handler) getCategoryByID(ctx context.Context, id string) (domain.AssetCategory, error) {
+	var item domain.AssetCategory
+	err := h.db.QueryRow(ctx, `
+		SELECT id::text, name, description, target_allocation_percent::float8, color_key, sort_order, created_at
+		FROM asset_categories
+		WHERE id = $1
+	`, id).Scan(&item.ID, &item.Name, &item.Description, &item.TargetAllocationPercent, &item.ColorKey, &item.SortOrder, &item.CreatedAt)
+	return item, err
+}
+
+func (h Handler) getCashByID(ctx context.Context, id string) (domain.CashAccount, error) {
+	return scanCash(h.db.QueryRow(ctx, `
+		SELECT id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
+		FROM cash_accounts
+		WHERE id = $1
+	`, id))
+}
+
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanInstrument(row scanner) (domain.Instrument, error) {
+	var item domain.Instrument
+	err := row.Scan(&item.ID, &item.Type, &item.Ticker, &item.Name, &item.Provider, &item.Currency, &item.Exchange, &item.Country, &item.IsActive, &item.CreatedAt, &item.UpdatedAt)
+	return item, err
+}
+
+func scanCash(row scanner) (domain.CashAccount, error) {
+	var item domain.CashAccount
+	err := row.Scan(&item.ID, &item.AccountName, &item.AccountType, &item.Currency, &item.Balance, &item.Notes, &item.IsActive, &item.CreatedAt, &item.UpdatedAt)
+	return item, err
+}
+
+func (h Handler) writeAudit(r *http.Request, action string, entityType string, entityID string, before any, after any) {
+	user, _ := auth.UserFromContext(r.Context())
+	actorID := user.ID
+	_ = audit.Log(r.Context(), h.db, audit.Entry{
+		ActorUserID: &actorID,
+		Action:      action,
+		EntityType:  entityType,
+		EntityID:    &entityID,
+		Before:      before,
+		After:       after,
+		IPAddress:   auth.ClientIP(r),
+		UserAgent:   r.UserAgent(),
+	})
+}
+
+func validateInstrument(input instrumentInput) error {
+	validTypes := map[string]bool{"stock": true, "etf": true, "mutual_fund": true, "gold": true, "cash": true, "other": true}
+	if !validTypes[input.Type] {
+		return validation("Tipe instrumen tidak valid")
+	}
+	if strings.TrimSpace(input.Name) == "" {
+		return validation("Nama instrumen wajib diisi")
+	}
+	if strings.TrimSpace(input.Currency) == "" {
+		return validation("Currency wajib diisi")
+	}
+	return nil
+}
+
+func validateCash(input cashInput) error {
+	if strings.TrimSpace(input.AccountName) == "" {
+		return validation("Nama akun cash wajib diisi")
+	}
+	if strings.TrimSpace(input.Currency) == "" {
+		return validation("Currency wajib diisi")
+	}
+	return nil
+}
+
+func validation(message string) error {
+	return apperror.New(apperror.CodeValidation, message, http.StatusBadRequest)
+}
+
+func internalErr(err error, message string) error {
+	return apperror.Wrap(err, apperror.CodeInternal, message, http.StatusInternalServerError)
+}
+
+func mapGetErr(err error, notFoundMessage string) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return apperror.New(apperror.CodeNotFound, notFoundMessage, http.StatusNotFound)
+	}
+	return internalErr(err, "Gagal memuat data")
+}
+
+func pathUUID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	id := chi.URLParam(r, "id")
+	if _, err := uuid.Parse(id); err != nil {
+		response.Error(w, r, validation("ID tidak valid"))
+		return "", false
+	}
+	return id, true
+}
+
+func cleanPtr(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func defaultString(value string, fallback string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fallback
+	}
+	return value
+}
+
+func decodeJSON(bytes []byte) any {
+	if len(bytes) == 0 {
+		return nil
+	}
+	var value any
+	if err := json.Unmarshal(bytes, &value); err != nil {
+		return nil
+	}
+	return value
+}
