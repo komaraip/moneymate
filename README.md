@@ -122,13 +122,33 @@ Expected response:
 
 ## Database Migrations
 
-The initial migration is a placeholder only:
+Run migrations with Docker:
 
-```txt
-backend/db/migrations/001_initial_placeholder.sql
+```powershell
+$env:POSTGRES_PORT = "15432"
+docker compose up -d postgres
+docker compose run --rm migrate
+Remove-Item Env:POSTGRES_PORT
 ```
 
-Real schema migrations will be added in the next backend phase.
+## Seed Data
+
+Seed the local owner account after migrations:
+
+```powershell
+$env:POSTGRES_PORT = "15432"
+docker compose run --rm seed
+Remove-Item Env:POSTGRES_PORT
+```
+
+Safe local demo credentials from `.env.example`:
+
+```txt
+Email: owner@moneymate.local
+Password: changeme-local-demo
+```
+
+These are local placeholders only. Do not use them in production.
 
 ## Current Project Structure
 

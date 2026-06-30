@@ -7,14 +7,13 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
+	"moneymate/backend/internal/auth"
 	"moneymate/backend/internal/config"
 	httpmw "moneymate/backend/internal/httpapi/middleware"
 	"moneymate/backend/internal/httpapi/response"
 )
 
-func NewRouter(cfg config.Config, logger *slog.Logger) http.Handler {
-	router := http.NewServeMux()
-
+func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service) http.Handler {
 	chiRouter := httpmw.NewChiRouter()
 	chiRouter.Use(chimiddleware.RequestID)
 	chiRouter.Use(chimiddleware.RealIP)
@@ -36,8 +35,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger) http.Handler {
 			"environment": cfg.Environment,
 		}, nil)
 	})
+	chiRouter.Mount("/api/v1/auth", auth.NewHandler(authService, cfg).Routes())
 
-	router.Handle("/", chiRouter)
-
-	return router
+	return chiRouter
 }

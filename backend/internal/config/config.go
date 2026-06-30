@@ -2,7 +2,9 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -13,6 +15,14 @@ type Config struct {
 	Timezone           string
 	CORSAllowedOrigins []string
 	MigrationsDir      string
+	JWTAccessSecret    string
+	JWTRefreshSecret   string
+	CookieSecure       bool
+	AccessTokenTTL     time.Duration
+	RefreshTokenTTL    time.Duration
+	SeedOwnerEmail     string
+	SeedOwnerPassword  string
+	SeedOwnerName      string
 }
 
 func Load() Config {
@@ -24,6 +34,14 @@ func Load() Config {
 		Timezone:           getEnv("DEFAULT_TIMEZONE", "Asia/Jakarta"),
 		CORSAllowedOrigins: splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")),
 		MigrationsDir:      getEnv("MIGRATIONS_DIR", "db/migrations"),
+		JWTAccessSecret:    getEnv("JWT_ACCESS_SECRET", "change_me_local_access_secret"),
+		JWTRefreshSecret:   getEnv("JWT_REFRESH_SECRET", "change_me_local_refresh_secret"),
+		CookieSecure:       getBool("COOKIE_SECURE", false),
+		AccessTokenTTL:     15 * time.Minute,
+		RefreshTokenTTL:    30 * 24 * time.Hour,
+		SeedOwnerEmail:     getEnv("SEED_OWNER_EMAIL", "owner@moneymate.local"),
+		SeedOwnerPassword:  getEnv("SEED_OWNER_PASSWORD", "changeme-local-demo"),
+		SeedOwnerName:      getEnv("SEED_OWNER_NAME", "MoneyMate Owner"),
 	}
 }
 
@@ -34,6 +52,20 @@ func getEnv(key string, fallback string) string {
 	}
 
 	return value
+}
+
+func getBool(key string, fallback bool) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
 }
 
 func splitCSV(value string) []string {

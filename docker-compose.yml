@@ -28,6 +28,9 @@ services:
       BASE_CURRENCY: ${BASE_CURRENCY:-IDR}
       DEFAULT_TIMEZONE: ${DEFAULT_TIMEZONE:-Asia/Jakarta}
       MIGRATIONS_DIR: /app/db/migrations
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change_me_local_access_secret}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_me_local_refresh_secret}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
       - "${APP_PORT:-8080}:8080"
     depends_on:
@@ -43,6 +46,21 @@ services:
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgres://${POSTGRES_USER:-moneymate}:${POSTGRES_PASSWORD:-moneymate}@postgres:5432/${POSTGRES_DB:-moneymate}?sslmode=disable
       MIGRATIONS_DIR: /app/db/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  seed:
+    build:
+      context: ./backend
+    container_name: moneymate-seed
+    command: ["moneymate-seed"]
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: postgres://${POSTGRES_USER:-moneymate}:${POSTGRES_PASSWORD:-moneymate}@postgres:5432/${POSTGRES_DB:-moneymate}?sslmode=disable
+      SEED_OWNER_EMAIL: ${SEED_OWNER_EMAIL:-owner@moneymate.local}
+      SEED_OWNER_PASSWORD: ${SEED_OWNER_PASSWORD:-changeme-local-demo}
+      SEED_OWNER_NAME: ${SEED_OWNER_NAME:-MoneyMate Owner}
     depends_on:
       postgres:
         condition: service_healthy
