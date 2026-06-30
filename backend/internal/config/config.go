@@ -12,6 +12,7 @@ type Config struct {
 	BaseCurrency       string
 	Timezone           string
 	CORSAllowedOrigins []string
+	MigrationsDir      string
 }
 
 func Load() Config {
@@ -22,6 +23,7 @@ func Load() Config {
 		BaseCurrency:       getEnv("BASE_CURRENCY", "IDR"),
 		Timezone:           getEnv("DEFAULT_TIMEZONE", "Asia/Jakarta"),
 		CORSAllowedOrigins: splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")),
+		MigrationsDir:      getEnv("MIGRATIONS_DIR", "db/migrations"),
 	}
 }
 
