@@ -31,6 +31,7 @@ type PriceSnapshot struct {
 	PriceDate    time.Time `json:"price_date"`
 	Price        float64   `json:"price"`
 	Currency     string    `json:"currency"`
+	FXRateToIDR  *float64  `json:"fx_rate_to_idr,omitempty"`
 	Source       string    `json:"source"`
 	IsRealtime   bool      `json:"is_realtime"`
 	CreatedAt    time.Time `json:"created_at"`

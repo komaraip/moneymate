@@ -65,10 +65,11 @@ type transactionInput struct {
 }
 
 type manualPriceInput struct {
-	InstrumentID string  `json:"instrument_id"`
-	PriceDate    string  `json:"price_date"`
-	Price        float64 `json:"price"`
-	Currency     string  `json:"currency"`
+	InstrumentID string   `json:"instrument_id"`
+	PriceDate    string   `json:"price_date"`
+	Price        float64  `json:"price"`
+	Currency     string   `json:"currency"`
+	FXRateToIDR  *float64 `json:"fx_rate_to_idr"`
 }
 
 type bulkManualPriceInput struct {
@@ -219,7 +220,7 @@ func (h Handler) deleteTransaction(w http.ResponseWriter, r *http.Request) {
 func (h Handler) listPrices(w http.ResponseWriter, r *http.Request) {
 	instrumentID := strings.TrimSpace(r.URL.Query().Get("instrument_id"))
 	rows, err := h.db.Query(r.Context(), `
-		SELECT id::text, instrument_id::text, price_date, price::float8, currency, source, is_realtime, created_at
+		SELECT id::text, instrument_id::text, price_date, price::float8, currency, fx_rate_to_idr::float8, source, is_realtime, created_at
 		FROM price_snapshots
 		WHERE ($1 = '' OR instrument_id::text = $1)
 		ORDER BY price_date DESC, created_at DESC
@@ -317,16 +318,17 @@ func (h Handler) insertManualPrice(ctx context.Context, input manualPriceInput) 
 
 	var item domain.PriceSnapshot
 	err := h.db.QueryRow(ctx, `
-		INSERT INTO price_snapshots (instrument_id, price_date, price, currency, source, is_realtime)
-		VALUES ($1, $2, $3, $4, 'manual', FALSE)
+		INSERT INTO price_snapshots (instrument_id, price_date, price, currency, fx_rate_to_idr, source, is_realtime)
+		VALUES ($1, $2, $3, $4, $5, 'manual', FALSE)
 		ON CONFLICT (instrument_id, price_date, source) DO UPDATE
 		SET price = EXCLUDED.price,
 		    currency = EXCLUDED.currency,
+		    fx_rate_to_idr = EXCLUDED.fx_rate_to_idr,
 		    is_realtime = FALSE,
 		    created_at = now()
-		RETURNING id::text, instrument_id::text, price_date, price::float8, currency, source, is_realtime, created_at
-	`, input.InstrumentID, priceDate.Format("2006-01-02"), input.Price, strings.ToUpper(input.Currency)).Scan(
-		&item.ID, &item.InstrumentID, &item.PriceDate, &item.Price, &item.Currency, &item.Source, &item.IsRealtime, &item.CreatedAt,
+		RETURNING id::text, instrument_id::text, price_date, price::float8, currency, fx_rate_to_idr::float8, source, is_realtime, created_at
+	`, input.InstrumentID, priceDate.Format("2006-01-02"), input.Price, strings.ToUpper(input.Currency), input.FXRateToIDR).Scan(
+		&item.ID, &item.InstrumentID, &item.PriceDate, &item.Price, &item.Currency, &item.FXRateToIDR, &item.Source, &item.IsRealtime, &item.CreatedAt,
 	)
 	if err != nil {
 		return domain.PriceSnapshot{}, internalErr(err, "Gagal menyimpan harga manual")
@@ -438,7 +440,7 @@ func scanTransaction(row scanner) (domain.Transaction, error) {
 
 func scanPrice(row scanner) (domain.PriceSnapshot, error) {
 	var item domain.PriceSnapshot
-	err := row.Scan(&item.ID, &item.InstrumentID, &item.PriceDate, &item.Price, &item.Currency, &item.Source, &item.IsRealtime, &item.CreatedAt)
+	err := row.Scan(&item.ID, &item.InstrumentID, &item.PriceDate, &item.Price, &item.Currency, &item.FXRateToIDR, &item.Source, &item.IsRealtime, &item.CreatedAt)
 	return item, err
 }
 

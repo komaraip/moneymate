@@ -216,17 +216,18 @@ func seedTransactionsAndPrices(ctx context.Context, db *pgxpool.Pool) error {
 		name     string
 		price    float64
 		currency string
+		fxRate   *float64
 	}{
-		{"gold", nil, "Pegadaian", 2397000, "IDR"},
-		{"mutual_fund", nil, "Sucorinvest Stable Fund", 1452.08, "IDR"},
-		{"stock", ptr("BBRI"), "Bank Rakyat Indonesia", 2730, "IDR"},
-		{"etf", ptr("SPY"), "S&P 500 ETF", 735.72, "USD"},
+		{"gold", nil, "Pegadaian", 2397000, "IDR", nil},
+		{"mutual_fund", nil, "Sucorinvest Stable Fund", 1452.08, "IDR", nil},
+		{"stock", ptr("BBRI"), "Bank Rakyat Indonesia", 2730, "IDR", nil},
+		{"etf", ptr("SPY"), "S&P 500 ETF", 735.72, "USD", ptrFloat(18140.32482170762)},
 	}
 
 	for _, price := range prices {
 		if _, err := db.Exec(ctx, `
-			INSERT INTO price_snapshots (instrument_id, price_date, price, currency, source, is_realtime)
-			SELECT i.id, DATE '2026-06-30', $4, $5, 'manual', FALSE
+			INSERT INTO price_snapshots (instrument_id, price_date, price, currency, fx_rate_to_idr, source, is_realtime)
+			SELECT i.id, DATE '2026-06-30', $4, $5, $6, 'manual', FALSE
 			FROM instruments i
 			WHERE i.type = $1
 			  AND COALESCE(i.ticker, '') = COALESCE($2, '')
@@ -234,8 +235,9 @@ func seedTransactionsAndPrices(ctx context.Context, db *pgxpool.Pool) error {
 			ON CONFLICT (instrument_id, price_date, source) DO UPDATE
 			SET price = EXCLUDED.price,
 			    currency = EXCLUDED.currency,
+			    fx_rate_to_idr = EXCLUDED.fx_rate_to_idr,
 			    is_realtime = FALSE
-		`, price.kind, price.ticker, price.name, price.price, price.currency); err != nil {
+		`, price.kind, price.ticker, price.name, price.price, price.currency, price.fxRate); err != nil {
 			return err
 		}
 	}

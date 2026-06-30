@@ -26,6 +26,7 @@ type CalculatorPrice struct {
 	InstrumentID string
 	Price        float64
 	Currency     string
+	FXRateToIDR  *float64
 	Source       string
 	CreatedAt    time.Time
 }
@@ -161,11 +162,15 @@ func CalculateHoldings(transactions []CalculatorTransaction, prices map[string]C
 			createdAt := price.CreatedAt
 			priceUpdatedAt = &createdAt
 			if price.Currency != "IDR" {
-				if current.latestFXToIDR == nil {
+				fxRate := current.latestFXToIDR
+				if price.FXRateToIDR != nil {
+					fxRate = price.FXRateToIDR
+				}
+				if fxRate == nil {
 					warnings = append(warnings, "FX rate belum diisi")
 					currentPriceIDR = price.Price
 				} else {
-					currentPriceIDR = price.Price * *current.latestFXToIDR
+					currentPriceIDR = price.Price * *fxRate
 				}
 			} else {
 				currentPriceIDR = price.Price
@@ -235,7 +240,7 @@ func (s Service) loadTransactions(ctx context.Context) ([]CalculatorTransaction,
 func (s Service) loadLatestPrices(ctx context.Context) (map[string]CalculatorPrice, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT DISTINCT ON (instrument_id)
-		       instrument_id::text, price::float8, currency, source, created_at
+		       instrument_id::text, price::float8, currency, fx_rate_to_idr::float8, source, created_at
 		FROM price_snapshots
 		ORDER BY instrument_id, price_date DESC, created_at DESC
 	`)
@@ -247,7 +252,7 @@ func (s Service) loadLatestPrices(ctx context.Context) (map[string]CalculatorPri
 	items := map[string]CalculatorPrice{}
 	for rows.Next() {
 		var item CalculatorPrice
-		if err := rows.Scan(&item.InstrumentID, &item.Price, &item.Currency, &item.Source, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.InstrumentID, &item.Price, &item.Currency, &item.FXRateToIDR, &item.Source, &item.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan price: %w", err)
 		}
 		items[item.InstrumentID] = item
