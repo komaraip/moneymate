@@ -1,0 +1,25 @@
+.env
+.env.local
+*.log
+*.tsbuildinfo
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# Backend
+backend/bin/
+backend/tmp/
+backend/coverage.out
+
+# Docker / local data
+.docker/
+postgres-data/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
