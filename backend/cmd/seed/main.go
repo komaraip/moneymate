@@ -57,6 +57,10 @@ func main() {
 		logger.Error("seed master data failed", "error", err)
 		os.Exit(1)
 	}
+	if err := seedTransactionsAndPrices(ctx, db); err != nil {
+		logger.Error("seed transactions and prices failed", "error", err)
+		os.Exit(1)
+	}
 
 	logger.Info("seed owner complete", "email", email)
 }
@@ -155,5 +159,90 @@ func seedMasterData(ctx context.Context, db *pgxpool.Pool) error {
 }
 
 func ptr(value string) *string {
+	return &value
+}
+
+func seedTransactionsAndPrices(ctx context.Context, db *pgxpool.Pool) error {
+	transactions := []struct {
+		date     string
+		kind     string
+		ticker   *string
+		name     string
+		txType   string
+		price    float64
+		units    float64
+		netValue float64
+		currency string
+		fxRate   *float64
+	}{
+		{"2026-04-02", "stock", ptr("BBRI"), "Bank Rakyat Indonesia", "buy", 3340, 600, 2004000, "IDR", nil},
+		{"2026-04-13", "stock", ptr("BBRI"), "Bank Rakyat Indonesia", "buy", 3390, 400, 1356000, "IDR", nil},
+		{"2026-05-07", "stock", ptr("BBRI"), "Bank Rakyat Indonesia", "buy", 3260, 200, 652000, "IDR", nil},
+		{"2026-06-10", "etf", ptr("SPY"), "S&P 500 ETF", "buy", 733.33, 0.075204887, 989198.6274, "USD", ptrFloat(17933.4939)},
+		{"2026-06-10", "gold", nil, "Pegadaian", "buy", 2607000, 0.382, 995874, "IDR", nil},
+		{"2026-06-10", "stock", ptr("BBRI"), "Bank Rakyat Indonesia", "buy", 2880, 300, 864000, "IDR", nil},
+		{"2026-06-12", "mutual_fund", nil, "Sucorinvest Stable Fund", "buy", 1447.07, 3424.1605, 4954999.935, "IDR", nil},
+		{"2026-06-25", "etf", ptr("SPY"), "S&P 500 ETF", "buy", 735.72, 0.037418923, 493789.4827, "USD", ptrFloat(17935.0305)},
+		{"2026-06-25", "gold", nil, "Pegadaian", "buy", 2531000, 0.2964, 750188.4, "IDR", nil},
+		{"2026-06-26", "stock", ptr("BBRI"), "Bank Rakyat Indonesia", "buy", 2860, 200, 572000, "IDR", nil},
+		{"2026-06-29", "mutual_fund", nil, "Sucorinvest Stable Fund", "buy", 1451.24, 516.7994, 749999.9613, "IDR", nil},
+	}
+
+	for _, tx := range transactions {
+		if _, err := db.Exec(ctx, `
+			INSERT INTO transactions (instrument_id, transaction_date, type, price, units, gross_value, net_value, currency, fx_rate_to_idr, source)
+			SELECT i.id, $4::date, $5, $6, $7, $8, $8, $9, $10, 'manual_seed'
+			FROM instruments i
+			WHERE i.type = $1
+			  AND COALESCE(i.ticker, '') = COALESCE($2, '')
+			  AND i.name = $3
+			  AND NOT EXISTS (
+				  SELECT 1
+				  FROM transactions t
+				  WHERE t.instrument_id = i.id
+				    AND t.transaction_date = $4::date
+				    AND t.type = $5
+				    AND t.price = $6
+				    AND t.units = $7
+			  )
+		`, tx.kind, tx.ticker, tx.name, tx.date, tx.txType, tx.price, tx.units, tx.netValue, tx.currency, tx.fxRate); err != nil {
+			return err
+		}
+	}
+
+	prices := []struct {
+		kind     string
+		ticker   *string
+		name     string
+		price    float64
+		currency string
+	}{
+		{"gold", nil, "Pegadaian", 2397000, "IDR"},
+		{"mutual_fund", nil, "Sucorinvest Stable Fund", 1452.08, "IDR"},
+		{"stock", ptr("BBRI"), "Bank Rakyat Indonesia", 2730, "IDR"},
+		{"etf", ptr("SPY"), "S&P 500 ETF", 735.72, "USD"},
+	}
+
+	for _, price := range prices {
+		if _, err := db.Exec(ctx, `
+			INSERT INTO price_snapshots (instrument_id, price_date, price, currency, source, is_realtime)
+			SELECT i.id, DATE '2026-06-30', $4, $5, 'manual', FALSE
+			FROM instruments i
+			WHERE i.type = $1
+			  AND COALESCE(i.ticker, '') = COALESCE($2, '')
+			  AND i.name = $3
+			ON CONFLICT (instrument_id, price_date, source) DO UPDATE
+			SET price = EXCLUDED.price,
+			    currency = EXCLUDED.currency,
+			    is_realtime = FALSE
+		`, price.kind, price.ticker, price.name, price.price, price.currency); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func ptrFloat(value float64) *float64 {
 	return &value
 }

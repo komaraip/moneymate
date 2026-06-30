@@ -11,6 +11,7 @@ import (
 	"moneymate/backend/internal/config"
 	httpmw "moneymate/backend/internal/httpapi/middleware"
 	"moneymate/backend/internal/httpapi/response"
+	"moneymate/backend/internal/ledger"
 	"moneymate/backend/internal/masterdata"
 
 	"github.com/go-chi/chi/v5"
@@ -42,11 +43,14 @@ func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service
 	chiRouter.Mount("/api/v1/auth", auth.NewHandler(authService, cfg).Routes())
 
 	masterHandler := masterdata.NewHandler(db)
+	ledgerHandler := ledger.NewHandler(db)
 	protected := chi.NewRouter()
 	protected.Use(auth.RequireAuth(authService))
 	protected.Mount("/instruments", masterHandler.InstrumentRoutes())
 	protected.Mount("/asset-categories", masterHandler.CategoryRoutes())
 	protected.Mount("/cash-accounts", masterHandler.CashRoutes())
+	protected.Mount("/transactions", ledgerHandler.TransactionRoutes())
+	protected.Mount("/prices", ledgerHandler.PriceRoutes())
 	protected.Mount("/audit-logs", masterHandler.AuditRoutes())
 	chiRouter.Mount("/api/v1", protected)
 
