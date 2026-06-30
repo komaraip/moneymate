@@ -1,28 +1,43 @@
 package httpapi
 
 import (
-	"encoding/json"
+	"log/slog"
 	"net/http"
 
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+
 	"moneymate/backend/internal/config"
+	httpmw "moneymate/backend/internal/httpapi/middleware"
+	"moneymate/backend/internal/httpapi/response"
 )
 
-func NewRouter(cfg config.Config) http.Handler {
-	mux := http.NewServeMux()
+func NewRouter(cfg config.Config, logger *slog.Logger) http.Handler {
+	router := http.NewServeMux()
 
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{
+	chiRouter := httpmw.NewChiRouter()
+	chiRouter.Use(chimiddleware.RequestID)
+	chiRouter.Use(chimiddleware.RealIP)
+	chiRouter.Use(httpmw.Recoverer(logger))
+	chiRouter.Use(httpmw.RequestLogger(logger))
+	chiRouter.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   cfg.CORSAllowedOrigins,
+		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"},
+		ExposedHeaders:   []string{"X-Request-ID"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
+
+	chiRouter.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		response.JSON(w, r, http.StatusOK, map[string]string{
 			"status":      "ok",
 			"service":     "moneymate-backend",
 			"environment": cfg.Environment,
-		})
+		}, nil)
 	})
 
-	return mux
-}
+	router.Handle("/", chiRouter)
 
-func writeJSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
+	return router
 }

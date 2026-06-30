@@ -15,7 +15,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: httpapi.NewRouter(cfg),
+		Handler: httpapi.NewRouter(cfg, logger),
 	}
 
 	logger.Info("starting MoneyMate API", "addr", server.Addr, "env", cfg.Environment)
