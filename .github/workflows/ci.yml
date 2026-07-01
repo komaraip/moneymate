@@ -37,6 +37,10 @@ jobs:
       - name: Run backend tests
         run: docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace/backend golang:1.26-alpine go test ./...
 
+      - name: Run frontend component tests
+        run: npm run test:run
+        working-directory: frontend
+
       - name: Build frontend
         run: npm run build
         working-directory: frontend
@@ -49,3 +53,60 @@ jobs:
 
       - name: Check generated OpenAPI types
         run: npm run api:types:check
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Playwright tooling
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Start Docker services
+        run: |
+          docker compose build backend migrate seed frontend
+          docker compose up -d postgres
+          docker compose run --rm migrate
+          docker compose run --rm seed
+          docker compose up -d backend frontend
+
+      - name: Wait for local services
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:8080/healthz > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8080/healthz
+          for i in {1..60}; do
+            if curl -fsS http://localhost:5173 > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:5173 > /dev/null
+
+      - name: Run Playwright smoke tests
+        run: npm run e2e
+
+      - name: Docker logs
+        if: failure()
+        run: docker compose logs --no-color backend frontend postgres
+
+      - name: Stop Docker services
+        if: always()
+        run: docker compose down -v

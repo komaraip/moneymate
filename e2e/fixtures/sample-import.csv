@@ -1,0 +1,9 @@
+INVESMENT
+Instrument,Ticker,Name,Average Price,Current Price,Units,Total Cost,Current Value,Profit/Loss Value,Profit/Loss Percent,Currency
+Saham,BBRI,Bank Rakyat Indonesia,3343.33,2730,1700,5412000,4641000,-771000,-0.1425,IDR
+ORDERS
+Date,Instrument,Ticker,Type,Price,Units,Total Value,Currency
+2026-06-10,ETF,SPY,Buy,733.33,0.075204887,989198.6274,USD
+CASH
+Account,Balance,Currency
+Seabank E2E,151859,IDR

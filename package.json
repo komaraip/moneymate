@@ -6,9 +6,12 @@
   "scripts": {
     "api:lint": "redocly lint docs/api/openapi.yaml",
     "api:types": "openapi-typescript docs/api/openapi.yaml -o frontend/src/lib/generated/openapi.d.ts",
-    "api:types:check": "npm run api:types && git diff --exit-code -- frontend/src/lib/generated/openapi.d.ts"
+    "api:types:check": "npm run api:types && git diff --exit-code -- frontend/src/lib/generated/openapi.d.ts",
+    "frontend:test": "npm --prefix frontend run test:run",
+    "e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@redocly/cli": "^2.36.0",
     "openapi-typescript": "^7.13.0"
   }

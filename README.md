@@ -142,6 +142,13 @@ cd frontend
 npm run build
 ```
 
+Frontend component tests:
+
+```powershell
+cd frontend
+npm run test:run
+```
+
 Compose validation:
 
 ```powershell
@@ -196,15 +203,51 @@ npm run api:types:check
 
 Backend tests include a chi router drift check that compares documented OpenAPI paths and methods against the actual registered routes.
 
+## Playwright Smoke Tests
+
+The Playwright smoke suite expects the local Docker services to be running with migrated and seeded data.
+
+Install root Playwright tooling and browsers:
+
+```powershell
+npm install
+npx playwright install
+```
+
+Start local services:
+
+```powershell
+docker compose build backend migrate seed frontend
+docker compose up -d postgres
+docker compose run --rm migrate
+docker compose run --rm seed
+docker compose up -d backend frontend
+```
+
+Run the smoke suite:
+
+```powershell
+npm run e2e
+```
+
+Stop services after testing:
+
+```powershell
+docker compose down
+```
+
+The smoke suite logs in with the seeded owner account, recalculates holdings for `2026-06-30`, checks dashboard/portfolio pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, and previews a small CSV import fixture without confirming the import. Cash adjustment is not covered because no separate adjustment UI exists in the current MVP.
+
 ## CI Validation
 
 GitHub Actions runs:
 
 - Backend tests with Go 1.26 in Docker.
-- Frontend dependency install and `npm run build`.
+- Frontend dependency install, component tests, and `npm run build`.
 - `docker compose config`.
 - Redocly OpenAPI lint.
 - Generated OpenAPI type drift check.
+- Playwright smoke tests against Docker Compose services.
 
 ## Implemented MVP Foundation
 
@@ -220,7 +263,8 @@ GitHub Actions runs:
 - CSV/XLSX import preview and confirm flow for holdings, orders, cash, asset summary rows, manual prices, import job rows, and import audit log.
 - OpenAPI 3.1 contract for implemented MVP endpoints.
 - Generated frontend API declarations from the OpenAPI contract.
-- CI checks for backend tests, frontend build, Docker Compose config, OpenAPI lint, and generated type drift.
+- Frontend component tests and Playwright MVP smoke tests.
+- CI checks for backend tests, frontend tests/build, Docker Compose config, OpenAPI lint, generated type drift, and E2E smoke coverage.
 
 ## Known Limitations
 

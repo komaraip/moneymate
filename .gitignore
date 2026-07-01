@@ -3,6 +3,8 @@
 *.log
 *.tsbuildinfo
 node_modules/
+playwright-report/
+test-results/
 
 # Frontend
 frontend/node_modules/
