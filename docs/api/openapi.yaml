@@ -1816,6 +1816,7 @@ components:
           type: array
           items:
             type: string
+            enum: [holdings, orders, asset_summary, cash]
         rows:
           type: array
           items:
@@ -1858,6 +1859,7 @@ components:
               type: array
               items:
                 type: string
+                enum: [holdings, orders, asset_summary, cash]
             rows:
               type: array
               items:

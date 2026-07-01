@@ -131,8 +131,8 @@ go run ./cmd/seed
 Backend tests through Docker:
 
 ```powershell
-$backendPath = (Resolve-Path .\backend).Path
-docker run --rm -v "${backendPath}:/app" -w /app golang:1.26-alpine go test ./...
+$repoPath = (Resolve-Path .).Path
+docker run --rm -v "${repoPath}:/workspace" -w /workspace/backend golang:1.26-alpine go test ./...
 ```
 
 Frontend build:
@@ -158,6 +158,54 @@ docs/api/openapi.yaml
 
 It documents the implemented local REST API, response envelope format, JWT access token behavior, refresh cookie behavior, and current MVP limitations around manual/mock price data.
 
+Install root API contract tooling:
+
+```powershell
+npm install
+```
+
+Lint the OpenAPI contract:
+
+```powershell
+npx --yes @redocly/cli lint docs/api/openapi.yaml
+```
+
+Or use the repeatable root script after `npm install`:
+
+```powershell
+npm run api:lint
+```
+
+Regenerate frontend API types after editing `docs/api/openapi.yaml`:
+
+```powershell
+npm run api:types
+```
+
+Generated declarations are committed at:
+
+```txt
+frontend/src/lib/generated/openapi.d.ts
+```
+
+Check generated type drift before committing:
+
+```powershell
+npm run api:types:check
+```
+
+Backend tests include a chi router drift check that compares documented OpenAPI paths and methods against the actual registered routes.
+
+## CI Validation
+
+GitHub Actions runs:
+
+- Backend tests with Go 1.26 in Docker.
+- Frontend dependency install and `npm run build`.
+- `docker compose config`.
+- Redocly OpenAPI lint.
+- Generated OpenAPI type drift check.
+
 ## Implemented MVP Foundation
 
 - Auth login, refresh, logout, and `/me`.
@@ -171,6 +219,8 @@ It documents the implemented local REST API, response envelope format, JWT acces
 - React protected dashboard shell and MVP screens.
 - CSV/XLSX import preview and confirm flow for holdings, orders, cash, asset summary rows, manual prices, import job rows, and import audit log.
 - OpenAPI 3.1 contract for implemented MVP endpoints.
+- Generated frontend API declarations from the OpenAPI contract.
+- CI checks for backend tests, frontend build, Docker Compose config, OpenAPI lint, and generated type drift.
 
 ## Known Limitations
 
@@ -188,4 +238,4 @@ Recommended next phase:
 1. Add frontend component tests and Playwright smoke tests.
 2. Add report/export endpoints.
 3. Consider automatic holdings recalculation after confirmed imports.
-4. Add OpenAPI publishing or generated API client workflow.
+4. Consider a typed API client wrapper generated from the OpenAPI paths.

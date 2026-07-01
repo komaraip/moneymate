@@ -304,7 +304,7 @@ function openEdit(
     currency: item.currency,
     balance: String(item.balance ?? ""),
     notes: item.notes ?? "",
-    is_active: item.is_active,
+    is_active: item.is_active ?? true,
   });
   setFormErrors([]);
   setFormOpen(true);

@@ -2,6 +2,7 @@
 .env.local
 *.log
 *.tsbuildinfo
+node_modules/
 
 # Frontend
 frontend/node_modules/

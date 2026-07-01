@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Install API contract tooling
+        run: npm ci
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Run backend tests
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace/backend golang:1.26-alpine go test ./...
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Validate Docker Compose config
+        run: docker compose config
+
+      - name: Lint OpenAPI contract
+        run: npm run api:lint
+
+      - name: Check generated OpenAPI types
+        run: npm run api:types:check

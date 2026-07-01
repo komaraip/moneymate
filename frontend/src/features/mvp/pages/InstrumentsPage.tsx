@@ -332,7 +332,7 @@ function openEdit(
     provider: item.provider ?? "",
     currency: item.currency,
     category_id: item.category_ids?.[0] ?? "",
-    is_active: item.is_active,
+    is_active: item.is_active ?? true,
   });
   setFormErrors([]);
   setFormOpen(true);

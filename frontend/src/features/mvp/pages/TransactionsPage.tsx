@@ -108,7 +108,7 @@ export function TransactionsPage() {
             <td className="px-4 py-3 capitalize">{item.type}</td>
             <td className="px-4 py-3 text-right">{formatCurrency(item.price, item.currency)}</td>
             <td className="px-4 py-3 text-right">{formatNumber(item.units)}</td>
-            <td className="px-4 py-3 text-right">{formatCurrency(item.net_value, item.currency)}</td>
+            <td className="px-4 py-3 text-right">{formatCurrency(item.net_value ?? 0, item.currency)}</td>
             <td className="px-4 py-3">
               <div className="flex justify-end gap-2">
                 <button
