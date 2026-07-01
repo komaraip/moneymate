@@ -148,6 +148,16 @@ Compose validation:
 docker compose config
 ```
 
+## API Documentation
+
+The MVP OpenAPI 3.1 contract is available at:
+
+```txt
+docs/api/openapi.yaml
+```
+
+It documents the implemented local REST API, response envelope format, JWT access token behavior, refresh cookie behavior, and current MVP limitations around manual/mock price data.
+
 ## Implemented MVP Foundation
 
 - Auth login, refresh, logout, and `/me`.
@@ -160,6 +170,7 @@ docker compose config
 - Dashboard overview, asset allocation, performance, and alerts APIs.
 - React protected dashboard shell and MVP screens.
 - CSV/XLSX import preview and confirm flow for holdings, orders, cash, asset summary rows, manual prices, import job rows, and import audit log.
+- OpenAPI 3.1 contract for implemented MVP endpoints.
 
 ## Known Limitations
 
@@ -174,8 +185,7 @@ docker compose config
 
 Recommended next phase:
 
-1. Expand frontend edit/delete flows for transactions, instruments, and cash accounts.
-2. Add OpenAPI documentation.
-3. Add frontend component tests and Playwright smoke tests.
-4. Add report/export endpoints.
-5. Consider automatic holdings recalculation after confirmed imports.
+1. Add frontend component tests and Playwright smoke tests.
+2. Add report/export endpoints.
+3. Consider automatic holdings recalculation after confirmed imports.
+4. Add OpenAPI publishing or generated API client workflow.

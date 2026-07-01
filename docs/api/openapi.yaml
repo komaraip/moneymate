@@ -1,0 +1,1950 @@
+openapi: 3.1.0
+info:
+  title: MoneyMate Admin Dashboard API
+  version: 0.1.0
+  description: |
+    MVP REST API contract for MoneyMate Admin Dashboard.
+
+    All API responses use the same envelope shape:
+    `{ "success": true, "data": {}, "meta": {}, "request_id": "req_xxx" }`.
+
+    Error responses use:
+    `{ "success": false, "error": { "code": "...", "message": "...", "details": [] }, "request_id": "req_xxx" }`.
+
+    Authentication uses short-lived JWT access tokens in the `Authorization: Bearer <token>` header.
+    Login also sets an HTTP-only `moneymate_refresh_token` cookie scoped to `/api/v1/auth`.
+    Refresh token values are not returned in JSON responses.
+
+    Financial safety: all market prices in the MVP are manual/mock. The API does not claim real-time prices and does not provide buy/sell recommendations.
+servers:
+  - url: http://localhost:8080
+    description: Local backend
+tags:
+  - name: Health
+  - name: Auth
+  - name: Dashboard
+  - name: Holdings
+  - name: Prices
+  - name: Instruments
+  - name: Asset Categories
+  - name: Transactions
+  - name: Cash Accounts
+  - name: Imports
+  - name: Audit Logs
+
+paths:
+  /healthz:
+    get:
+      tags: [Health]
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Backend health status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthEnvelope"
+              examples:
+                ok:
+                  value:
+                    success: true
+                    data:
+                      status: ok
+                      service: moneymate-backend
+                      environment: development
+                    request_id: req_123
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with owner/admin/viewer credentials
+      security: []
+      description: Returns a JWT access token and sets the HTTP-only refresh cookie.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            examples:
+              owner:
+                value:
+                  email: owner@moneymate.local
+                  password: changeme-local-demo
+      responses:
+        "200":
+          description: Login success. Also sets `moneymate_refresh_token`.
+          headers:
+            Set-Cookie:
+              description: HTTP-only refresh cookie scoped to `/api/v1/auth`.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthEnvelope"
+              examples:
+                owner:
+                  value:
+                    success: true
+                    data:
+                      access_token: eyJhbGciOi...
+                      access_expires_at: "2026-07-01T10:15:00+07:00"
+                      user:
+                        id: 11111111-1111-1111-1111-111111111111
+                        email: owner@moneymate.local
+                        full_name: MoneyMate Owner
+                        role: owner
+                        is_active: true
+                        created_at: "2026-06-30T08:00:00+07:00"
+                        updated_at: "2026-06-30T08:00:00+07:00"
+                    request_id: req_123
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token using refresh cookie
+      security:
+        - refreshCookie: []
+      description: Reads `moneymate_refresh_token` from an HTTP-only cookie and returns a new JWT access token.
+      responses:
+        "200":
+          description: New access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthEnvelope"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke refresh session and clear refresh cookie
+      security:
+        - refreshCookie: []
+      responses:
+        "200":
+          description: Logout result.
+          headers:
+            Set-Cookie:
+              description: Expired `moneymate_refresh_token` cookie.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusEnvelope"
+              examples:
+                loggedOut:
+                  value:
+                    success: true
+                    data:
+                      status: logged_out
+                    request_id: req_123
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserEnvelope"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/dashboard/overview:
+    get:
+      tags: [Dashboard]
+      summary: Dashboard overview totals
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Net worth, portfolio, cash, and P/L summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardOverviewEnvelope"
+              examples:
+                seeded:
+                  value:
+                    success: true
+                    data:
+                      base_currency: IDR
+                      total_net_worth: 13648703.72
+                      total_portfolio_value: 13492813.72
+                      total_cash: 155890
+                      total_cost: 14382050.41
+                      profit_loss_value: -889236.69
+                      profit_loss_percent: -0.0618
+                      best_performer:
+                        ticker: SPY
+                        name: S&P 500 ETF
+                        profit_loss_percent: 0.0135
+                      worst_performer:
+                        ticker: BBRI
+                        name: Bank Rakyat Indonesia
+                        profit_loss_percent: -0.1425
+                      last_updated_at: "2026-06-30T15:01:57+07:00"
+                      price_disclaimer: Data bukan real-time. Harga berasal dari input manual/mock.
+                      financial_disclaimer: Informasi ini bersifat pencatatan dan analisis, bukan nasihat investasi.
+                    request_id: req_123
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/dashboard/asset-allocation:
+    get:
+      tags: [Dashboard]
+      summary: Asset allocation by category
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Asset allocation rows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetAllocationListEnvelope"
+              examples:
+                seeded:
+                  value:
+                    success: true
+                    data:
+                      - asset: Reksadana
+                        value: 5722589.05
+                        percent: 0.4193
+                      - asset: Saham
+                        value: 4641000
+                        percent: 0.34
+                      - asset: Emas
+                        value: 1626124.8
+                        percent: 0.1191
+                      - asset: ETF
+                        value: 1503099.87
+                        percent: 0.1101
+                      - asset: Cash
+                        value: 155890
+                        percent: 0.0114
+                    request_id: req_123
+
+  /api/v1/dashboard/performance:
+    get:
+      tags: [Dashboard]
+      summary: Portfolio performance rows
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Performance rows with disclaimer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PerformanceEnvelope"
+
+  /api/v1/dashboard/alerts:
+    get:
+      tags: [Dashboard]
+      summary: Dashboard data quality and risk alerts
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Alert rows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertListEnvelope"
+
+  /api/v1/holdings:
+    get:
+      tags: [Holdings]
+      summary: List holdings snapshot rows
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Snapshot date. Defaults to the latest snapshot.
+      responses:
+        "200":
+          description: Holdings for the requested or latest snapshot date.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HoldingListEnvelope"
+              examples:
+                seeded:
+                  value:
+                    success: true
+                    data:
+                      - id: 22222222-2222-2222-2222-222222222222
+                        snapshot_date: "2026-06-30T00:00:00Z"
+                        instrument_id: 33333333-3333-3333-3333-333333333333
+                        instrument_type: stock
+                        ticker: BBRI
+                        name: Bank Rakyat Indonesia
+                        average_price: 3183.52941176
+                        current_price: 2730
+                        units: 1700
+                        total_cost: 5412000
+                        current_value: 4641000
+                        profit_loss_value: -771000
+                        profit_loss_percent: -0.1424612
+                        currency: IDR
+                        price_source: manual
+                        price_updated_at: "2026-06-30T15:01:57+07:00"
+                        warnings: []
+                        created_at: "2026-06-30T15:01:57+07:00"
+                    request_id: req_123
+
+  /api/v1/holdings/recalculate:
+    post:
+      tags: [Holdings]
+      summary: Recalculate holdings snapshots from transactions and manual prices
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role.
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Snapshot date. Defaults to current server date.
+      responses:
+        "200":
+          description: Recalculation summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecalculateEnvelope"
+              examples:
+                seeded:
+                  value:
+                    success: true
+                    data:
+                      snapshot_date: "2026-06-30"
+                      count: 4
+                      message: Holdings berhasil dihitung ulang
+                    request_id: req_123
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+
+  /api/v1/prices:
+    get:
+      tags: [Prices]
+      summary: List manual price snapshots
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: instrument_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Price snapshots with MVP disclaimer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceListEnvelope"
+
+  /api/v1/prices/manual:
+    post:
+      tags: [Prices]
+      summary: Create or update a manual price snapshot
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role. Prices are manual/mock and not real-time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualPriceInput"
+            examples:
+              spy:
+                value:
+                  instrument_id: 33333333-3333-3333-3333-333333333333
+                  price_date: "2026-06-30"
+                  price: 735.72
+                  currency: USD
+                  fx_rate_to_idr: 18140.32482171
+      responses:
+        "201":
+          description: Manual price saved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManualPriceEnvelope"
+
+  /api/v1/prices/bulk-manual:
+    post:
+      tags: [Prices]
+      summary: Create or update multiple manual price snapshots
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prices]
+              properties:
+                prices:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ManualPriceInput"
+      responses:
+        "201":
+          description: Manual prices saved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkManualPriceEnvelope"
+
+  /api/v1/instruments:
+    get:
+      tags: [Instruments]
+      summary: List instruments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Instruments.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstrumentListEnvelope"
+    post:
+      tags: [Instruments]
+      summary: Create instrument
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstrumentInput"
+      responses:
+        "201":
+          description: Instrument created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstrumentEnvelope"
+
+  /api/v1/instruments/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      tags: [Instruments]
+      summary: Get instrument by ID
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Instrument.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstrumentEnvelope"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+    put:
+      tags: [Instruments]
+      summary: Update instrument
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstrumentInput"
+      responses:
+        "200":
+          description: Instrument updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstrumentEnvelope"
+    delete:
+      tags: [Instruments]
+      summary: Soft-delete instrument
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role. Current implementation sets `is_active=false`; it does not delete historical transactions.
+      responses:
+        "200":
+          description: Instrument deactivated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusEnvelope"
+
+  /api/v1/asset-categories:
+    get:
+      tags: [Asset Categories]
+      summary: List asset categories
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Asset categories.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetCategoryListEnvelope"
+    post:
+      tags: [Asset Categories]
+      summary: Create asset category
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetCategoryInput"
+      responses:
+        "201":
+          description: Asset category created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetCategoryEnvelope"
+
+  /api/v1/asset-categories/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    put:
+      tags: [Asset Categories]
+      summary: Update asset category
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetCategoryInput"
+      responses:
+        "200":
+          description: Asset category updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetCategoryEnvelope"
+    delete:
+      tags: [Asset Categories]
+      summary: Delete asset category
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role.
+      responses:
+        "200":
+          description: Asset category deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusEnvelope"
+
+  /api/v1/transactions:
+    get:
+      tags: [Transactions]
+      summary: List transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [buy, sell, dividend, fee, adjustment]
+        - name: instrument_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Transactions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionListEnvelope"
+              examples:
+                seeded:
+                  value:
+                    success: true
+                    data:
+                      - id: 44444444-4444-4444-4444-444444444444
+                        instrument_id: 33333333-3333-3333-3333-333333333333
+                        instrument_name: Bank Rakyat Indonesia
+                        instrument_ticker: BBRI
+                        transaction_date: "2026-04-02"
+                        type: buy
+                        price: 3340
+                        units: 600
+                        gross_value: 2004000
+                        fees: 0
+                        tax: 0
+                        net_value: 2004000
+                        currency: IDR
+                        source: manual_seed
+                        created_at: "2026-06-30T08:00:00+07:00"
+                        updated_at: "2026-06-30T08:00:00+07:00"
+                    request_id: req_123
+    post:
+      tags: [Transactions]
+      summary: Create transaction
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role. Non-IDR transactions require `fx_rate_to_idr`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionInput"
+      responses:
+        "201":
+          description: Transaction created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionEnvelope"
+
+  /api/v1/transactions/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      tags: [Transactions]
+      summary: Get transaction by ID
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Transaction.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionEnvelope"
+    put:
+      tags: [Transactions]
+      summary: Update transaction
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionInput"
+      responses:
+        "200":
+          description: Transaction updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionEnvelope"
+    delete:
+      tags: [Transactions]
+      summary: Delete transaction
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role.
+      responses:
+        "200":
+          description: Transaction deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusEnvelope"
+
+  /api/v1/cash-accounts:
+    get:
+      tags: [Cash Accounts]
+      summary: List cash accounts
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Cash accounts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashAccountListEnvelope"
+    post:
+      tags: [Cash Accounts]
+      summary: Create cash account
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role. Balances are manual in the MVP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CashAccountInput"
+            examples:
+              seabank:
+                value:
+                  account_name: Seabank
+                  account_type: bank
+                  currency: IDR
+                  balance: 151859
+                  is_active: true
+      responses:
+        "201":
+          description: Cash account created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashAccountEnvelope"
+
+  /api/v1/cash-accounts/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      tags: [Cash Accounts]
+      summary: Get cash account by ID
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Cash account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashAccountEnvelope"
+    put:
+      tags: [Cash Accounts]
+      summary: Update cash account
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CashAccountInput"
+      responses:
+        "200":
+          description: Cash account updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashAccountEnvelope"
+    delete:
+      tags: [Cash Accounts]
+      summary: Soft-delete cash account
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role. Current implementation sets `is_active=false`.
+      responses:
+        "200":
+          description: Cash account deactivated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusEnvelope"
+
+  /api/v1/imports/upload:
+    post:
+      tags: [Imports]
+      summary: Upload CSV/XLSX and create import preview
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role. Stores import job rows but does not write portfolio data until confirm.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or XLSX file.
+      responses:
+        "201":
+          description: Import preview result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportPreviewEnvelope"
+              examples:
+                csv:
+                  value:
+                    success: true
+                    data:
+                      job_id: 55555555-5555-5555-5555-555555555555
+                      source_type: csv
+                      original_filename: assets.csv
+                      detected_sections: [holdings, orders, asset_summary, cash]
+                      summary:
+                        total_rows: 5
+                        valid_rows: 5
+                        invalid_rows: 0
+                      rows:
+                        - id: 66666666-6666-6666-6666-666666666666
+                          section: orders
+                          row_number: 5
+                          status: valid
+                          raw:
+                            ticker: SPY
+                            type: Buy
+                          normalized:
+                            ticker: SPY
+                            type: buy
+                            price: 733.33
+                            units: 0.075204887
+                            currency: USD
+                            fx_rate_to_idr: 17936.5119
+                          errors: []
+                    request_id: req_123
+
+  /api/v1/imports/jobs:
+    get:
+      tags: [Imports]
+      summary: List import jobs
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Import job history.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportJobListEnvelope"
+
+  /api/v1/imports/jobs/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      tags: [Imports]
+      summary: Get import job detail with rows
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Import job detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportJobDetailEnvelope"
+
+  /api/v1/imports/jobs/{id}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      tags: [Imports]
+      summary: Confirm import job and write valid rows
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role. Writes instruments, transactions, cash accounts, manual prices, import row statuses, and audit log where applicable.
+      responses:
+        "200":
+          description: Import confirm result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportConfirmEnvelope"
+
+  /api/v1/audit-logs:
+    get:
+      tags: [Audit Logs]
+      summary: List audit logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: entity_type
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Latest audit logs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogListEnvelope"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived JWT access token from `/api/v1/auth/login` or `/api/v1/auth/refresh`.
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: moneymate_refresh_token
+      description: HTTP-only refresh cookie set by `/api/v1/auth/login`, scoped to `/api/v1/auth`.
+
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    ValidationError:
+      description: Validation error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            validation:
+              value:
+                success: false
+                error:
+                  code: VALIDATION_ERROR
+                  message: Input tidak valid
+                  details: []
+                request_id: req_123
+    UnauthorizedError:
+      description: Missing or invalid credentials.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            unauthorized:
+              value:
+                success: false
+                error:
+                  code: UNAUTHORIZED
+                  message: Access token tidak valid
+                request_id: req_123
+    ForbiddenError:
+      description: Authenticated user does not have permission for the action.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            forbidden:
+              value:
+                success: false
+                error:
+                  code: FORBIDDEN
+                  message: Kamu tidak memiliki akses untuk aksi ini
+                request_id: req_123
+    NotFoundError:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [success, error, request_id]
+      properties:
+        success:
+          type: boolean
+          const: false
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+        request_id:
+          type: string
+
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [INTERNAL_ERROR, VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT]
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+
+    HealthEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [status, service, environment]
+              properties:
+                status:
+                  type: string
+                service:
+                  type: string
+                environment:
+                  type: string
+
+    SuccessEnvelope:
+      type: object
+      required: [success, request_id]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          description: Endpoint-specific response data.
+        meta:
+          description: Optional endpoint metadata.
+        request_id:
+          type: string
+
+    StatusEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [access_token, access_expires_at, user]
+              properties:
+                access_token:
+                  type: string
+                access_expires_at:
+                  type: string
+                  format: date-time
+                user:
+                  $ref: "#/components/schemas/User"
+
+    UserEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      required: [id, email, full_name, role, is_active, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, viewer]
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    InstrumentInput:
+      type: object
+      required: [type, name, currency]
+      properties:
+        type:
+          type: string
+          enum: [stock, etf, mutual_fund, gold, cash, other]
+        ticker:
+          type:
+            - string
+            - "null"
+        name:
+          type: string
+        provider:
+          type:
+            - string
+            - "null"
+        currency:
+          type: string
+          example: IDR
+        exchange:
+          type:
+            - string
+            - "null"
+        country:
+          type:
+            - string
+            - "null"
+        category_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        is_active:
+          type: boolean
+
+    Instrument:
+      allOf:
+        - $ref: "#/components/schemas/InstrumentInput"
+        - type: object
+          required: [id, is_active, created_at, updated_at]
+          properties:
+            id:
+              type: string
+              format: uuid
+            category_names:
+              type: array
+              items:
+                type: string
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    InstrumentEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Instrument"
+
+    InstrumentListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Instrument"
+
+    AssetCategoryInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - "null"
+        target_allocation_percent:
+          type:
+            - number
+            - "null"
+        color_key:
+          type:
+            - string
+            - "null"
+        sort_order:
+          type: integer
+
+    AssetCategory:
+      allOf:
+        - $ref: "#/components/schemas/AssetCategoryInput"
+        - type: object
+          required: [id, sort_order, created_at]
+          properties:
+            id:
+              type: string
+              format: uuid
+            created_at:
+              type: string
+              format: date-time
+
+    AssetCategoryEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AssetCategory"
+
+    AssetCategoryListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AssetCategory"
+
+    TransactionInput:
+      type: object
+      required: [transaction_date, type, price, units, currency]
+      properties:
+        instrument_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        transaction_date:
+          type: string
+          format: date
+        type:
+          type: string
+          enum: [buy, sell, dividend, fee, adjustment]
+        price:
+          type: number
+        units:
+          type: number
+        gross_value:
+          type:
+            - number
+            - "null"
+        fees:
+          type: number
+          default: 0
+        tax:
+          type: number
+          default: 0
+        net_value:
+          type:
+            - number
+            - "null"
+        currency:
+          type: string
+        fx_rate_to_idr:
+          type:
+            - number
+            - "null"
+        notes:
+          type:
+            - string
+            - "null"
+
+    Transaction:
+      allOf:
+        - $ref: "#/components/schemas/TransactionInput"
+        - type: object
+          required: [id, gross_value, fees, tax, net_value, source, created_at, updated_at]
+          properties:
+            id:
+              type: string
+              format: uuid
+            instrument_name:
+              type:
+                - string
+                - "null"
+            instrument_ticker:
+              type:
+                - string
+                - "null"
+            source:
+              type: string
+            created_by:
+              type:
+                - string
+                - "null"
+              format: uuid
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+            warnings:
+              type: array
+              items:
+                type: string
+
+    TransactionEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Transaction"
+
+    TransactionListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Transaction"
+
+    CashAccountInput:
+      type: object
+      required: [account_name, currency, balance]
+      properties:
+        account_name:
+          type: string
+        account_type:
+          type: string
+          default: bank
+        currency:
+          type: string
+        balance:
+          type: number
+        notes:
+          type:
+            - string
+            - "null"
+        is_active:
+          type: boolean
+
+    CashAccount:
+      allOf:
+        - $ref: "#/components/schemas/CashAccountInput"
+        - type: object
+          required: [id, is_active, created_at, updated_at]
+          properties:
+            id:
+              type: string
+              format: uuid
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    CashAdjustment:
+      type: object
+      description: Database-backed schema for cash adjustment rows. No cash adjustment API route is implemented in the current MVP.
+      required: [id, cash_account_id, amount, balance_after, currency, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        cash_account_id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        balance_after:
+          type: number
+        currency:
+          type: string
+        notes:
+          type:
+            - string
+            - "null"
+        created_by:
+          type:
+            - string
+            - "null"
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    CashAccountEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/CashAccount"
+
+    CashAccountListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/CashAccount"
+
+    PriceSnapshot:
+      type: object
+      required: [id, instrument_id, price_date, price, currency, source, is_realtime, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        instrument_id:
+          type: string
+          format: uuid
+        price_date:
+          type: string
+          format: date-time
+        price:
+          type: number
+        currency:
+          type: string
+        fx_rate_to_idr:
+          type:
+            - number
+            - "null"
+        source:
+          type: string
+          example: manual
+        is_realtime:
+          type: boolean
+          example: false
+        created_at:
+          type: string
+          format: date-time
+
+    ManualPriceInput:
+      type: object
+      required: [instrument_id, price, currency]
+      properties:
+        instrument_id:
+          type: string
+          format: uuid
+        price_date:
+          type: string
+          format: date
+        price:
+          type: number
+        currency:
+          type: string
+        fx_rate_to_idr:
+          type:
+            - number
+            - "null"
+
+    PriceListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items, price_disclaimer]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/PriceSnapshot"
+                price_disclaimer:
+                  type: string
+
+    ManualPriceEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [price, price_disclaimer]
+              properties:
+                price:
+                  $ref: "#/components/schemas/PriceSnapshot"
+                price_disclaimer:
+                  type: string
+
+    BulkManualPriceEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items, price_disclaimer]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/PriceSnapshot"
+                price_disclaimer:
+                  type: string
+
+    Holding:
+      type: object
+      required: [id, snapshot_date, instrument_id, instrument_type, name, average_price, current_price, units, total_cost, current_value, profit_loss_value, profit_loss_percent, currency, price_source, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        snapshot_date:
+          type: string
+          format: date-time
+        instrument_id:
+          type: string
+          format: uuid
+        instrument_type:
+          type: string
+        ticker:
+          type:
+            - string
+            - "null"
+        name:
+          type: string
+        average_price:
+          type: number
+        current_price:
+          type: number
+        units:
+          type: number
+        total_cost:
+          type: number
+        current_value:
+          type: number
+        profit_loss_value:
+          type: number
+        profit_loss_percent:
+          type: number
+        currency:
+          type: string
+        price_source:
+          type: string
+        price_updated_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        warnings:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+
+    HoldingListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Holding"
+
+    RecalculateEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [snapshot_date, count, message]
+              properties:
+                snapshot_date:
+                  type: string
+                  format: date
+                count:
+                  type: integer
+                message:
+                  type: string
+
+    Performer:
+      type: object
+      properties:
+        ticker:
+          type:
+            - string
+            - "null"
+        name:
+          type: string
+        profit_loss_percent:
+          type: number
+
+    DashboardOverview:
+      type: object
+      required: [base_currency, total_net_worth, total_portfolio_value, total_cash, total_cost, profit_loss_value, profit_loss_percent, price_disclaimer, financial_disclaimer]
+      properties:
+        base_currency:
+          type: string
+        total_net_worth:
+          type: number
+        total_portfolio_value:
+          type: number
+        total_cash:
+          type: number
+        total_cost:
+          type: number
+        profit_loss_value:
+          type: number
+        profit_loss_percent:
+          type: number
+        best_performer:
+          oneOf:
+            - $ref: "#/components/schemas/Performer"
+            - type: "null"
+        worst_performer:
+          oneOf:
+            - $ref: "#/components/schemas/Performer"
+            - type: "null"
+        last_updated_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        price_disclaimer:
+          type: string
+        financial_disclaimer:
+          type: string
+
+    DashboardOverviewEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/DashboardOverview"
+
+    AssetAllocation:
+      type: object
+      required: [asset, value, percent]
+      properties:
+        asset:
+          type: string
+        value:
+          type: number
+        percent:
+          type: number
+
+    AssetAllocationListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AssetAllocation"
+
+    PerformanceEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items, disclaimer]
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      ticker:
+                        type:
+                          - string
+                          - "null"
+                      name:
+                        type: string
+                      total_cost:
+                        type: number
+                      current_value:
+                        type: number
+                      profit_loss_value:
+                        type: number
+                      profit_loss_percent:
+                        type: number
+                disclaimer:
+                  type: string
+
+    Alert:
+      type: object
+      required: [code, title, message, severity]
+      properties:
+        code:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, error]
+
+    AlertListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Alert"
+
+    ImportJob:
+      type: object
+      required: [id, source_type, status, total_rows, success_rows, failed_rows, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        source_type:
+          type: string
+          enum: [csv, xlsx, google_sheet, manual_seed]
+        original_filename:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum: [pending, processing, completed, failed, partial]
+        total_rows:
+          type: integer
+        success_rows:
+          type: integer
+        failed_rows:
+          type: integer
+        error_summary:
+          type:
+            - string
+            - "null"
+        created_by:
+          type:
+            - string
+            - "null"
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+
+    ImportPreviewRow:
+      type: object
+      required: [section, row_number, status, raw, normalized, errors]
+      properties:
+        id:
+          type: string
+          format: uuid
+        section:
+          type: string
+          enum: [holdings, orders, asset_summary, cash]
+        row_number:
+          type: integer
+        status:
+          type: string
+          enum: [valid, invalid, imported, skipped]
+        raw:
+          type: object
+          additionalProperties:
+            type: string
+        normalized:
+          type: object
+          additionalProperties: true
+        errors:
+          type: array
+          items:
+            type: string
+
+    ImportPreview:
+      type: object
+      required: [job_id, source_type, original_filename, detected_sections, rows, summary]
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        source_type:
+          type: string
+          enum: [csv, xlsx]
+        original_filename:
+          type: string
+        detected_sections:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportPreviewRow"
+        summary:
+          type: object
+          required: [total_rows, valid_rows, invalid_rows]
+          properties:
+            total_rows:
+              type: integer
+            valid_rows:
+              type: integer
+            invalid_rows:
+              type: integer
+
+    ImportPreviewEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/ImportPreview"
+
+    ImportJobListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ImportJob"
+
+    ImportJobDetail:
+      allOf:
+        - $ref: "#/components/schemas/ImportJob"
+        - type: object
+          properties:
+            detected_sections:
+              type: array
+              items:
+                type: string
+            rows:
+              type: array
+              items:
+                $ref: "#/components/schemas/ImportPreviewRow"
+
+    ImportJobDetailEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/ImportJobDetail"
+
+    ImportConfirmEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [job_id, status, total_rows, imported_rows, skipped_rows, failed_rows, message]
+              properties:
+                job_id:
+                  type: string
+                  format: uuid
+                status:
+                  type: string
+                total_rows:
+                  type: integer
+                imported_rows:
+                  type: integer
+                skipped_rows:
+                  type: integer
+                failed_rows:
+                  type: integer
+                message:
+                  type: string
+
+    AuditLog:
+      type: object
+      required: [id, action, entity_type, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        actor_user_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        action:
+          type: string
+        entity_type:
+          type: string
+        entity_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        before_json:
+          type:
+            - object
+            - "null"
+          additionalProperties: true
+        after_json:
+          type:
+            - object
+            - "null"
+          additionalProperties: true
+        ip_address:
+          type:
+            - string
+            - "null"
+        user_agent:
+          type:
+            - string
+            - "null"
+        created_at:
+          type: string
+          format: date-time
+
+    AuditLogListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditLog"
