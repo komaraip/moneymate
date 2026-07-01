@@ -77,6 +77,7 @@ type instrumentInput struct {
 	Exchange    *string  `json:"exchange"`
 	Country     *string  `json:"country"`
 	CategoryIDs []string `json:"category_ids"`
+	IsActive    *bool    `json:"is_active"`
 }
 
 type categoryInput struct {
@@ -93,15 +94,22 @@ type cashInput struct {
 	Currency    string  `json:"currency"`
 	Balance     float64 `json:"balance"`
 	Notes       *string `json:"notes"`
+	IsActive    *bool   `json:"is_active"`
 }
 
 func (h Handler) listInstruments(w http.ResponseWriter, r *http.Request) {
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 	rows, err := h.db.Query(r.Context(), `
-		SELECT id::text, type, ticker, name, provider, currency, exchange, country, is_active, created_at, updated_at
-		FROM instruments
-		WHERE ($1 = '' OR ticker ILIKE '%' || $1 || '%' OR name ILIKE '%' || $1 || '%')
-		ORDER BY is_active DESC, type, ticker NULLS LAST, name
+		SELECT i.id::text, i.type, i.ticker, i.name, i.provider, i.currency, i.exchange, i.country,
+		       COALESCE(array_agg(ic.category_id::text ORDER BY ac.sort_order, ac.name) FILTER (WHERE ic.category_id IS NOT NULL), ARRAY[]::text[]) AS category_ids,
+		       COALESCE(array_agg(ac.name ORDER BY ac.sort_order, ac.name) FILTER (WHERE ac.id IS NOT NULL), ARRAY[]::text[]) AS category_names,
+		       i.is_active, i.created_at, i.updated_at
+		FROM instruments i
+		LEFT JOIN instrument_categories ic ON ic.instrument_id = i.id
+		LEFT JOIN asset_categories ac ON ac.id = ic.category_id
+		WHERE ($1 = '' OR i.ticker ILIKE '%' || $1 || '%' OR i.name ILIKE '%' || $1 || '%')
+		GROUP BY i.id, i.type, i.ticker, i.name, i.provider, i.currency, i.exchange, i.country, i.is_active, i.created_at, i.updated_at
+		ORDER BY i.is_active DESC, i.type, i.ticker NULLS LAST, i.name
 	`, search)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat instrumen"))
@@ -149,15 +157,38 @@ func (h Handler) createInstrument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var item domain.Instrument
-	err := h.db.QueryRow(r.Context(), `
-		INSERT INTO instruments (type, ticker, name, provider, currency, exchange, country)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id::text, type, ticker, name, provider, currency, exchange, country, is_active, created_at, updated_at
-	`, input.Type, cleanPtr(input.Ticker), strings.TrimSpace(input.Name), cleanPtr(input.Provider), strings.ToUpper(input.Currency), cleanPtr(input.Exchange), cleanPtr(input.Country)).Scan(
-		&item.ID, &item.Type, &item.Ticker, &item.Name, &item.Provider, &item.Currency, &item.Exchange, &item.Country, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
-	)
+	tx, err := h.db.Begin(r.Context())
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal membuat instrumen"))
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	isActive := true
+	if input.IsActive != nil {
+		isActive = *input.IsActive
+	}
+	var id string
+	err = tx.QueryRow(r.Context(), `
+		INSERT INTO instruments (type, ticker, name, provider, currency, exchange, country, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id::text
+	`, input.Type, cleanPtr(input.Ticker), strings.TrimSpace(input.Name), cleanPtr(input.Provider), strings.ToUpper(input.Currency), cleanPtr(input.Exchange), cleanPtr(input.Country), isActive).Scan(&id)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal membuat instrumen"))
+		return
+	}
+	if err := replaceInstrumentCategories(r.Context(), tx, id, input.CategoryIDs); err != nil {
+		response.Error(w, r, internalErr(err, "Gagal menyimpan kategori instrumen"))
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		response.Error(w, r, internalErr(err, "Gagal menyelesaikan pembuatan instrumen"))
+		return
+	}
+	item, err = h.getInstrumentByID(r.Context(), id)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat instrumen baru"))
 		return
 	}
 
@@ -186,17 +217,44 @@ func (h Handler) updateInstrument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var item domain.Instrument
-	err = h.db.QueryRow(r.Context(), `
-		UPDATE instruments
-		SET type = $2, ticker = $3, name = $4, provider = $5, currency = $6, exchange = $7, country = $8, updated_at = now()
-		WHERE id = $1
-		RETURNING id::text, type, ticker, name, provider, currency, exchange, country, is_active, created_at, updated_at
-	`, id, input.Type, cleanPtr(input.Ticker), strings.TrimSpace(input.Name), cleanPtr(input.Provider), strings.ToUpper(input.Currency), cleanPtr(input.Exchange), cleanPtr(input.Country)).Scan(
-		&item.ID, &item.Type, &item.Ticker, &item.Name, &item.Provider, &item.Currency, &item.Exchange, &item.Country, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
-	)
+	tx, err := h.db.Begin(r.Context())
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal mengubah instrumen"))
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	isActive := before.IsActive
+	if input.IsActive != nil {
+		isActive = *input.IsActive
+	}
+
+	var updatedID string
+	err = tx.QueryRow(r.Context(), `
+		UPDATE instruments
+		SET type = $2, ticker = $3, name = $4, provider = $5, currency = $6,
+		    exchange = $7, country = $8, is_active = $9, updated_at = now()
+		WHERE id = $1
+		RETURNING id::text
+	`, id, input.Type, cleanPtr(input.Ticker), strings.TrimSpace(input.Name), cleanPtr(input.Provider), strings.ToUpper(input.Currency), cleanPtr(input.Exchange), cleanPtr(input.Country), isActive).Scan(&updatedID)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal mengubah instrumen"))
+		return
+	}
+	if input.CategoryIDs != nil {
+		if err := replaceInstrumentCategories(r.Context(), tx, updatedID, input.CategoryIDs); err != nil {
+			response.Error(w, r, internalErr(err, "Gagal menyimpan kategori instrumen"))
+			return
+		}
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		response.Error(w, r, internalErr(err, "Gagal menyelesaikan perubahan instrumen"))
+		return
+	}
+
+	item, err := h.getInstrumentByID(r.Context(), id)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat instrumen terbaru"))
 		return
 	}
 
@@ -380,11 +438,15 @@ func (h Handler) createCashAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var item domain.CashAccount
+	isActive := true
+	if input.IsActive != nil {
+		isActive = *input.IsActive
+	}
 	err := h.db.QueryRow(r.Context(), `
-		INSERT INTO cash_accounts (account_name, account_type, currency, balance, notes)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO cash_accounts (account_name, account_type, currency, balance, notes, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
-	`, strings.TrimSpace(input.AccountName), defaultString(input.AccountType, "bank"), strings.ToUpper(input.Currency), input.Balance, cleanPtr(input.Notes)).Scan(
+	`, strings.TrimSpace(input.AccountName), defaultString(input.AccountType, "bank"), strings.ToUpper(input.Currency), input.Balance, cleanPtr(input.Notes), isActive).Scan(
 		&item.ID, &item.AccountName, &item.AccountType, &item.Currency, &item.Balance, &item.Notes, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
 	)
 	if err != nil {
@@ -418,12 +480,17 @@ func (h Handler) updateCashAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var item domain.CashAccount
+	isActive := before.IsActive
+	if input.IsActive != nil {
+		isActive = *input.IsActive
+	}
 	err = h.db.QueryRow(r.Context(), `
 		UPDATE cash_accounts
-		SET account_name = $2, account_type = $3, currency = $4, balance = $5, notes = $6, updated_at = now()
+		SET account_name = $2, account_type = $3, currency = $4, balance = $5,
+		    notes = $6, is_active = $7, updated_at = now()
 		WHERE id = $1
 		RETURNING id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
-	`, id, strings.TrimSpace(input.AccountName), defaultString(input.AccountType, "bank"), strings.ToUpper(input.Currency), input.Balance, cleanPtr(input.Notes)).Scan(
+	`, id, strings.TrimSpace(input.AccountName), defaultString(input.AccountType, "bank"), strings.ToUpper(input.Currency), input.Balance, cleanPtr(input.Notes), isActive).Scan(
 		&item.ID, &item.AccountName, &item.AccountType, &item.Currency, &item.Balance, &item.Notes, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
 	)
 	if err != nil {
@@ -456,12 +523,16 @@ func (h Handler) deleteCashAccount(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
+	entityType := strings.TrimSpace(r.URL.Query().Get("entity_type"))
+	action := strings.TrimSpace(r.URL.Query().Get("action"))
 	rows, err := h.db.Query(r.Context(), `
 		SELECT id::text, actor_user_id::text, action, entity_type, entity_id::text, before_json, after_json, ip_address, user_agent, created_at
 		FROM audit_logs
+		WHERE ($1 = '' OR entity_type = $1)
+		  AND ($2 = '' OR action = $2)
 		ORDER BY created_at DESC
 		LIMIT 100
-	`)
+	`, entityType, action)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat audit log"))
 		return
@@ -486,9 +557,15 @@ func (h Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) getInstrumentByID(ctx context.Context, id string) (domain.Instrument, error) {
 	return scanInstrument(h.db.QueryRow(ctx, `
-		SELECT id::text, type, ticker, name, provider, currency, exchange, country, is_active, created_at, updated_at
-		FROM instruments
-		WHERE id = $1
+		SELECT i.id::text, i.type, i.ticker, i.name, i.provider, i.currency, i.exchange, i.country,
+		       COALESCE(array_agg(ic.category_id::text ORDER BY ac.sort_order, ac.name) FILTER (WHERE ic.category_id IS NOT NULL), ARRAY[]::text[]) AS category_ids,
+		       COALESCE(array_agg(ac.name ORDER BY ac.sort_order, ac.name) FILTER (WHERE ac.id IS NOT NULL), ARRAY[]::text[]) AS category_names,
+		       i.is_active, i.created_at, i.updated_at
+		FROM instruments i
+		LEFT JOIN instrument_categories ic ON ic.instrument_id = i.id
+		LEFT JOIN asset_categories ac ON ac.id = ic.category_id
+		WHERE i.id = $1
+		GROUP BY i.id, i.type, i.ticker, i.name, i.provider, i.currency, i.exchange, i.country, i.is_active, i.created_at, i.updated_at
 	`, id))
 }
 
@@ -516,7 +593,21 @@ type scanner interface {
 
 func scanInstrument(row scanner) (domain.Instrument, error) {
 	var item domain.Instrument
-	err := row.Scan(&item.ID, &item.Type, &item.Ticker, &item.Name, &item.Provider, &item.Currency, &item.Exchange, &item.Country, &item.IsActive, &item.CreatedAt, &item.UpdatedAt)
+	err := row.Scan(
+		&item.ID,
+		&item.Type,
+		&item.Ticker,
+		&item.Name,
+		&item.Provider,
+		&item.Currency,
+		&item.Exchange,
+		&item.Country,
+		&item.CategoryIDs,
+		&item.CategoryNames,
+		&item.IsActive,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
 	return item, err
 }
 
@@ -551,6 +642,30 @@ func validateInstrument(input instrumentInput) error {
 	}
 	if strings.TrimSpace(input.Currency) == "" {
 		return validation("Currency wajib diisi")
+	}
+	for _, categoryID := range input.CategoryIDs {
+		if _, err := uuid.Parse(strings.TrimSpace(categoryID)); err != nil {
+			return validation("Kategori instrumen tidak valid")
+		}
+	}
+	return nil
+}
+
+func replaceInstrumentCategories(ctx context.Context, tx pgx.Tx, instrumentID string, categoryIDs []string) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM instrument_categories WHERE instrument_id = $1`, instrumentID); err != nil {
+		return err
+	}
+	for _, categoryID := range categoryIDs {
+		if strings.TrimSpace(categoryID) == "" {
+			continue
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO instrument_categories (instrument_id, category_id)
+			VALUES ($1, $2)
+			ON CONFLICT DO NOTHING
+		`, instrumentID, strings.TrimSpace(categoryID)); err != nil {
+			return err
+		}
 	}
 	return nil
 }

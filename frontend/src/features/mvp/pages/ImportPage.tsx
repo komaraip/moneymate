@@ -249,9 +249,10 @@ function Alert({ message }: { message: string }) {
 }
 
 function Success({ result }: { result: ImportConfirmResult }) {
+  const status = result.status === "partial" ? "selesai sebagian" : "selesai";
   return (
     <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
-      {result.message} Diimpor: {result.imported_rows}, dilewati: {result.skipped_rows}, error: {result.failed_rows}.
+      Import {status}. Diimpor: {result.imported_rows}, dilewati: {result.skipped_rows}, baris error: {result.failed_rows}. {result.message}
     </div>
   );
 }

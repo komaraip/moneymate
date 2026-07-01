@@ -517,11 +517,8 @@ func (h Handler) upsertInstrument(ctx context.Context, tx pgx.Tx, normalized map
 		WITH existing AS (
 			SELECT id
 			FROM instruments
-			WHERE type = $1
-			  AND (
-			    ($2::text IS NOT NULL AND ticker IS NOT NULL AND lower(ticker) = lower($2))
-			    OR (COALESCE(ticker, '') = COALESCE($2, '') AND lower(name) = lower($3))
-			  )
+			WHERE ($2::text IS NOT NULL AND ticker IS NOT NULL AND lower(ticker) = lower($2))
+			   OR (type = $1 AND COALESCE(ticker, '') = COALESCE($2, '') AND lower(name) = lower($3))
 			ORDER BY created_at ASC
 			LIMIT 1
 		),

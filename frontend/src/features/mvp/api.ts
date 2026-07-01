@@ -3,6 +3,7 @@ import type {
   AlertItem,
   AllocationItem,
   AuditLog,
+  AssetCategory,
   CashAccount,
   Holding,
   ImportConfirmResult,
@@ -20,12 +21,25 @@ export const mvpApi = {
   recalculateHoldings: () => apiClient.post<{ count: number; message: string }>("/api/v1/holdings/recalculate?date=2026-06-30", {}),
   instruments: () => apiClient.get<Instrument[]>("/api/v1/instruments"),
   createInstrument: (body: unknown) => apiClient.post<Instrument>("/api/v1/instruments", body),
+  updateInstrument: (id: string, body: unknown) => apiClient.put<Instrument>(`/api/v1/instruments/${id}`, body),
+  deleteInstrument: (id: string) => apiClient.delete<{ status: string }>(`/api/v1/instruments/${id}`),
+  assetCategories: () => apiClient.get<AssetCategory[]>("/api/v1/asset-categories"),
   transactions: () => apiClient.get<Transaction[]>("/api/v1/transactions"),
   createTransaction: (body: unknown) => apiClient.post<Transaction>("/api/v1/transactions", body),
+  updateTransaction: (id: string, body: unknown) => apiClient.put<Transaction>(`/api/v1/transactions/${id}`, body),
+  deleteTransaction: (id: string) => apiClient.delete<{ status: string }>(`/api/v1/transactions/${id}`),
   cashAccounts: () => apiClient.get<CashAccount[]>("/api/v1/cash-accounts"),
   createCashAccount: (body: unknown) => apiClient.post<CashAccount>("/api/v1/cash-accounts", body),
+  updateCashAccount: (id: string, body: unknown) => apiClient.put<CashAccount>(`/api/v1/cash-accounts/${id}`, body),
+  deleteCashAccount: (id: string) => apiClient.delete<{ status: string }>(`/api/v1/cash-accounts/${id}`),
   createManualPrice: (body: unknown) => apiClient.post("/api/v1/prices/manual", body),
-  auditLogs: () => apiClient.get<AuditLog[]>("/api/v1/audit-logs"),
+  auditLogs: (filters?: { entity_type?: string; action?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.entity_type) params.set("entity_type", filters.entity_type);
+    if (filters?.action) params.set("action", filters.action);
+    const query = params.toString();
+    return apiClient.get<AuditLog[]>(`/api/v1/audit-logs${query ? `?${query}` : ""}`);
+  },
   uploadImport: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);

@@ -17,8 +17,12 @@ export const queryKeys = {
   instruments: {
     all: ["instruments"] as const,
   },
+  assetCategories: {
+    all: ["asset-categories"] as const,
+  },
   auditLogs: {
     all: ["audit-logs"] as const,
+    filtered: (filters: { entity_type?: string; action?: string }) => ["audit-logs", filters] as const,
   },
   imports: {
     all: ["imports"] as const,

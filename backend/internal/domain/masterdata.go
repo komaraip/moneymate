@@ -13,17 +13,19 @@ type AssetCategory struct {
 }
 
 type Instrument struct {
-	ID        string    `json:"id"`
-	Type      string    `json:"type"`
-	Ticker    *string   `json:"ticker,omitempty"`
-	Name      string    `json:"name"`
-	Provider  *string   `json:"provider,omitempty"`
-	Currency  string    `json:"currency"`
-	Exchange  *string   `json:"exchange,omitempty"`
-	Country   *string   `json:"country,omitempty"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID            string    `json:"id"`
+	Type          string    `json:"type"`
+	Ticker        *string   `json:"ticker,omitempty"`
+	Name          string    `json:"name"`
+	Provider      *string   `json:"provider,omitempty"`
+	Currency      string    `json:"currency"`
+	Exchange      *string   `json:"exchange,omitempty"`
+	Country       *string   `json:"country,omitempty"`
+	CategoryIDs   []string  `json:"category_ids,omitempty"`
+	CategoryNames []string  `json:"category_names,omitempty"`
+	IsActive      bool      `json:"is_active"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type CashAccount struct {

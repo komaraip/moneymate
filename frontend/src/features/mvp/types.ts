@@ -46,6 +46,8 @@ export type Instrument = {
   name: string;
   provider?: string;
   currency: string;
+  category_ids?: string[];
+  category_names?: string[];
   is_active: boolean;
 };
 
@@ -58,9 +60,13 @@ export type Transaction = {
   type: string;
   price: number;
   units: number;
+  gross_value: number;
+  fees: number;
+  tax: number;
   net_value: number;
   currency: string;
   fx_rate_to_idr?: number;
+  notes?: string;
   warnings?: string[];
 };
 
@@ -70,7 +76,17 @@ export type CashAccount = {
   account_type: string;
   currency: string;
   balance: number;
+  notes?: string;
   is_active: boolean;
+};
+
+export type AssetCategory = {
+  id: string;
+  name: string;
+  description?: string;
+  target_allocation_percent?: number;
+  color_key?: string;
+  sort_order: number;
 };
 
 export type AuditLog = {
