@@ -266,6 +266,15 @@ func TestImportPreviewAndConfirmationFlow(t *testing.T) {
 	if confirmData.ImportedRows != 3 || confirmData.FailedRows != 1 {
 		t.Fatalf("unexpected confirm result: %+v", confirmData)
 	}
+	if !confirmData.HoldingsRecalculated {
+		t.Fatalf("expected holdings recalculation metadata after confirm: %+v", confirmData)
+	}
+	if confirmData.HoldingsSnapshotDate == "" {
+		t.Fatalf("expected holdings snapshot date after confirm: %+v", confirmData)
+	}
+	if confirmData.HoldingsCount != 1 {
+		t.Fatalf("expected one recalculated holding after confirm, got %+v", confirmData)
+	}
 
 	var instrumentCount int
 	if err := app.db.QueryRow(context.Background(), `SELECT count(*) FROM instruments WHERE ticker = 'BBRI'`).Scan(&instrumentCount); err != nil {
@@ -277,10 +286,7 @@ func TestImportPreviewAndConfirmationFlow(t *testing.T) {
 
 	app.assertAudit(t, "import_job", "confirm_import")
 
-	recalculate := app.requestJSON(t, http.MethodPost, "/api/v1/holdings/recalculate?date=2026-06-30", token, nil)
-	assertStatus(t, recalculate, http.StatusOK)
-
-	holdings := app.requestJSON(t, http.MethodGet, "/api/v1/holdings?date=2026-06-30", token, nil)
+	holdings := app.requestJSON(t, http.MethodGet, "/api/v1/holdings?date="+confirmData.HoldingsSnapshotDate, token, nil)
 	assertStatus(t, holdings, http.StatusOK)
 	holdingRows := decodeData[[]holdingResponse](t, holdings.envelope)
 	if len(holdingRows) != 1 {
@@ -295,6 +301,27 @@ func TestImportPreviewAndConfirmationFlow(t *testing.T) {
 	overviewData := decodeData[dashboardOverviewResponse](t, overview.envelope)
 	if overviewData.TotalPortfolioValue != 35000 || overviewData.TotalCash != 100000 || overviewData.TotalNetWorth != 135000 {
 		t.Fatalf("unexpected dashboard totals after import: %+v", overviewData)
+	}
+
+	allocation := app.requestJSON(t, http.MethodGet, "/api/v1/dashboard/asset-allocation", token, nil)
+	assertStatus(t, allocation, http.StatusOK)
+	allocationRows := decodeData[[]assetAllocationResponse](t, allocation.envelope)
+	if !hasAllocationValue(allocationRows, "Cash", 100000) || !hasAllocationValue(allocationRows, "stock", 35000) {
+		t.Fatalf("unexpected allocation after import: %+v", allocationRows)
+	}
+
+	performance := app.requestJSON(t, http.MethodGet, "/api/v1/dashboard/performance", token, nil)
+	assertStatus(t, performance, http.StatusOK)
+	performanceData := decodeData[dashboardPerformanceResponse](t, performance.envelope)
+	if len(performanceData.Items) != 1 || performanceData.Items[0].CurrentValue != 35000 {
+		t.Fatalf("unexpected performance after import: %+v", performanceData)
+	}
+
+	alerts := app.requestJSON(t, http.MethodGet, "/api/v1/dashboard/alerts", token, nil)
+	assertStatus(t, alerts, http.StatusOK)
+	alertRows := decodeData[[]map[string]any](t, alerts.envelope)
+	if len(alertRows) == 0 {
+		t.Fatal("expected dashboard alerts to reflect imported holding")
 	}
 }
 
@@ -704,6 +731,15 @@ func previewHasError(rows []importPreviewRowResponse, expected string) bool {
 	return false
 }
 
+func hasAllocationValue(rows []assetAllocationResponse, asset string, value float64) bool {
+	for _, row := range rows {
+		if row.Asset == asset && row.Value == value {
+			return true
+		}
+	}
+	return false
+}
+
 type apiTestResponse struct {
 	status   int
 	envelope apiEnvelope
@@ -763,13 +799,29 @@ type importPreviewRowResponse struct {
 }
 
 type importConfirmResponse struct {
-	ImportedRows int `json:"imported_rows"`
-	SkippedRows  int `json:"skipped_rows"`
-	FailedRows   int `json:"failed_rows"`
+	ImportedRows         int    `json:"imported_rows"`
+	SkippedRows          int    `json:"skipped_rows"`
+	FailedRows           int    `json:"failed_rows"`
+	HoldingsRecalculated bool   `json:"holdings_recalculated"`
+	HoldingsSnapshotDate string `json:"holdings_snapshot_date"`
+	HoldingsCount        int    `json:"holdings_count"`
 }
 
 type dashboardOverviewResponse struct {
 	TotalNetWorth       float64 `json:"total_net_worth"`
 	TotalPortfolioValue float64 `json:"total_portfolio_value"`
 	TotalCash           float64 `json:"total_cash"`
+}
+
+type assetAllocationResponse struct {
+	Asset string  `json:"asset"`
+	Value float64 `json:"value"`
+}
+
+type dashboardPerformanceResponse struct {
+	Items []dashboardPerformanceItem `json:"items"`
+}
+
+type dashboardPerformanceItem struct {
+	CurrentValue float64 `json:"current_value"`
 }

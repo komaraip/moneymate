@@ -882,7 +882,7 @@ paths:
       summary: Confirm import job and write valid rows
       security:
         - bearerAuth: []
-      description: Requires owner or admin role. Writes instruments, transactions, cash accounts, manual prices, import row statuses, and audit log where applicable.
+      description: Requires owner or admin role. Writes instruments, transactions, cash accounts, manual prices, import row statuses, recalculates holdings in the same database transaction, and records the import audit log where applicable.
       responses:
         "200":
           description: Import confirm result.
@@ -890,6 +890,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ImportConfirmEnvelope"
+              examples:
+                confirmed:
+                  value:
+                    success: true
+                    data:
+                      job_id: 55555555-5555-5555-5555-555555555555
+                      status: partial
+                      total_rows: 4
+                      imported_rows: 3
+                      skipped_rows: 0
+                      failed_rows: 1
+                      holdings_recalculated: true
+                      holdings_snapshot_date: "2026-07-02"
+                      holdings_count: 1
+                      message: Import selesai. Nilai portfolio sudah dihitung ulang. Data harga tetap manual dan bukan real-time.
+                    request_id: req_123
 
   /api/v1/audit-logs:
     get:
@@ -1880,7 +1896,17 @@ components:
           properties:
             data:
               type: object
-              required: [job_id, status, total_rows, imported_rows, skipped_rows, failed_rows, message]
+              required:
+                - job_id
+                - status
+                - total_rows
+                - imported_rows
+                - skipped_rows
+                - failed_rows
+                - holdings_recalculated
+                - holdings_snapshot_date
+                - holdings_count
+                - message
               properties:
                 job_id:
                   type: string
@@ -1894,6 +1920,14 @@ components:
                 skipped_rows:
                   type: integer
                 failed_rows:
+                  type: integer
+                holdings_recalculated:
+                  type: boolean
+                  description: True when holdings snapshots were recalculated in the same database transaction as import confirmation.
+                holdings_snapshot_date:
+                  type: string
+                  format: date
+                holdings_count:
                   type: integer
                 message:
                   type: string

@@ -1305,7 +1305,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm import job and write valid rows
-         * @description Requires owner or admin role. Writes instruments, transactions, cash accounts, manual prices, import row statuses, and audit log where applicable.
+         * @description Requires owner or admin role. Writes instruments, transactions, cash accounts, manual prices, import row statuses, recalculates holdings in the same database transaction, and records the import audit log where applicable.
          */
         post: {
             parameters: {
@@ -1771,6 +1771,11 @@ export interface components {
                 imported_rows: number;
                 skipped_rows: number;
                 failed_rows: number;
+                /** @description True when holdings snapshots were recalculated in the same database transaction as import confirmation. */
+                holdings_recalculated: boolean;
+                /** Format: date */
+                holdings_snapshot_date: string;
+                holdings_count: number;
                 message: string;
             };
         };

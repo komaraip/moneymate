@@ -18,6 +18,7 @@ import (
 	"moneymate/backend/internal/audit"
 	"moneymate/backend/internal/auth"
 	"moneymate/backend/internal/httpapi/response"
+	"moneymate/backend/internal/portfolio"
 )
 
 type Handler struct {
@@ -60,13 +61,16 @@ type ImportJobDetail struct {
 }
 
 type ConfirmResult struct {
-	JobID        string `json:"job_id"`
-	Status       string `json:"status"`
-	TotalRows    int    `json:"total_rows"`
-	ImportedRows int    `json:"imported_rows"`
-	SkippedRows  int    `json:"skipped_rows"`
-	FailedRows   int    `json:"failed_rows"`
-	Message      string `json:"message"`
+	JobID                string `json:"job_id"`
+	Status               string `json:"status"`
+	TotalRows            int    `json:"total_rows"`
+	ImportedRows         int    `json:"imported_rows"`
+	SkippedRows          int    `json:"skipped_rows"`
+	FailedRows           int    `json:"failed_rows"`
+	HoldingsRecalculated bool   `json:"holdings_recalculated"`
+	HoldingsSnapshotDate string `json:"holdings_snapshot_date"`
+	HoldingsCount        int    `json:"holdings_count"`
+	Message              string `json:"message"`
 }
 
 func (h Handler) upload(w http.ResponseWriter, r *http.Request) {
@@ -160,8 +164,9 @@ func (h Handler) confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user, _ := auth.UserFromContext(r.Context())
+	snapshotDate := time.Now()
 
-	result, err := h.confirmJob(r.Context(), id, user.ID)
+	result, err := h.confirmJob(r.Context(), id, user.ID, snapshotDate)
 	if err != nil {
 		response.Error(w, r, err)
 		return
@@ -244,7 +249,7 @@ func (h Handler) persistPreview(ctx context.Context, preview *Preview, userID st
 	return nil
 }
 
-func (h Handler) confirmJob(ctx context.Context, jobID string, userID string) (ConfirmResult, error) {
+func (h Handler) confirmJob(ctx context.Context, jobID string, userID string, snapshotDate time.Time) (ConfirmResult, error) {
 	tx, err := h.db.Begin(ctx)
 	if err != nil {
 		return ConfirmResult{}, internalErr(err, "Gagal memulai konfirmasi import")
@@ -302,7 +307,7 @@ func (h Handler) confirmJob(ctx context.Context, jobID string, userID string) (C
 			continue
 		}
 
-		nextStatus, err := h.applyPreviewRow(ctx, tx, row, userID)
+		nextStatus, err := h.applyPreviewRow(ctx, tx, row, userID, snapshotDate)
 		if err != nil {
 			return ConfirmResult{}, err
 		}
@@ -341,25 +346,33 @@ func (h Handler) confirmJob(ctx context.Context, jobID string, userID string) (C
 		return ConfirmResult{}, internalErr(err, "Gagal menyelesaikan import job")
 	}
 
+	holdings, err := portfolio.NewService(tx).Recalculate(ctx, snapshotDate)
+	if err != nil {
+		return ConfirmResult{}, internalErr(err, "Gagal menghitung ulang holdings setelah import")
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return ConfirmResult{}, internalErr(err, "Gagal menyimpan hasil import")
 	}
 
 	return ConfirmResult{
-		JobID:        jobID,
-		Status:       jobStatus,
-		TotalRows:    totalRows,
-		ImportedRows: importedRows,
-		SkippedRows:  skippedRows,
-		FailedRows:   failedRows,
-		Message:      "Import selesai. Data harga tetap manual dan bukan real-time.",
+		JobID:                jobID,
+		Status:               jobStatus,
+		TotalRows:            totalRows,
+		ImportedRows:         importedRows,
+		SkippedRows:          skippedRows,
+		FailedRows:           failedRows,
+		HoldingsRecalculated: true,
+		HoldingsSnapshotDate: snapshotDate.Format("2006-01-02"),
+		HoldingsCount:        len(holdings),
+		Message:              "Import selesai. Nilai portfolio sudah dihitung ulang. Data harga tetap manual dan bukan real-time.",
 	}, nil
 }
 
-func (h Handler) applyPreviewRow(ctx context.Context, tx pgx.Tx, row PreviewRow, userID string) (string, error) {
+func (h Handler) applyPreviewRow(ctx context.Context, tx pgx.Tx, row PreviewRow, userID string, snapshotDate time.Time) (string, error) {
 	switch row.Section {
 	case SectionHoldings:
-		return h.applyHoldingRow(ctx, tx, row)
+		return h.applyHoldingRow(ctx, tx, row, snapshotDate)
 	case SectionOrders:
 		return h.applyOrderRow(ctx, tx, row, userID)
 	case SectionCash:
@@ -371,7 +384,7 @@ func (h Handler) applyPreviewRow(ctx context.Context, tx pgx.Tx, row PreviewRow,
 	}
 }
 
-func (h Handler) applyHoldingRow(ctx context.Context, tx pgx.Tx, row PreviewRow) (string, error) {
+func (h Handler) applyHoldingRow(ctx context.Context, tx pgx.Tx, row PreviewRow, snapshotDate time.Time) (string, error) {
 	instrumentID, err := h.upsertInstrument(ctx, tx, row.Normalized)
 	if err != nil {
 		return "", err
@@ -383,7 +396,7 @@ func (h Handler) applyHoldingRow(ctx context.Context, tx pgx.Tx, row PreviewRow)
 	}
 
 	currency := stringValueOrDefault(row.Normalized, "currency", "IDR")
-	priceDate := time.Now().Format("2006-01-02")
+	priceDate := snapshotDate.Format("2006-01-02")
 	fxRate, _ := floatValue(row.Normalized, "fx_rate_to_idr")
 	var fxRatePtr *float64
 	if fxRate > 0 {

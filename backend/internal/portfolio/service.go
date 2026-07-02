@@ -8,7 +8,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type CalculatorTransaction struct {
@@ -46,11 +47,16 @@ type CalculatedHolding struct {
 	Warnings          []string
 }
 
-type Service struct {
-	db *pgxpool.Pool
+type store interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
 
-func NewService(db *pgxpool.Pool) Service {
+type Service struct {
+	db store
+}
+
+func NewService(db store) Service {
 	return Service{db: db}
 }
 

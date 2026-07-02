@@ -283,7 +283,7 @@ GitHub Actions runs:
 - Weighted-average holdings calculation in backend.
 - Dashboard overview, asset allocation, performance, and alerts APIs.
 - React protected dashboard shell and MVP screens.
-- CSV/XLSX import preview and confirm flow for holdings, orders, cash, asset summary rows, manual prices, import job rows, and import audit log.
+- CSV/XLSX import preview and confirm flow for holdings, orders, cash, asset summary rows, manual prices, import job rows, automatic holdings recalculation, and import audit log.
 - OpenAPI 3.1 contract for implemented MVP endpoints.
 - Generated frontend API declarations from the OpenAPI contract.
 - Frontend component tests and Playwright MVP smoke tests.
@@ -297,7 +297,7 @@ GitHub Actions runs:
 - Cash balances are manually managed; orders do not automatically move cash yet.
 - `cash_adjustments` exists in the schema, but no cash adjustment API route is implemented yet.
 - Frontend forms are intentionally basic and do not yet expose every edit/delete backend action.
-- Confirmed imports do not fetch market data. Imported prices remain manual, and holdings snapshots still follow the existing recalculation workflow.
+- Confirmed imports do not fetch market data. Imported prices remain manual; holdings snapshots are recalculated in the same database transaction as import confirmation so dashboard views use imported data immediately.
 - No production deployment hardening, HTTPS termination, or managed secret workflow yet.
 
 ## Roadmap
@@ -305,6 +305,6 @@ GitHub Actions runs:
 Recommended next phase:
 
 1. Add report/export endpoints.
-2. Consider automatic holdings recalculation after confirmed imports.
-3. Consider a typed API client wrapper generated from the OpenAPI paths.
-4. Tighten Redocly warning cleanup for quieter contract validation.
+2. Consider a typed API client wrapper generated from the OpenAPI paths.
+3. Tighten Redocly warning cleanup for quieter contract validation.
+4. Add deeper transaction/cash adjustment workflows if product scope requires.
