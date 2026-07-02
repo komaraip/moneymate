@@ -5,6 +5,10 @@ export const queryKeys = {
     performance: ["dashboard", "performance"] as const,
     alerts: ["dashboard", "alerts"] as const,
   },
+  reports: {
+    monthly: (month: string) => ["reports", "monthly", month] as const,
+    performance: (from: string, to: string) => ["reports", "performance", from, to] as const,
+  },
   holdings: {
     all: ["holdings"] as const,
   },

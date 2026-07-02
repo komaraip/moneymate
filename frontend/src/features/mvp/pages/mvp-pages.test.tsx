@@ -7,6 +7,7 @@ import { CashPage } from "./CashPage";
 import { ImportPage } from "./ImportPage";
 import { InstrumentsPage } from "./InstrumentsPage";
 import { OverviewPage } from "./OverviewPage";
+import { ReportsPage } from "./ReportsPage";
 import { TransactionsPage } from "./TransactionsPage";
 
 vi.mock("../api", () => ({
@@ -24,9 +25,12 @@ vi.mock("../api", () => ({
     deleteCashAccount: vi.fn(),
     deleteInstrument: vi.fn(),
     deleteTransaction: vi.fn(),
+    exportReportsCsv: vi.fn(),
     holdings: vi.fn(),
     instruments: vi.fn(),
+    monthlySummary: vi.fn(),
     overview: vi.fn(),
+    portfolioPerformance: vi.fn(),
     recalculateHoldings: vi.fn(),
     transactions: vi.fn(),
     updateCashAccount: vi.fn(),
@@ -57,6 +61,109 @@ beforeEach(() => {
   mockedApi.assetCategories.mockResolvedValue([]);
   mockedApi.transactions.mockResolvedValue([]);
   mockedApi.cashAccounts.mockResolvedValue([]);
+  mockedApi.monthlySummary.mockResolvedValue({
+    base_currency: "IDR",
+    beginning_net_worth: null,
+    cash_balance: 151859,
+    data_not_realtime: "Data manual/mock, bukan real-time.",
+    disclaimer: "Laporan ini bukan rekomendasi beli/jual.",
+    ending_net_worth: 13648703.72,
+    generated_at: "2026-07-02T10:00:00Z",
+    month: "2026-06",
+    net_worth_change: null,
+    portfolio_snapshot_date: "2026-06-30",
+    portfolio_value: 13496844.72,
+    realized_profit_loss: null,
+    top_contributors: [],
+    top_detractors: [],
+    transaction_totals_by_asset_type: [
+      {
+        asset_type: "stock",
+        total_idr: 30000,
+        transaction_count: 1,
+        transaction_type: "buy",
+      },
+    ],
+    transaction_totals_by_instrument: [
+      {
+        instrument_id: "33333333-3333-3333-3333-333333333333",
+        instrument_type: "stock",
+        name: "Bank Rakyat Indonesia",
+        original_currency: "IDR",
+        ticker: "BBRI",
+        total_idr: 30000,
+        transaction_count: 1,
+        transaction_type: "buy",
+      },
+    ],
+    unrealized_profit_loss: -753255.58,
+    warnings: [
+      {
+        code: "DATA_NOT_REALTIME",
+        message: "Semua harga MVP berasal dari input manual/mock dan bukan real-time.",
+        severity: "info",
+      },
+    ],
+  });
+  mockedApi.portfolioPerformance.mockResolvedValue({
+    absolute_change: null,
+    allocation_breakdown: [
+      {
+        asset: "Saham",
+        percent: 0.34,
+        value: 4641000,
+      },
+    ],
+    base_currency: "IDR",
+    cash_summary: {
+      active_accounts: 3,
+      currency: "IDR",
+      history_available: false,
+      note: "Cash memakai saldo aktif saat ini.",
+      total_cash: 151859,
+    },
+    data_not_realtime: "Data manual/mock, bukan real-time.",
+    disclaimer: "Laporan ini bukan rekomendasi beli/jual.",
+    ending_snapshot_date: "2026-06-30",
+    ending_value: 13496844.72,
+    from_date: "2026-06-01",
+    generated_at: "2026-07-02T10:00:00Z",
+    holdings_performance: [
+      {
+        average_price_idr: 3000,
+        current_price_idr: 3500,
+        current_value_idr: 35000,
+        fx_rate_to_idr: null,
+        instrument_currency: "IDR",
+        instrument_id: "33333333-3333-3333-3333-333333333333",
+        instrument_type: "stock",
+        latest_price: 3500,
+        latest_price_currency: "IDR",
+        name: "Bank Rakyat Indonesia",
+        price_source: "manual",
+        price_updated_at: "2026-06-30T10:00:00Z",
+        profit_loss_percent: 0.1667,
+        profit_loss_value_idr: 5000,
+        ticker: "BBRI",
+        total_cost_idr: 30000,
+        units: 10,
+        warnings: [],
+      },
+    ],
+    method: "simple_portfolio_change",
+    percentage_change: null,
+    starting_snapshot_date: null,
+    starting_value: null,
+    to_date: "2026-06-30",
+    warnings: [
+      {
+        code: "DATA_NOT_REALTIME",
+        message: "Semua harga MVP berasal dari input manual/mock dan bukan real-time.",
+        severity: "info",
+      },
+    ],
+  });
+  mockedApi.exportReportsCsv.mockResolvedValue(new Blob(["section\nmetadata"], { type: "text/csv" }));
 });
 
 describe("OverviewPage", () => {
@@ -175,5 +282,31 @@ describe("ImportPage", () => {
     const totalCard = screen.getByText("Total Baris").closest("section");
     expect(totalCard).not.toBeNull();
     expect(within(totalCard as HTMLElement).getByText("3")).toBeInTheDocument();
+  });
+});
+
+describe("ReportsPage", () => {
+  it("menampilkan ringkasan laporan dan tombol export", async () => {
+    renderWithProviders(<ReportsPage />);
+
+    expect(await screen.findByText("Ringkasan Bulanan 2026-06")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Export CSV/i })).toBeInTheDocument();
+    expect(screen.getAllByText("DATA_NOT_REALTIME").length).toBeGreaterThan(0);
+  });
+
+  it("menampilkan loading state saat laporan dimuat", () => {
+    mockedApi.monthlySummary.mockReturnValue(new Promise(() => undefined));
+
+    renderWithProviders(<ReportsPage />);
+
+    expect(screen.getByText("Memuat data")).toBeInTheDocument();
+  });
+
+  it("menampilkan error state saat laporan gagal dimuat", async () => {
+    mockedApi.monthlySummary.mockRejectedValue(new Error("server down"));
+
+    renderWithProviders(<ReportsPage />);
+
+    expect(await screen.findByText("Laporan belum bisa dimuat.")).toBeInTheDocument();
   });
 });

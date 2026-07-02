@@ -325,6 +325,78 @@ func TestImportPreviewAndConfirmationFlow(t *testing.T) {
 	}
 }
 
+func TestReportEndpoints(t *testing.T) {
+	app := newAPIIntegrationTest(t)
+	token := app.seedAndLogin(t, "owner-it@moneymate.local", "owner")
+	instrumentID := app.seedInstrument(t, "BBRI", "Bank Rakyat Indonesia", "stock", "IDR")
+
+	createTx := app.requestJSON(t, http.MethodPost, "/api/v1/transactions", token, transactionPayload(instrumentID, "2026-06-30", "buy", 3000, 10, "IDR", nil))
+	assertStatus(t, createTx, http.StatusCreated)
+
+	createPrice := app.requestJSON(t, http.MethodPost, "/api/v1/prices/manual", token, map[string]any{
+		"instrument_id": instrumentID,
+		"price_date":    "2026-06-30",
+		"price":         3500,
+		"currency":      "IDR",
+	})
+	assertStatus(t, createPrice, http.StatusCreated)
+
+	createCash := app.requestJSON(t, http.MethodPost, "/api/v1/cash-accounts", token, cashPayload("Seabank Report", 100000))
+	assertStatus(t, createCash, http.StatusCreated)
+
+	recalculate := app.requestJSON(t, http.MethodPost, "/api/v1/holdings/recalculate?date=2026-06-30", token, nil)
+	assertStatus(t, recalculate, http.StatusOK)
+
+	monthly := app.requestJSON(t, http.MethodGet, "/api/v1/reports/monthly-summary?month=2026-06", token, nil)
+	assertStatus(t, monthly, http.StatusOK)
+	monthlyData := decodeData[monthlySummaryReportResponse](t, monthly.envelope)
+	if monthlyData.Month != "2026-06" || monthlyData.EndingNetWorth != 135000 {
+		t.Fatalf("unexpected monthly summary: %+v", monthlyData)
+	}
+	if monthlyData.BeginningNetWorth != nil || monthlyData.NetWorthChange != nil {
+		t.Fatalf("expected unavailable beginning net worth fields, got %+v", monthlyData)
+	}
+	if !hasReportWarning(monthlyData.Warnings, "DATA_NOT_REALTIME") {
+		t.Fatalf("expected non-real-time warning in monthly report: %+v", monthlyData.Warnings)
+	}
+	if len(monthlyData.TransactionTotalsByInstrument) == 0 {
+		t.Fatal("expected transaction totals by instrument")
+	}
+
+	performance := app.requestJSON(t, http.MethodGet, "/api/v1/reports/portfolio-performance?from=2026-06-01&to=2026-06-30", token, nil)
+	assertStatus(t, performance, http.StatusOK)
+	performanceData := decodeData[portfolioPerformanceReportResponse](t, performance.envelope)
+	if performanceData.EndingValue != 35000 || performanceData.Method != "simple_portfolio_change" {
+		t.Fatalf("unexpected performance report: %+v", performanceData)
+	}
+	if !hasAllocationValue(performanceData.AllocationBreakdown, "Cash", 100000) || !hasAllocationValue(performanceData.AllocationBreakdown, "stock", 35000) {
+		t.Fatalf("unexpected report allocation: %+v", performanceData.AllocationBreakdown)
+	}
+	if !hasReportWarning(performanceData.Warnings, "DATA_NOT_REALTIME") {
+		t.Fatalf("expected non-real-time warning in performance report: %+v", performanceData.Warnings)
+	}
+
+	csv := app.requestRaw(t, http.MethodGet, "/api/v1/reports/export.csv", token, nil)
+	if csv.Code != http.StatusOK {
+		t.Fatalf("expected CSV status 200, got %d: %s", csv.Code, csv.Body.String())
+	}
+	if !strings.Contains(csv.Header().Get("Content-Type"), "text/csv") {
+		t.Fatalf("unexpected CSV content type: %s", csv.Header().Get("Content-Type"))
+	}
+	if !strings.Contains(csv.Header().Get("Content-Disposition"), "moneymate-portfolio-export.csv") {
+		t.Fatalf("unexpected CSV disposition: %s", csv.Header().Get("Content-Disposition"))
+	}
+	csvBody := csv.Body.String()
+	for _, expected := range []string{"section,generated_at", "metadata", "holdings", "transactions", "cash_accounts", "manual_prices", "Data manual/mock"} {
+		if !strings.Contains(csvBody, expected) {
+			t.Fatalf("expected CSV to contain %q, got:\n%s", expected, csvBody)
+		}
+	}
+
+	missingToken := app.requestJSON(t, http.MethodGet, "/api/v1/reports/monthly-summary?month=2026-06", "", nil)
+	assertStatus(t, missingToken, http.StatusUnauthorized)
+}
+
 func newAPIIntegrationTest(t *testing.T) *apiTestApp {
 	t.Helper()
 	integrationOnce.Do(func() {
@@ -570,6 +642,12 @@ func (app *apiTestApp) login(t *testing.T, email string, password string) loginR
 
 func (app *apiTestApp) requestJSON(t *testing.T, method string, target string, token string, body any) apiTestResponse {
 	t.Helper()
+	rec := app.requestRaw(t, method, target, token, body)
+	return parseTestResponse(t, rec)
+}
+
+func (app *apiTestApp) requestRaw(t *testing.T, method string, target string, token string, body any) *httptest.ResponseRecorder {
+	t.Helper()
 	var reader io.Reader
 	if body != nil {
 		payload, err := json.Marshal(body)
@@ -588,7 +666,7 @@ func (app *apiTestApp) requestJSON(t *testing.T, method string, target string, t
 	}
 	rec := httptest.NewRecorder()
 	app.router.ServeHTTP(rec, req)
-	return parseTestResponse(t, rec)
+	return rec
 }
 
 func (app *apiTestApp) uploadCSV(t *testing.T, token string, filename string, contents string) apiTestResponse {
@@ -740,6 +818,15 @@ func hasAllocationValue(rows []assetAllocationResponse, asset string, value floa
 	return false
 }
 
+func hasReportWarning(rows []reportWarningResponse, code string) bool {
+	for _, row := range rows {
+		if row.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
 type apiTestResponse struct {
 	status   int
 	envelope apiEnvelope
@@ -824,4 +911,24 @@ type dashboardPerformanceResponse struct {
 
 type dashboardPerformanceItem struct {
 	CurrentValue float64 `json:"current_value"`
+}
+
+type reportWarningResponse struct {
+	Code string `json:"code"`
+}
+
+type monthlySummaryReportResponse struct {
+	Month                         string                  `json:"month"`
+	BeginningNetWorth             *float64                `json:"beginning_net_worth"`
+	EndingNetWorth                float64                 `json:"ending_net_worth"`
+	NetWorthChange                *float64                `json:"net_worth_change"`
+	TransactionTotalsByInstrument []map[string]any        `json:"transaction_totals_by_instrument"`
+	Warnings                      []reportWarningResponse `json:"warnings"`
+}
+
+type portfolioPerformanceReportResponse struct {
+	Method              string                    `json:"method"`
+	EndingValue         float64                   `json:"ending_value"`
+	AllocationBreakdown []assetAllocationResponse `json:"allocation_breakdown"`
+	Warnings            []reportWarningResponse   `json:"warnings"`
 }

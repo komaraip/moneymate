@@ -86,6 +86,28 @@ $jobId = $preview.data.job_id
 Invoke-RestMethod "http://localhost:8080/api/v1/imports/jobs/$jobId/confirm" -Method Post -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body "{}"
 ```
 
+Reports and CSV export:
+
+```txt
+http://localhost:5173/reports
+```
+
+PowerShell API examples:
+
+```powershell
+$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"owner@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
+$headers = @{ Authorization = "Bearer $($login.data.access_token)" }
+Invoke-RestMethod "http://localhost:8080/api/v1/reports/monthly-summary?month=2026-06" -Headers $headers
+Invoke-RestMethod "http://localhost:8080/api/v1/reports/portfolio-performance?from=2026-06-01&to=2026-06-30" -Headers $headers
+Invoke-WebRequest "http://localhost:8080/api/v1/reports/export.csv" -Headers $headers -OutFile ".\moneymate-portfolio-export.csv"
+```
+
+CSV export columns are stable for the MVP:
+
+```txt
+section,generated_at,record_id,snapshot_date,transaction_date,price_date,account_name,instrument_type,ticker,name,transaction_type,units,price,average_price_idr,current_price_idr,gross_value,fees,tax,net_value,balance,total_cost_idr,current_value_idr,profit_loss_idr,profit_loss_percent,currency,original_currency,fx_rate_to_idr,source,is_realtime,warnings,note
+```
+
 Stop services:
 
 ```powershell
@@ -258,7 +280,7 @@ Stop services after testing:
 docker compose down
 ```
 
-The smoke suite logs in with the seeded owner account, recalculates holdings for `2026-06-30`, checks dashboard/portfolio pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, and previews a small CSV import fixture without confirming the import. Cash adjustment is not covered because no separate adjustment UI exists in the current MVP.
+The smoke suite logs in with the seeded owner account, recalculates holdings for `2026-06-30`, checks dashboard/portfolio/reports pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, previews a small CSV import fixture without confirming the import, and verifies CSV report download starts. Cash adjustment is not covered because no separate adjustment UI exists in the current MVP.
 
 ## CI Validation
 
@@ -282,12 +304,14 @@ GitHub Actions runs:
 - Instruments, asset categories, cash accounts, transactions, manual prices, holdings, dashboard, and audit APIs.
 - Weighted-average holdings calculation in backend.
 - Dashboard overview, asset allocation, performance, and alerts APIs.
+- Read-only report APIs for monthly summary, simple portfolio performance, and CSV export.
 - React protected dashboard shell and MVP screens.
 - CSV/XLSX import preview and confirm flow for holdings, orders, cash, asset summary rows, manual prices, import job rows, automatic holdings recalculation, and import audit log.
 - OpenAPI 3.1 contract for implemented MVP endpoints.
 - Generated frontend API declarations from the OpenAPI contract.
 - Frontend component tests and Playwright MVP smoke tests.
 - Backend API integration tests for auth, RBAC, write flows, import confirmation, holdings/dashboard consistency, and audit logs.
+- Backend API integration tests for report endpoints, CSV export, report warnings, and auth protection.
 - CI checks for backend tests, backend API integration tests, frontend tests/build, Docker Compose config, OpenAPI lint, generated type drift, and E2E smoke coverage.
 
 ## Known Limitations
@@ -298,13 +322,14 @@ GitHub Actions runs:
 - `cash_adjustments` exists in the schema, but no cash adjustment API route is implemented yet.
 - Frontend forms are intentionally basic and do not yet expose every edit/delete backend action.
 - Confirmed imports do not fetch market data. Imported prices remain manual; holdings snapshots are recalculated in the same database transaction as import confirmation so dashboard views use imported data immediately.
+- Reports use backend holdings snapshots for portfolio values and current active cash balances for cash. Beginning net worth, historical cash, realized P/L, FIFO, TWR, and MWR are not invented when the current data model cannot calculate them accurately.
 - No production deployment hardening, HTTPS termination, or managed secret workflow yet.
 
 ## Roadmap
 
 Recommended next phase:
 
-1. Add report/export endpoints.
-2. Consider a typed API client wrapper generated from the OpenAPI paths.
-3. Tighten Redocly warning cleanup for quieter contract validation.
-4. Add deeper transaction/cash adjustment workflows if product scope requires.
+1. Consider a typed API client wrapper generated from the OpenAPI paths.
+2. Tighten Redocly warning cleanup for quieter contract validation.
+3. Add deeper transaction/cash adjustment workflows if product scope requires.
+4. Add advanced realized P/L or return methodology only after the product decision is explicit.

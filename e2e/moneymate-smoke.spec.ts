@@ -88,6 +88,20 @@ test.describe("MoneyMate MVP smoke", () => {
     await expect(page.getByText("Transaksi", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Cash", { exact: true }).first()).toBeVisible();
   });
+
+  test("halaman laporan memuat ringkasan dan export CSV", async ({ page, request }) => {
+    await loginAndPrepare(page, request);
+
+    await page.getByRole("link", { name: "Reports" }).click();
+    await expect(page.getByRole("heading", { name: "Laporan" })).toBeVisible();
+    await expect(page.getByText("Data manual/mock, bukan real-time.").first()).toBeVisible();
+    await expect(page.getByText(/Ringkasan Bulanan/)).toBeVisible();
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: /Export CSV/i }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toContain("moneymate");
+  });
 });
 
 async function loginAndPrepare(page: Page, request: APIRequestContext) {

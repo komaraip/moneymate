@@ -15,3 +15,6 @@ export type ImportPreviewRow = Schemas["ImportPreviewRow"];
 export type ImportPreview = Schemas["ImportPreview"];
 export type ImportPreviewSummary = ImportPreview["summary"];
 export type ImportConfirmResult = NonNullable<Schemas["ImportConfirmEnvelope"]["data"]>;
+export type MonthlySummaryReport = Schemas["MonthlySummaryReport"];
+export type PortfolioPerformanceReport = Schemas["PortfolioPerformanceReport"];
+export type ReportWarning = Schemas["ReportWarning"];

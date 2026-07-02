@@ -1335,6 +1335,138 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/monthly-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Monthly portfolio summary report
+         * @description Read-only monthly summary in IDR using backend holdings snapshots, current active cash balances, transactions, and manual/mock prices. The report does not provide buy/sell recommendations.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Report month in `YYYY-MM`. Defaults to the latest holdings snapshot month when omitted. */
+                    month?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Monthly summary report. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MonthlySummaryReportEnvelope"];
+                    };
+                };
+                400: components["responses"]["ValidationError"];
+                401: components["responses"]["UnauthorizedError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/portfolio-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Simple portfolio performance summary
+         * @description Read-only simple portfolio change summary in IDR. This is not time-weighted return or money-weighted return.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Start date in `YYYY-MM-DD`. Defaults to the first day of the latest holdings snapshot month. */
+                    from?: string;
+                    /** @description End date in `YYYY-MM-DD`. Defaults to the latest holdings snapshot date. */
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Portfolio performance report. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PortfolioPerformanceReportEnvelope"];
+                    };
+                };
+                400: components["responses"]["ValidationError"];
+                401: components["responses"]["UnauthorizedError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export MVP portfolio data as CSV
+         * @description Read-only UTF-8 CSV export for holdings, transactions, cash accounts, manual prices, generated timestamp, and non-real-time data note.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description CSV file download. */
+                200: {
+                    headers: {
+                        /** @description Attachment filename for the exported CSV. */
+                        "Content-Disposition"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/csv": string;
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit-logs": {
         parameters: {
             query?: never;
@@ -1699,6 +1831,130 @@ export interface components {
         };
         AlertListEnvelope: components["schemas"]["SuccessEnvelope"] & {
             data?: components["schemas"]["Alert"][];
+        };
+        ReportWarning: {
+            /** @example DATA_NOT_REALTIME */
+            code: string;
+            message: string;
+            /** @enum {string} */
+            severity: "info" | "warning" | "error";
+        };
+        TransactionReportTotal: {
+            asset_type: string;
+            /** @enum {string} */
+            transaction_type: "buy" | "sell" | "dividend" | "fee" | "adjustment";
+            transaction_count: number;
+            total_idr: number;
+        };
+        InstrumentReportTotal: {
+            /** Format: uuid */
+            instrument_id?: string | null;
+            ticker?: string | null;
+            name: string;
+            instrument_type: string;
+            original_currency: string;
+            /** @enum {string} */
+            transaction_type: "buy" | "sell" | "dividend" | "fee" | "adjustment";
+            transaction_count: number;
+            total_idr: number;
+        };
+        HoldingContribution: {
+            /** Format: uuid */
+            instrument_id: string;
+            ticker?: string | null;
+            name: string;
+            instrument_type: string;
+            current_value: number;
+            profit_loss_value: number;
+            profit_loss_percent: number;
+            original_currency: string;
+            price_source: string;
+            warnings?: string[];
+        };
+        MonthlySummaryReport: {
+            month: string;
+            /** @example IDR */
+            base_currency: string;
+            /** @description Null when historical net worth cannot be accurately calculated from available snapshots and cash history. */
+            beginning_net_worth?: number | null;
+            ending_net_worth: number;
+            net_worth_change?: number | null;
+            cash_balance: number;
+            portfolio_value: number;
+            /** Format: date */
+            portfolio_snapshot_date?: string | null;
+            /** @description Null in MVP because realized P/L method is not implemented. */
+            realized_profit_loss?: number | null;
+            unrealized_profit_loss: number;
+            transaction_totals_by_asset_type: components["schemas"]["TransactionReportTotal"][];
+            transaction_totals_by_instrument: components["schemas"]["InstrumentReportTotal"][];
+            top_contributors: components["schemas"]["HoldingContribution"][];
+            top_detractors: components["schemas"]["HoldingContribution"][];
+            warnings: components["schemas"]["ReportWarning"][];
+            data_not_realtime: string;
+            disclaimer: string;
+            /** Format: date-time */
+            generated_at: string;
+        };
+        MonthlySummaryReportEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["MonthlySummaryReport"];
+        };
+        CashSummary: {
+            total_cash: number;
+            active_accounts: number;
+            currency: string;
+            history_available: boolean;
+            note: string;
+        };
+        ReportHoldingPerformance: {
+            /** Format: uuid */
+            instrument_id: string;
+            ticker?: string | null;
+            name: string;
+            instrument_type: string;
+            units: number;
+            average_price_idr: number;
+            current_price_idr: number;
+            total_cost_idr: number;
+            current_value_idr: number;
+            profit_loss_value_idr: number;
+            profit_loss_percent: number;
+            instrument_currency: string;
+            latest_price?: number | null;
+            latest_price_currency?: string | null;
+            fx_rate_to_idr?: number | null;
+            price_source: string;
+            /** Format: date-time */
+            price_updated_at?: string | null;
+            warnings?: string[];
+        };
+        PortfolioPerformanceReport: {
+            /** Format: date */
+            from_date: string;
+            /** Format: date */
+            to_date: string;
+            base_currency: string;
+            /** @enum {string} */
+            method: "simple_portfolio_change";
+            starting_value?: number | null;
+            /** Format: date */
+            starting_snapshot_date?: string | null;
+            ending_value: number;
+            /** Format: date */
+            ending_snapshot_date?: string | null;
+            absolute_change?: number | null;
+            percentage_change?: number | null;
+            allocation_breakdown: components["schemas"]["AssetAllocation"][];
+            holdings_performance: components["schemas"]["ReportHoldingPerformance"][];
+            cash_summary: components["schemas"]["CashSummary"];
+            warnings: components["schemas"]["ReportWarning"][];
+            data_not_realtime: string;
+            disclaimer: string;
+            /** Format: date-time */
+            generated_at: string;
+        };
+        PortfolioPerformanceReportEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["PortfolioPerformanceReport"];
         };
         ImportJob: {
             /** Format: uuid */

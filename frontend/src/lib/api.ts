@@ -52,6 +52,10 @@ class ApiClient {
     return this.request<T>(path, { method: "POST", body, multipart: true });
   }
 
+  download(path: string) {
+    return this.requestBlob(path);
+  }
+
   put<T>(path: string, body: unknown) {
     return this.request<T>(path, { method: "PUT", body });
   }
@@ -93,6 +97,35 @@ class ApiClient {
     }
 
     return envelope.data;
+  }
+
+  private async requestBlob(path: string, retryOnUnauthorized = true): Promise<Blob> {
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        ...(this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {}),
+      },
+    });
+
+    if (response.status === 401 && retryOnUnauthorized) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        return this.requestBlob(path, false);
+      }
+    }
+
+    if (!response.ok) {
+      const envelope = await response.json().catch(() => null) as ApiEnvelope<unknown> | null;
+      throw new ApiError(
+        envelope?.error?.message ?? "Download gagal",
+        envelope?.error?.code ?? "REQUEST_ERROR",
+        envelope?.request_id,
+        envelope?.error?.details,
+      );
+    }
+
+    return response.blob();
   }
 
   private requestBody(options: RequestOptions): BodyInit | undefined {

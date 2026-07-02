@@ -30,6 +30,7 @@ tags:
   - name: Transactions
   - name: Cash Accounts
   - name: Imports
+  - name: Reports
   - name: Audit Logs
 
 paths:
@@ -907,6 +908,187 @@ paths:
                       message: Import selesai. Nilai portfolio sudah dihitung ulang. Data harga tetap manual dan bukan real-time.
                     request_id: req_123
 
+  /api/v1/reports/monthly-summary:
+    get:
+      tags: [Reports]
+      summary: Monthly portfolio summary report
+      security:
+        - bearerAuth: []
+      description: Read-only monthly summary in IDR using backend holdings snapshots, current active cash balances, transactions, and manual/mock prices. The report does not provide buy/sell recommendations.
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+          description: Report month in `YYYY-MM`. Defaults to the latest holdings snapshot month when omitted.
+      responses:
+        "200":
+          description: Monthly summary report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonthlySummaryReportEnvelope"
+              examples:
+                seeded:
+                  value:
+                    success: true
+                    data:
+                      month: "2026-06"
+                      base_currency: IDR
+                      beginning_net_worth: null
+                      ending_net_worth: 13648703.72
+                      net_worth_change: null
+                      cash_balance: 151859
+                      portfolio_value: 13496844.72
+                      portfolio_snapshot_date: "2026-06-30"
+                      realized_profit_loss: null
+                      unrealized_profit_loss: -753255.58
+                      transaction_totals_by_asset_type:
+                        - asset_type: stock
+                          transaction_type: buy
+                          transaction_count: 5
+                          total_idr: 5448000
+                      transaction_totals_by_instrument:
+                        - instrument_id: 33333333-3333-3333-3333-333333333333
+                          ticker: BBRI
+                          name: Bank Rakyat Indonesia
+                          instrument_type: stock
+                          original_currency: IDR
+                          transaction_type: buy
+                          transaction_count: 5
+                          total_idr: 5448000
+                      top_contributors: []
+                      top_detractors: []
+                      warnings:
+                        - code: DATA_NOT_REALTIME
+                          message: Semua harga MVP berasal dari input manual/mock dan bukan real-time.
+                          severity: info
+                      data_not_realtime: Data manual/mock, bukan real-time.
+                      disclaimer: Laporan ini bersifat ringkasan pencatatan, bukan rekomendasi beli/jual.
+                      generated_at: "2026-07-02T10:00:00+07:00"
+                    request_id: req_123
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/reports/portfolio-performance:
+    get:
+      tags: [Reports]
+      summary: Simple portfolio performance summary
+      security:
+        - bearerAuth: []
+      description: Read-only simple portfolio change summary in IDR. This is not time-weighted return or money-weighted return.
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Start date in `YYYY-MM-DD`. Defaults to the first day of the latest holdings snapshot month.
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: End date in `YYYY-MM-DD`. Defaults to the latest holdings snapshot date.
+      responses:
+        "200":
+          description: Portfolio performance report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioPerformanceReportEnvelope"
+              examples:
+                seeded:
+                  value:
+                    success: true
+                    data:
+                      from_date: "2026-06-01"
+                      to_date: "2026-06-30"
+                      base_currency: IDR
+                      method: simple_portfolio_change
+                      starting_value: null
+                      starting_snapshot_date: null
+                      ending_value: 13496844.72
+                      ending_snapshot_date: "2026-06-30"
+                      absolute_change: null
+                      percentage_change: null
+                      allocation_breakdown:
+                        - asset: Saham
+                          value: 4641000
+                          percent: 0.34
+                      holdings_performance:
+                        - instrument_id: 33333333-3333-3333-3333-333333333333
+                          ticker: BBRI
+                          name: Bank Rakyat Indonesia
+                          instrument_type: stock
+                          units: 1700
+                          average_price_idr: 3204.71
+                          current_price_idr: 2730
+                          total_cost_idr: 5448000
+                          current_value_idr: 4641000
+                          profit_loss_value_idr: -807000
+                          profit_loss_percent: -0.1481
+                          instrument_currency: IDR
+                          latest_price: 2730
+                          latest_price_currency: IDR
+                          fx_rate_to_idr: null
+                          price_source: manual
+                          price_updated_at: "2026-06-30T08:00:00+07:00"
+                          warnings: []
+                      cash_summary:
+                        total_cash: 151859
+                        active_accounts: 3
+                        currency: IDR
+                        history_available: false
+                        note: Cash balance memakai saldo aktif saat laporan dibuat; histori saldo cash belum tersedia di MVP.
+                      warnings:
+                        - code: DATA_NOT_REALTIME
+                          message: Semua harga MVP berasal dari input manual/mock dan bukan real-time.
+                          severity: info
+                      data_not_realtime: Data manual/mock, bukan real-time.
+                      disclaimer: Laporan ini bersifat ringkasan pencatatan, bukan rekomendasi beli/jual.
+                      generated_at: "2026-07-02T10:00:00+07:00"
+                    request_id: req_123
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/reports/export.csv:
+    get:
+      tags: [Reports]
+      summary: Export MVP portfolio data as CSV
+      security:
+        - bearerAuth: []
+      description: Read-only UTF-8 CSV export for holdings, transactions, cash accounts, manual prices, generated timestamp, and non-real-time data note.
+      responses:
+        "200":
+          description: CSV file download.
+          headers:
+            Content-Disposition:
+              description: Attachment filename for the exported CSV.
+              schema:
+                type: string
+                example: attachment; filename="moneymate-portfolio-export.csv"
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+              examples:
+                sample:
+                  value: |
+                    section,generated_at,record_id,snapshot_date,transaction_date,price_date,account_name,instrument_type,ticker,name,transaction_type,units,price,average_price_idr,current_price_idr,gross_value,fees,tax,net_value,balance,total_cost_idr,current_value_idr,profit_loss_idr,profit_loss_percent,currency,original_currency,fx_rate_to_idr,source,is_realtime,warnings,note
+                    metadata,2026-07-02T10:00:00+07:00,,,,,,,,,,,,,,,,,,,,,,,,,,,,Data manual/mock, bukan real-time.
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
   /api/v1/audit-logs:
     get:
       tags: [Audit Logs]
@@ -1747,6 +1929,340 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/Alert"
+
+    ReportWarning:
+      type: object
+      required: [code, message, severity]
+      properties:
+        code:
+          type: string
+          example: DATA_NOT_REALTIME
+        message:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, error]
+
+    TransactionReportTotal:
+      type: object
+      required: [asset_type, transaction_type, transaction_count, total_idr]
+      properties:
+        asset_type:
+          type: string
+        transaction_type:
+          type: string
+          enum: [buy, sell, dividend, fee, adjustment]
+        transaction_count:
+          type: integer
+        total_idr:
+          type: number
+
+    InstrumentReportTotal:
+      type: object
+      required: [name, instrument_type, original_currency, transaction_type, transaction_count, total_idr]
+      properties:
+        instrument_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        ticker:
+          type:
+            - string
+            - "null"
+        name:
+          type: string
+        instrument_type:
+          type: string
+        original_currency:
+          type: string
+        transaction_type:
+          type: string
+          enum: [buy, sell, dividend, fee, adjustment]
+        transaction_count:
+          type: integer
+        total_idr:
+          type: number
+
+    HoldingContribution:
+      type: object
+      required: [instrument_id, name, instrument_type, current_value, profit_loss_value, profit_loss_percent, original_currency, price_source]
+      properties:
+        instrument_id:
+          type: string
+          format: uuid
+        ticker:
+          type:
+            - string
+            - "null"
+        name:
+          type: string
+        instrument_type:
+          type: string
+        current_value:
+          type: number
+        profit_loss_value:
+          type: number
+        profit_loss_percent:
+          type: number
+        original_currency:
+          type: string
+        price_source:
+          type: string
+        warnings:
+          type: array
+          items:
+            type: string
+
+    MonthlySummaryReport:
+      type: object
+      required:
+        - month
+        - base_currency
+        - ending_net_worth
+        - cash_balance
+        - portfolio_value
+        - unrealized_profit_loss
+        - transaction_totals_by_asset_type
+        - transaction_totals_by_instrument
+        - top_contributors
+        - top_detractors
+        - warnings
+        - data_not_realtime
+        - disclaimer
+        - generated_at
+      properties:
+        month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+        base_currency:
+          type: string
+          example: IDR
+        beginning_net_worth:
+          type:
+            - number
+            - "null"
+          description: Null when historical net worth cannot be accurately calculated from available snapshots and cash history.
+        ending_net_worth:
+          type: number
+        net_worth_change:
+          type:
+            - number
+            - "null"
+        cash_balance:
+          type: number
+        portfolio_value:
+          type: number
+        portfolio_snapshot_date:
+          type:
+            - string
+            - "null"
+          format: date
+        realized_profit_loss:
+          type:
+            - number
+            - "null"
+          description: Null in MVP because realized P/L method is not implemented.
+        unrealized_profit_loss:
+          type: number
+        transaction_totals_by_asset_type:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransactionReportTotal"
+        transaction_totals_by_instrument:
+          type: array
+          items:
+            $ref: "#/components/schemas/InstrumentReportTotal"
+        top_contributors:
+          type: array
+          items:
+            $ref: "#/components/schemas/HoldingContribution"
+        top_detractors:
+          type: array
+          items:
+            $ref: "#/components/schemas/HoldingContribution"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportWarning"
+        data_not_realtime:
+          type: string
+        disclaimer:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+
+    MonthlySummaryReportEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/MonthlySummaryReport"
+
+    CashSummary:
+      type: object
+      required: [total_cash, active_accounts, currency, history_available, note]
+      properties:
+        total_cash:
+          type: number
+        active_accounts:
+          type: integer
+        currency:
+          type: string
+        history_available:
+          type: boolean
+        note:
+          type: string
+
+    ReportHoldingPerformance:
+      type: object
+      required:
+        - instrument_id
+        - name
+        - instrument_type
+        - units
+        - average_price_idr
+        - current_price_idr
+        - total_cost_idr
+        - current_value_idr
+        - profit_loss_value_idr
+        - profit_loss_percent
+        - instrument_currency
+        - price_source
+      properties:
+        instrument_id:
+          type: string
+          format: uuid
+        ticker:
+          type:
+            - string
+            - "null"
+        name:
+          type: string
+        instrument_type:
+          type: string
+        units:
+          type: number
+        average_price_idr:
+          type: number
+        current_price_idr:
+          type: number
+        total_cost_idr:
+          type: number
+        current_value_idr:
+          type: number
+        profit_loss_value_idr:
+          type: number
+        profit_loss_percent:
+          type: number
+        instrument_currency:
+          type: string
+        latest_price:
+          type:
+            - number
+            - "null"
+        latest_price_currency:
+          type:
+            - string
+            - "null"
+        fx_rate_to_idr:
+          type:
+            - number
+            - "null"
+        price_source:
+          type: string
+        price_updated_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        warnings:
+          type: array
+          items:
+            type: string
+
+    PortfolioPerformanceReport:
+      type: object
+      required:
+        - from_date
+        - to_date
+        - base_currency
+        - method
+        - ending_value
+        - allocation_breakdown
+        - holdings_performance
+        - cash_summary
+        - warnings
+        - data_not_realtime
+        - disclaimer
+        - generated_at
+      properties:
+        from_date:
+          type: string
+          format: date
+        to_date:
+          type: string
+          format: date
+        base_currency:
+          type: string
+        method:
+          type: string
+          enum: [simple_portfolio_change]
+        starting_value:
+          type:
+            - number
+            - "null"
+        starting_snapshot_date:
+          type:
+            - string
+            - "null"
+          format: date
+        ending_value:
+          type: number
+        ending_snapshot_date:
+          type:
+            - string
+            - "null"
+          format: date
+        absolute_change:
+          type:
+            - number
+            - "null"
+        percentage_change:
+          type:
+            - number
+            - "null"
+        allocation_breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssetAllocation"
+        holdings_performance:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportHoldingPerformance"
+        cash_summary:
+          $ref: "#/components/schemas/CashSummary"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportWarning"
+        data_not_realtime:
+          type: string
+        disclaimer:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+
+    PortfolioPerformanceReportEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PortfolioPerformanceReport"
 
     ImportJob:
       type: object

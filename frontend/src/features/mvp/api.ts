@@ -9,7 +9,9 @@ import type {
   ImportConfirmResult,
   ImportPreview,
   Instrument,
+  MonthlySummaryReport,
   Overview,
+  PortfolioPerformanceReport,
   Transaction,
 } from "./types";
 
@@ -17,6 +19,12 @@ export const mvpApi = {
   overview: () => apiClient.get<Overview>("/api/v1/dashboard/overview"),
   allocation: () => apiClient.get<AllocationItem[]>("/api/v1/dashboard/asset-allocation"),
   alerts: () => apiClient.get<AlertItem[]>("/api/v1/dashboard/alerts"),
+  monthlySummary: (month: string) => apiClient.get<MonthlySummaryReport>(`/api/v1/reports/monthly-summary?month=${encodeURIComponent(month)}`),
+  portfolioPerformance: (from: string, to: string) =>
+    apiClient.get<PortfolioPerformanceReport>(
+      `/api/v1/reports/portfolio-performance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+    ),
+  exportReportsCsv: () => apiClient.download("/api/v1/reports/export.csv"),
   holdings: () => apiClient.get<Holding[]>("/api/v1/holdings"),
   recalculateHoldings: () => apiClient.post<{ count: number; message: string }>("/api/v1/holdings/recalculate?date=2026-06-30", {}),
   instruments: () => apiClient.get<Instrument[]>("/api/v1/instruments"),

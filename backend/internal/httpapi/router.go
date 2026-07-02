@@ -16,6 +16,7 @@ import (
 	"moneymate/backend/internal/ledger"
 	"moneymate/backend/internal/masterdata"
 	"moneymate/backend/internal/portfolio"
+	"moneymate/backend/internal/reports"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -50,6 +51,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service
 	portfolioHandler := portfolio.NewHandler(db)
 	dashboardHandler := dashboard.NewHandler(db, cfg)
 	importHandler := importer.NewHandler(db)
+	reportHandler := reports.NewHandler(db, cfg)
 	protected := chi.NewRouter()
 	protected.Use(auth.RequireAuth(authService))
 	protected.Mount("/dashboard", dashboardHandler.Routes())
@@ -61,6 +63,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service
 	protected.Mount("/prices", ledgerHandler.PriceRoutes())
 	protected.Mount("/audit-logs", masterHandler.AuditRoutes())
 	protected.Mount("/imports", importHandler.Routes())
+	protected.Mount("/reports", reportHandler.Routes())
 	chiRouter.Mount("/api/v1", protected)
 
 	return chiRouter
