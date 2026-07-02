@@ -273,18 +273,28 @@ func (h Handler) confirmJob(ctx context.Context, jobID string, userID string) (C
 	if err != nil {
 		return ConfirmResult{}, internalErr(err, "Gagal memuat baris import")
 	}
-	defer rows.Close()
+
+	previewRows := []PreviewRow{}
+	for rows.Next() {
+		row, err := scanPreviewRow(rows)
+		if err != nil {
+			rows.Close()
+			return ConfirmResult{}, internalErr(err, "Gagal membaca baris import")
+		}
+		previewRows = append(previewRows, row)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return ConfirmResult{}, internalErr(err, "Gagal membaca baris import")
+	}
+	rows.Close()
 
 	importedRows := 0
 	skippedRows := 0
 	failedRows := 0
 	totalRows := 0
 
-	for rows.Next() {
-		row, err := scanPreviewRow(rows)
-		if err != nil {
-			return ConfirmResult{}, internalErr(err, "Gagal membaca baris import")
-		}
+	for _, row := range previewRows {
 		totalRows++
 
 		if row.Status != RowStatusValid {
@@ -309,9 +319,6 @@ func (h Handler) confirmJob(ctx context.Context, jobID string, userID string) (C
 		`, row.ID, nextStatus); err != nil {
 			return ConfirmResult{}, internalErr(err, "Gagal mengubah status baris import")
 		}
-	}
-	if err := rows.Err(); err != nil {
-		return ConfirmResult{}, internalErr(err, "Gagal membaca baris import")
 	}
 
 	jobStatus := "completed"

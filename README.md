@@ -135,6 +135,28 @@ $repoPath = (Resolve-Path .).Path
 docker run --rm -v "${repoPath}:/workspace" -w /workspace/backend golang:1.26-alpine go test ./...
 ```
 
+Backend API integration tests through Docker:
+
+```powershell
+docker compose up -d postgres
+$postgresPort = (docker compose port postgres 5432).Split(":")[-1]
+$repoPath = (Resolve-Path .).Path
+docker run --rm `
+  -e MONEYMATE_TEST_DATABASE_URL="postgres://moneymate:moneymate@host.docker.internal:$postgresPort/moneymate?sslmode=disable" `
+  -v "${repoPath}:/workspace" `
+  -w /workspace/backend `
+  golang:1.26-alpine go test -tags=integration ./internal/httpapi
+```
+
+The integration suite uses `httptest` against the actual chi router, creates a temporary PostgreSQL schema, runs migrations into that schema, truncates between tests, and drops the schema after the run. It covers auth, RBAC, write flows, manual prices, holdings recalculation, import preview/confirm, duplicate ticker handling, dashboard totals after import, and audit log creation.
+
+If Go is available locally, the same integration suite can be run with:
+
+```powershell
+$env:MONEYMATE_TEST_DATABASE_URL = "postgres://moneymate:moneymate@localhost:$postgresPort/moneymate?sslmode=disable"
+npm run backend:test:integration
+```
+
 Frontend build:
 
 ```powershell
@@ -243,6 +265,7 @@ The smoke suite logs in with the seeded owner account, recalculates holdings for
 GitHub Actions runs:
 
 - Backend tests with Go 1.26 in Docker.
+- Backend API integration tests with PostgreSQL 16 and Go 1.26 in Docker.
 - Frontend dependency install, component tests, and `npm run build`.
 - `docker compose config`.
 - Redocly OpenAPI lint.
@@ -264,13 +287,15 @@ GitHub Actions runs:
 - OpenAPI 3.1 contract for implemented MVP endpoints.
 - Generated frontend API declarations from the OpenAPI contract.
 - Frontend component tests and Playwright MVP smoke tests.
-- CI checks for backend tests, frontend tests/build, Docker Compose config, OpenAPI lint, generated type drift, and E2E smoke coverage.
+- Backend API integration tests for auth, RBAC, write flows, import confirmation, holdings/dashboard consistency, and audit logs.
+- CI checks for backend tests, backend API integration tests, frontend tests/build, Docker Compose config, OpenAPI lint, generated type drift, and E2E smoke coverage.
 
 ## Known Limitations
 
 - No external market data integration.
 - Manual/mock prices only; dashboard labels data as not real-time.
 - Cash balances are manually managed; orders do not automatically move cash yet.
+- `cash_adjustments` exists in the schema, but no cash adjustment API route is implemented yet.
 - Frontend forms are intentionally basic and do not yet expose every edit/delete backend action.
 - Confirmed imports do not fetch market data. Imported prices remain manual, and holdings snapshots still follow the existing recalculation workflow.
 - No production deployment hardening, HTTPS termination, or managed secret workflow yet.
@@ -279,7 +304,7 @@ GitHub Actions runs:
 
 Recommended next phase:
 
-1. Add frontend component tests and Playwright smoke tests.
-2. Add report/export endpoints.
-3. Consider automatic holdings recalculation after confirmed imports.
-4. Consider a typed API client wrapper generated from the OpenAPI paths.
+1. Add report/export endpoints.
+2. Consider automatic holdings recalculation after confirmed imports.
+3. Consider a typed API client wrapper generated from the OpenAPI paths.
+4. Tighten Redocly warning cleanup for quieter contract validation.

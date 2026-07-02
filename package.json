@@ -7,6 +7,7 @@
     "api:lint": "redocly lint docs/api/openapi.yaml",
     "api:types": "openapi-typescript docs/api/openapi.yaml -o frontend/src/lib/generated/openapi.d.ts",
     "api:types:check": "npm run api:types && git diff --exit-code -- frontend/src/lib/generated/openapi.d.ts",
+    "backend:test:integration": "cd backend && go test -tags=integration ./internal/httpapi",
     "frontend:test": "npm --prefix frontend run test:run",
     "e2e": "playwright test"
   },
