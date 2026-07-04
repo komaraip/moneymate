@@ -1,6 +1,6 @@
-# MoneyMate Admin Dashboard
+# MoneyMate Personal Finance
 
-MoneyMate is a local fullstack MVP for tracking personal finance data, portfolio holdings, manual prices, transactions, cash accounts, and dashboard summaries.
+MoneyMate is a local fullstack MVP evolving into a multi-user personal finance web app for individual users. The current app tracks portfolio holdings, manual prices, transactions, cash accounts, reports, backups, and dashboard summaries while the next roadmap expands it toward income, expenses, transfers, budgets, savings goals, and personal net worth.
 
 Current stack:
 
@@ -8,7 +8,7 @@ Current stack:
 - Backend: Go, chi router, slog, PostgreSQL via pgx.
 - Local services: Docker Compose with PostgreSQL, backend API, frontend Vite server.
 
-Financial safety note: all prices are manual/mock in this MVP. The app does not provide buy/sell recommendations and does not claim real-time market data.
+Financial safety note: all prices are manual/mock in this MVP. The app does not provide buy/sell recommendations and does not claim real-time market data. See [docs/moneymate-personal-finance-scope.md](docs/moneymate-personal-finance-scope.md) for the approved personal finance product direction.
 
 ## Prerequisites
 
