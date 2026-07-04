@@ -7,11 +7,60 @@
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
 body {
   margin: 0;
+}
+
+:root[data-theme="light"] body {
+  background: #f8fafc;
+  color: #18181b;
 }
 
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+}
+
+:root[data-theme="light"] .bg-zinc-950,
+:root[data-theme="light"] .bg-zinc-950\/90 {
+  background-color: #f8fafc !important;
+}
+
+:root[data-theme="light"] .bg-zinc-900,
+:root[data-theme="light"] .bg-zinc-900\/70,
+:root[data-theme="light"] .hover\:bg-zinc-900:hover {
+  background-color: #ffffff !important;
+}
+
+:root[data-theme="light"] .bg-zinc-800 {
+  background-color: #e4e4e7 !important;
+}
+
+:root[data-theme="light"] .border-zinc-800,
+:root[data-theme="light"] .border-zinc-700 {
+  border-color: #d4d4d8 !important;
+}
+
+:root[data-theme="light"] .text-white,
+:root[data-theme="light"] .text-zinc-100 {
+  color: #18181b !important;
+}
+
+:root[data-theme="light"] .text-zinc-200,
+:root[data-theme="light"] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+
+:root[data-theme="light"] .text-zinc-400,
+:root[data-theme="light"] .text-zinc-500,
+:root[data-theme="light"] .text-zinc-600 {
+  color: #71717a !important;
+}
+
+:root[data-theme="light"] .divide-zinc-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e4e4e7 !important;
 }
