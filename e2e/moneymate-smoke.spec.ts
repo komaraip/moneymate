@@ -20,7 +20,7 @@ test.describe("MoneyMate MVP smoke", () => {
   test("portfolio dan halaman data utama dapat dibuka", async ({ page, request }) => {
     await loginAndPrepare(page, request);
 
-    await page.getByRole("link", { name: "Portfolio" }).click();
+    await page.getByRole("link", { name: "Portofolio" }).click();
     await expect(page.getByRole("heading", { name: "Portfolio" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Recalculate" })).toBeVisible();
     await expect(page.getByRole("cell", { name: /BBRI|Bank Rakyat Indonesia/ }).first()).toBeVisible();
@@ -29,7 +29,7 @@ test.describe("MoneyMate MVP smoke", () => {
   test("modal transaksi dapat dibuka untuk create edit dan delete", async ({ page, request }) => {
     await loginAndPrepare(page, request);
 
-    await page.getByRole("link", { name: "Orders" }).click();
+    await page.getByRole("link", { name: "Transaksi" }).click();
     await expect(page.getByRole("heading", { name: "Transaksi" })).toBeVisible();
 
     await page.getByRole("button", { name: /Tambah Transaksi/i }).click();
@@ -48,7 +48,7 @@ test.describe("MoneyMate MVP smoke", () => {
   test("modal instrumen dan cash dapat dibuka", async ({ page, request }) => {
     await loginAndPrepare(page, request);
 
-    await page.getByRole("link", { name: "Instruments" }).click();
+    await page.getByRole("link", { name: "Instrumen" }).click();
     await expect(page.getByRole("heading", { name: "Instrumen" })).toBeVisible();
     await page.getByRole("button", { name: /Tambah Instrumen/i }).click();
     await expect(page.getByRole("heading", { name: "Tambah Instrumen" })).toBeVisible();
@@ -60,7 +60,7 @@ test.describe("MoneyMate MVP smoke", () => {
     await expect(page.getByRole("heading", { name: "Nonaktifkan Instrumen" })).toBeVisible();
     await page.getByRole("button", { name: "Batal" }).click();
 
-    await page.getByRole("link", { name: "Cash" }).click();
+    await page.getByRole("link", { name: "Kas", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Cash" })).toBeVisible();
     await page.getByRole("button", { name: /Tambah Akun Cash/i }).click();
     await expect(page.getByRole("heading", { name: "Tambah Akun Cash" })).toBeVisible();
@@ -82,7 +82,7 @@ test.describe("MoneyMate MVP smoke", () => {
   test("halaman import dapat menampilkan preview CSV kecil", async ({ page, request }) => {
     await loginAndPrepare(page, request);
 
-    await page.getByRole("link", { name: "Import Data" }).click();
+    await page.getByRole("link", { name: "Impor Data" }).click();
     await expect(page.getByRole("heading", { name: "Impor Spreadsheet" })).toBeVisible();
     await expect(page.getByText("Belum ada preview import.")).toBeVisible();
 
@@ -98,7 +98,7 @@ test.describe("MoneyMate MVP smoke", () => {
   test("halaman laporan memuat ringkasan dan export CSV", async ({ page, request }) => {
     await loginAndPrepare(page, request);
 
-    await page.getByRole("link", { name: "Reports" }).click();
+    await page.getByRole("link", { name: "Laporan" }).click();
     await expect(page.getByRole("heading", { name: "Laporan" })).toBeVisible();
     await expect(page.getByText("Data manual/mock, bukan real-time.").first()).toBeVisible();
     await expect(page.getByText(/Ringkasan Bulanan/)).toBeVisible();

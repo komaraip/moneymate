@@ -9,67 +9,72 @@ import {
   Landmark,
   LogOut,
   Menu,
+  X,
 } from "lucide-react";
+import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../features/auth/useAuth";
 
 const navItems = [
-  { label: "Overview", href: "/", icon: Gauge },
-  { label: "Portfolio", href: "/portfolio", icon: BarChart3 },
-  { label: "Orders", href: "/orders", icon: ClipboardList },
-  { label: "Cash", href: "/cash", icon: Banknote },
-  { label: "Instruments", href: "/instruments", icon: Landmark },
-  { label: "Reports", href: "/reports", icon: FileText },
-  { label: "Import Data", href: "/import-data", icon: Import },
-  { label: "Audit Log", href: "/audit-log", icon: History },
+  { label: "Ringkasan", href: "/", icon: Gauge },
+  { label: "Portofolio", href: "/portfolio", icon: BarChart3 },
+  { label: "Transaksi", href: "/orders", icon: ClipboardList },
+  { label: "Kas", href: "/cash", icon: Banknote },
+  { label: "Instrumen", href: "/instruments", icon: Landmark },
+  { label: "Laporan", href: "/reports", icon: FileText },
+  { label: "Impor Data", href: "/import-data", icon: Import },
+  { label: "Log Audit", href: "/audit-log", icon: History },
 ];
 
 export function DashboardLayout() {
   const { user, logout } = useAuth();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-zinc-800 bg-zinc-950 px-5 py-6 lg:block">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
-            MoneyMate
-          </p>
-          <h1 className="mt-2 text-xl font-semibold text-white">
-            Admin Dashboard
-          </h1>
-        </div>
-
-        <nav className="mt-8 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
-                    isActive
-                      ? "bg-zinc-800 text-white"
-                      : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
-                  }`
-                }
-                end={item.href === "/"}
-                key={item.href}
-                to={item.href}
-              >
-                <Icon aria-hidden="true" className="h-4 w-4" />
-                {item.label}
-              </NavLink>
-            );
-          })}
-        </nav>
+        <SidebarContent />
       </aside>
+
+      {mobileNavOpen ? (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            aria-label="Tutup navigasi"
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setMobileNavOpen(false)}
+            type="button"
+          />
+          <aside
+            aria-label="Navigasi utama"
+            className="relative z-10 flex h-full w-[min(20rem,85vw)] flex-col border-r border-zinc-800 bg-zinc-950 px-5 py-6 shadow-2xl"
+            id="mobile-navigation"
+          >
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <Brand />
+              <button
+                aria-label="Tutup navigasi"
+                className="rounded-lg border border-zinc-800 p-2 text-zinc-300"
+                onClick={() => setMobileNavOpen(false)}
+                type="button"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <SidebarNav onNavigate={() => setMobileNavOpen(false)} />
+          </aside>
+        </div>
+      ) : null}
 
       <main className="lg:pl-72">
         <header className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/90 px-5 py-4 backdrop-blur lg:px-8">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <button
+                aria-controls="mobile-navigation"
+                aria-expanded={mobileNavOpen}
                 aria-label="Buka navigasi"
                 className="rounded-lg border border-zinc-800 p-2 text-zinc-300 lg:hidden"
+                onClick={() => setMobileNavOpen(true)}
                 type="button"
               >
                 <Menu className="h-5 w-5" />
@@ -114,5 +119,55 @@ export function DashboardLayout() {
         </footer>
       </main>
     </div>
+  );
+}
+
+function SidebarContent() {
+  return (
+    <>
+      <Brand />
+      <SidebarNav />
+    </>
+  );
+}
+
+function Brand() {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
+        MoneyMate
+      </p>
+      <h1 className="mt-2 text-xl font-semibold text-white">
+        Admin Dashboard
+      </h1>
+    </div>
+  );
+}
+
+function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <nav className="mt-8 space-y-1">
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        return (
+          <NavLink
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+                isActive
+                  ? "bg-zinc-800 text-white"
+                  : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
+              }`
+            }
+            end={item.href === "/"}
+            key={item.href}
+            onClick={onNavigate}
+            to={item.href}
+          >
+            <Icon aria-hidden="true" className="h-4 w-4" />
+            {item.label}
+          </NavLink>
+        );
+      })}
+    </nav>
   );
 }
