@@ -74,6 +74,7 @@ func mountUserRoutes(
 	router.Mount("/holdings", portfolioHandler.Routes())
 	router.Mount("/instruments", masterHandler.InstrumentRoutes())
 	router.Mount("/asset-categories", masterHandler.CategoryRoutes())
+	router.Mount("/transaction-categories", masterHandler.TransactionCategoryRoutes())
 	router.Mount("/cash-accounts", masterHandler.CashRoutes())
 	router.Mount("/transactions", ledgerHandler.TransactionRoutes())
 	router.Mount("/prices", ledgerHandler.PriceRoutes())

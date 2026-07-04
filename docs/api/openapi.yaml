@@ -27,6 +27,7 @@ tags:
   - name: Prices
   - name: Instruments
   - name: Asset Categories
+  - name: Transaction Categories
   - name: Transactions
   - name: Cash Accounts
   - name: Imports
@@ -190,6 +191,9 @@ paths:
                       total_cost: 14382050.41
                       profit_loss_value: -889236.69
                       profit_loss_percent: -0.0618
+                      monthly_income: 0
+                      monthly_expense: 0
+                      monthly_net_cashflow: 0
                       best_performer:
                         ticker: SPY
                         name: S&P 500 ETF
@@ -583,6 +587,83 @@ paths:
               schema:
                 $ref: "#/components/schemas/StatusEnvelope"
 
+  /api/v1/transaction-categories:
+    get:
+      tags: [Transaction Categories]
+      summary: List personal income and expense categories
+      security:
+        - bearerAuth: []
+      description: Categories are scoped to the authenticated user. Optional `type` filters to income or expense.
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [income, expense]
+      responses:
+        "200":
+          description: Transaction categories.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionCategoryListEnvelope"
+    post:
+      tags: [Transaction Categories]
+      summary: Create personal transaction category
+      security:
+        - bearerAuth: []
+      description: Requires admin or user role. Categories are scoped to the authenticated user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionCategoryInput"
+      responses:
+        "201":
+          description: Transaction category created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionCategoryEnvelope"
+
+  /api/v1/transaction-categories/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    put:
+      tags: [Transaction Categories]
+      summary: Update personal transaction category
+      security:
+        - bearerAuth: []
+      description: Requires admin or user role. Categories are scoped to the authenticated user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionCategoryInput"
+      responses:
+        "200":
+          description: Transaction category updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionCategoryEnvelope"
+    delete:
+      tags: [Transaction Categories]
+      summary: Soft-delete personal transaction category
+      security:
+        - bearerAuth: []
+      description: Requires admin or user role. The implementation sets `is_active=false` to preserve historical transactions.
+      responses:
+        "200":
+          description: Transaction category deactivated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusEnvelope"
+
   /api/v1/transactions:
     get:
       tags: [Transactions]
@@ -595,7 +676,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [buy, sell, dividend, fee, adjustment]
+            enum: [buy, sell, dividend, fee, adjustment, income, expense, transfer]
         - name: instrument_id
           in: query
           required: false
@@ -1002,6 +1083,9 @@ paths:
                       cash_balance: 151859
                       cash_net_movement: 0
                       cash_movements: []
+                      income_total: 0
+                      expense_total: 0
+                      net_cashflow: 0
                       portfolio_value: 13496844.72
                       portfolio_snapshot_date: "2026-06-30"
                       realized_profit_loss: null
@@ -1531,25 +1615,103 @@ components:
               items:
                 $ref: "#/components/schemas/AssetCategory"
 
+    TransactionCategoryInput:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        color_key:
+          type:
+            - string
+            - "null"
+        sort_order:
+          type: integer
+          default: 0
+        is_active:
+          type: boolean
+
+    TransactionCategory:
+      allOf:
+        - $ref: "#/components/schemas/TransactionCategoryInput"
+        - type: object
+          required: [id, sort_order, is_active, created_at, updated_at]
+          properties:
+            id:
+              type: string
+              format: uuid
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    TransactionCategoryEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/TransactionCategory"
+
+    TransactionCategoryListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/TransactionCategory"
+
     TransactionInput:
       type: object
-      required: [transaction_date, type, price, units, currency]
+      required: [transaction_date, type, currency]
       properties:
         instrument_id:
           type:
             - string
             - "null"
           format: uuid
+        cash_account_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: Required for income, expense, and transfer transactions.
+        transfer_cash_account_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: Required for transfer transactions and must differ from `cash_account_id`.
+        category_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: Required for income and expense transactions. Category type must match transaction type.
         transaction_date:
           type: string
           format: date
         type:
           type: string
-          enum: [buy, sell, dividend, fee, adjustment]
+          enum: [buy, sell, dividend, fee, adjustment, income, expense, transfer]
+        amount:
+          type:
+            - number
+            - "null"
+          description: Positive personal-finance amount for income, expense, and transfer. Transfers do not count as income or expense in reports.
         price:
           type: number
+          default: 0
         units:
           type: number
+          default: 0
         gross_value:
           type:
             - number
@@ -1589,6 +1751,18 @@ components:
                 - string
                 - "null"
             instrument_ticker:
+              type:
+                - string
+                - "null"
+            cash_account_name:
+              type:
+                - string
+                - "null"
+            transfer_cash_account_name:
+              type:
+                - string
+                - "null"
+            category_name:
               type:
                 - string
                 - "null"
@@ -1714,6 +1888,11 @@ components:
             - string
             - "null"
         created_by:
+          type:
+            - string
+            - "null"
+          format: uuid
+        related_transaction_id:
           type:
             - string
             - "null"
@@ -1947,7 +2126,7 @@ components:
 
     DashboardOverview:
       type: object
-      required: [base_currency, total_net_worth, total_portfolio_value, total_cash, total_cost, profit_loss_value, profit_loss_percent, price_disclaimer, financial_disclaimer]
+      required: [base_currency, total_net_worth, total_portfolio_value, total_cash, total_cost, profit_loss_value, profit_loss_percent, monthly_income, monthly_expense, monthly_net_cashflow, price_disclaimer, financial_disclaimer]
       properties:
         base_currency:
           type: string
@@ -1963,6 +2142,15 @@ components:
           type: number
         profit_loss_percent:
           type: number
+        monthly_income:
+          type: number
+          description: Income transactions in the current calendar month. Transfers are excluded.
+        monthly_expense:
+          type: number
+          description: Expense transactions in the current calendar month. Transfers are excluded.
+        monthly_net_cashflow:
+          type: number
+          description: Current month income minus expense. Transfers are excluded.
         best_performer:
           oneOf:
             - $ref: "#/components/schemas/Performer"
@@ -2086,7 +2274,7 @@ components:
           type: string
         transaction_type:
           type: string
-          enum: [buy, sell, dividend, fee, adjustment]
+          enum: [buy, sell, dividend, fee, adjustment, income, expense, transfer]
         transaction_count:
           type: integer
         total_idr:
@@ -2125,7 +2313,7 @@ components:
           type: string
         transaction_type:
           type: string
-          enum: [buy, sell, dividend, fee, adjustment]
+          enum: [buy, sell, dividend, fee, adjustment, income, expense, transfer]
         transaction_count:
           type: integer
         total_idr:
@@ -2170,6 +2358,9 @@ components:
         - cash_balance
         - cash_net_movement
         - cash_movements
+        - income_total
+        - expense_total
+        - net_cashflow
         - portfolio_value
         - unrealized_profit_loss
         - transaction_totals_by_asset_type
@@ -2207,6 +2398,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CashMovementTotal"
+        income_total:
+          type: number
+          description: Total income transaction amount for the requested month.
+        expense_total:
+          type: number
+          description: Total expense transaction amount for the requested month.
+        net_cashflow:
+          type: number
+          description: Income minus expense for the requested month. Transfers are excluded.
         portfolio_value:
           type: number
         portfolio_snapshot_date:

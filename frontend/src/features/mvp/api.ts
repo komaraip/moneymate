@@ -14,6 +14,7 @@ import type {
   Overview,
   PortfolioPerformanceReport,
   Transaction,
+  TransactionCategory,
 } from "./types";
 
 export const mvpApi = {
@@ -37,6 +38,11 @@ export const mvpApi = {
   createTransaction: (body: unknown) => apiClient.post<Transaction>("/api/v1/transactions", body),
   updateTransaction: (id: string, body: unknown) => apiClient.put<Transaction>(`/api/v1/transactions/${id}`, body),
   deleteTransaction: (id: string) => apiClient.delete<{ status: string }>(`/api/v1/transactions/${id}`),
+  transactionCategories: (type?: "income" | "expense") =>
+    apiClient.get<TransactionCategory[]>(`/api/v1/transaction-categories${type ? `?type=${type}` : ""}`),
+  createTransactionCategory: (body: unknown) => apiClient.post<TransactionCategory>("/api/v1/transaction-categories", body),
+  updateTransactionCategory: (id: string, body: unknown) => apiClient.put<TransactionCategory>(`/api/v1/transaction-categories/${id}`, body),
+  deleteTransactionCategory: (id: string) => apiClient.delete<{ status: string }>(`/api/v1/transaction-categories/${id}`),
   cashAccounts: () => apiClient.get<CashAccount[]>("/api/v1/cash-accounts"),
   createCashAccount: (body: unknown) => apiClient.post<CashAccount>("/api/v1/cash-accounts", body),
   updateCashAccount: (id: string, body: unknown) => apiClient.put<CashAccount>(`/api/v1/cash-accounts/${id}`, body),

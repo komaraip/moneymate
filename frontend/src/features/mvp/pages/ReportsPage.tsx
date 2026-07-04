@@ -120,6 +120,9 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
         <Metric label="Portofolio" value={formatMaybeCurrency(data.portfolio_value)} />
         <Metric label="Kas" value={formatMaybeCurrency(data.cash_balance)} />
         <Metric label="Pergerakan Kas" value={formatMaybeCurrency(data.cash_net_movement)} />
+        <Metric label="Pemasukan" value={formatMaybeCurrency(data.income_total)} />
+        <Metric label="Pengeluaran" value={formatMaybeCurrency(data.expense_total)} />
+        <Metric label="Cashflow Bersih" value={formatMaybeCurrency(data.net_cashflow)} />
         <Metric label="Laba/Rugi Belum Terealisasi" value={formatMaybeCurrency(data.unrealized_profit_loss)} />
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-2">

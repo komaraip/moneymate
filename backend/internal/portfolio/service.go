@@ -225,6 +225,7 @@ func (s Service) loadTransactions(ctx context.Context, userID string) ([]Calcula
 		FROM transactions
 		WHERE user_id = $1
 		  AND instrument_id IS NOT NULL
+		  AND type IN ('buy', 'sell', 'adjustment')
 		ORDER BY transaction_date ASC, created_at ASC
 	`, userID)
 	if err != nil {

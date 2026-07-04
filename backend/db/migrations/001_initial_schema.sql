@@ -53,23 +53,14 @@ CREATE TABLE instrument_categories (
   PRIMARY KEY (instrument_id, category_id)
 );
 
-CREATE TABLE transactions (
+CREATE TABLE transaction_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id),
-  instrument_id UUID REFERENCES instruments(id),
-  transaction_date DATE NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('buy', 'sell', 'dividend', 'fee', 'adjustment')),
-  price NUMERIC(22, 8) NOT NULL DEFAULT 0,
-  units NUMERIC(22, 8) NOT NULL DEFAULT 0,
-  gross_value NUMERIC(22, 2) NOT NULL DEFAULT 0,
-  fees NUMERIC(22, 2) NOT NULL DEFAULT 0,
-  tax NUMERIC(22, 2) NOT NULL DEFAULT 0,
-  net_value NUMERIC(22, 2) NOT NULL DEFAULT 0,
-  currency TEXT NOT NULL DEFAULT 'IDR',
-  fx_rate_to_idr NUMERIC(22, 8),
-  notes TEXT,
-  source TEXT NOT NULL DEFAULT 'manual',
-  created_by UUID NOT NULL REFERENCES users(id),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+  color_key TEXT,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -87,6 +78,31 @@ CREATE TABLE cash_accounts (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
+  instrument_id UUID REFERENCES instruments(id),
+  cash_account_id UUID REFERENCES cash_accounts(id),
+  transfer_cash_account_id UUID REFERENCES cash_accounts(id),
+  category_id UUID REFERENCES transaction_categories(id),
+  transaction_date DATE NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('buy', 'sell', 'dividend', 'fee', 'adjustment', 'income', 'expense', 'transfer')),
+  amount NUMERIC(22, 2),
+  price NUMERIC(22, 8) NOT NULL DEFAULT 0,
+  units NUMERIC(22, 8) NOT NULL DEFAULT 0,
+  gross_value NUMERIC(22, 2) NOT NULL DEFAULT 0,
+  fees NUMERIC(22, 2) NOT NULL DEFAULT 0,
+  tax NUMERIC(22, 2) NOT NULL DEFAULT 0,
+  net_value NUMERIC(22, 2) NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'IDR',
+  fx_rate_to_idr NUMERIC(22, 8),
+  notes TEXT,
+  source TEXT NOT NULL DEFAULT 'manual',
+  created_by UUID NOT NULL REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE cash_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id),
@@ -96,6 +112,7 @@ CREATE TABLE cash_adjustments (
   currency TEXT NOT NULL DEFAULT 'IDR',
   notes TEXT,
   created_by UUID NOT NULL REFERENCES users(id),
+  related_transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -175,13 +192,19 @@ CREATE INDEX idx_sessions_user ON sessions(user_id);
 CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 CREATE INDEX idx_instruments_ticker ON instruments(ticker);
 CREATE INDEX idx_instruments_name ON instruments(name);
+CREATE UNIQUE INDEX idx_transaction_categories_user_type_name ON transaction_categories(user_id, type, lower(name));
+CREATE INDEX idx_transaction_categories_user_active ON transaction_categories(user_id, type, is_active, sort_order, name);
 CREATE INDEX idx_transactions_date ON transactions(transaction_date DESC);
 CREATE INDEX idx_transactions_user_date ON transactions(user_id, transaction_date DESC, created_at DESC);
+CREATE INDEX idx_transactions_user_type_date ON transactions(user_id, type, transaction_date DESC);
+CREATE INDEX idx_transactions_user_category_date ON transactions(user_id, category_id, transaction_date DESC);
+CREATE INDEX idx_transactions_user_cash_account_date ON transactions(user_id, cash_account_id, transaction_date DESC);
 CREATE INDEX idx_transactions_instrument ON transactions(instrument_id);
 CREATE INDEX idx_transactions_created_by ON transactions(created_by);
 CREATE INDEX idx_cash_accounts_user_active ON cash_accounts(user_id, is_active, account_name);
 CREATE INDEX idx_cash_adjustments_account ON cash_adjustments(cash_account_id, created_at DESC);
 CREATE INDEX idx_cash_adjustments_user_account_date ON cash_adjustments(user_id, cash_account_id, created_at DESC);
+CREATE INDEX idx_cash_adjustments_related_transaction ON cash_adjustments(related_transaction_id);
 CREATE INDEX idx_holdings_snapshot_date ON holdings_snapshot(snapshot_date DESC);
 CREATE INDEX idx_holdings_snapshot_user_date ON holdings_snapshot(user_id, snapshot_date DESC);
 CREATE INDEX idx_price_snapshots_instrument_date ON price_snapshots(instrument_id, price_date DESC);

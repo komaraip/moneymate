@@ -92,6 +92,31 @@ func seedMasterData(ctx context.Context, db *pgxpool.Pool, userID string) error 
 		}
 	}
 
+	transactionCategories := []struct {
+		name      string
+		kind      string
+		colorKey  string
+		sortOrder int
+	}{
+		{"Gaji", "income", "emerald", 10},
+		{"Bonus", "income", "teal", 20},
+		{"Bunga/Dividen", "income", "cyan", 30},
+		{"Makan & Minum", "expense", "orange", 10},
+		{"Transportasi", "expense", "blue", 20},
+		{"Tagihan", "expense", "rose", 30},
+		{"Belanja", "expense", "violet", 40},
+		{"Kesehatan", "expense", "red", 50},
+	}
+	for _, category := range transactionCategories {
+		if _, err := db.Exec(ctx, `
+			INSERT INTO transaction_categories (user_id, name, type, color_key, sort_order)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT DO NOTHING
+		`, userID, category.name, category.kind, category.colorKey, category.sortOrder); err != nil {
+			return err
+		}
+	}
+
 	instruments := []struct {
 		kind     string
 		ticker   *string

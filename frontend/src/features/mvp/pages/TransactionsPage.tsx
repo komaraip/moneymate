@@ -1,18 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { formatCurrency, formatDate, formatNumber } from "../../../lib/format";
 import { queryKeys } from "../../../lib/query-keys";
 import { mvpApi } from "../api";
 import { PageHeader } from "../components/PageHeader";
-import type { Instrument, Transaction } from "../types";
+import type { CashAccount, Instrument, Transaction, TransactionCategory } from "../types";
 
 type TransactionForm = {
+  cash_account_id: string;
+  transfer_cash_account_id: string;
+  category_id: string;
   instrument_id: string;
   transaction_date: string;
   type: string;
+  amount: string;
   price: string;
   units: string;
   fees: string;
@@ -22,10 +27,25 @@ type TransactionForm = {
   notes: string;
 };
 
+const transactionTypes = [
+  { label: "Pengeluaran", value: "expense" },
+  { label: "Pemasukan", value: "income" },
+  { label: "Transfer", value: "transfer" },
+  { label: "Beli Investasi", value: "buy" },
+  { label: "Jual Investasi", value: "sell" },
+  { label: "Dividen", value: "dividend" },
+  { label: "Fee", value: "fee" },
+  { label: "Penyesuaian", value: "adjustment" },
+] as const;
+
 const emptyForm = (): TransactionForm => ({
+  cash_account_id: "",
+  transfer_cash_account_id: "",
+  category_id: "",
   instrument_id: "",
   transaction_date: new Date().toISOString().slice(0, 10),
-  type: "buy",
+  type: "expense",
+  amount: "",
   price: "",
   units: "",
   fees: "0",
@@ -39,6 +59,8 @@ export function TransactionsPage() {
   const queryClient = useQueryClient();
   const transactions = useQuery({ queryKey: queryKeys.transactions.all, queryFn: mvpApi.transactions });
   const instruments = useQuery({ queryKey: queryKeys.instruments.all, queryFn: mvpApi.instruments });
+  const cashAccounts = useQuery({ queryKey: queryKeys.cashAccounts.all, queryFn: mvpApi.cashAccounts });
+  const categories = useQuery({ queryKey: queryKeys.transactionCategories.all, queryFn: () => mvpApi.transactionCategories() });
   const [form, setForm] = useState<TransactionForm>(emptyForm);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
@@ -89,7 +111,7 @@ export function TransactionsPage() {
   return (
     <div>
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <PageHeader description="Catat order buy/sell manual" title="Transaksi" />
+        <PageHeader description="Catat pemasukan, pengeluaran, transfer, dan transaksi investasi manual." title="Transaksi" />
         <button
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950"
           onClick={() => openCreate(setForm, setEditing, setFormOpen, setFormErrors)}
@@ -100,15 +122,18 @@ export function TransactionsPage() {
         </button>
       </div>
 
-      <Table headers={["Tanggal", "Instrumen", "Tipe", "Harga", "Unit", "Nilai Bersih", "Aksi"]}>
+      <Table headers={["Tanggal", "Tipe", "Kategori/Instrumen", "Akun", "Nominal", "Aksi"]}>
         {transactions.data?.map((item) => (
           <tr className="border-t border-zinc-800" key={item.id}>
             <td className="px-4 py-3">{formatDate(item.transaction_date)}</td>
-            <td className="px-4 py-3">{item.instrument_ticker ?? item.instrument_name ?? "-"}</td>
             <td className="px-4 py-3">{transactionTypeLabel(item.type)}</td>
-            <td className="px-4 py-3 text-right">{formatCurrency(item.price, item.currency)}</td>
-            <td className="px-4 py-3 text-right">{formatNumber(item.units)}</td>
-            <td className="px-4 py-3 text-right">{formatCurrency(item.net_value ?? 0, item.currency)}</td>
+            <td className="px-4 py-3">{item.category_name ?? item.instrument_ticker ?? item.instrument_name ?? "-"}</td>
+            <td className="px-4 py-3">{accountLabel(item)}</td>
+            <td className="px-4 py-3 text-right">
+              {isPersonalType(item.type)
+                ? formatCurrency(item.amount ?? item.net_value ?? 0, item.currency)
+                : `${formatCurrency(item.net_value ?? 0, item.currency)} / ${formatNumber(item.units ?? 0)} unit`}
+            </td>
             <td className="px-4 py-3">
               <div className="flex justify-end gap-2">
                 <button
@@ -133,8 +158,8 @@ export function TransactionsPage() {
         ))}
         {transactions.data?.length === 0 ? (
           <tr>
-            <td className="px-4 py-8 text-center text-zinc-500" colSpan={7}>
-              Belum ada transaksi.
+            <td className="px-4 py-8 text-center text-zinc-500" colSpan={6}>
+              Belum ada transaksi. Tambahkan pemasukan atau pengeluaran pertama.
             </td>
           </tr>
         ) : null}
@@ -142,6 +167,8 @@ export function TransactionsPage() {
 
       {formOpen ? (
         <TransactionModal
+          accounts={cashAccounts.data ?? []}
+          categories={categories.data ?? []}
           error={errorMessage(create.error || update.error)}
           errors={formErrors}
           form={form}
@@ -158,7 +185,7 @@ export function TransactionsPage() {
         <ConfirmDelete
           error={errorMessage(remove.error)}
           isDeleting={remove.isPending}
-          label={deleteTarget.instrument_ticker ?? deleteTarget.instrument_name ?? deleteTarget.id}
+          label={deleteLabel(deleteTarget)}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => remove.mutate(deleteTarget.id)}
         />
@@ -175,6 +202,8 @@ export function TransactionsPage() {
 }
 
 function TransactionModal({
+  accounts,
+  categories,
   error,
   errors,
   form,
@@ -185,6 +214,8 @@ function TransactionModal({
   onSubmit,
   setForm,
 }: {
+  accounts: CashAccount[];
+  categories: TransactionCategory[];
   error: string;
   errors: string[];
   form: TransactionForm;
@@ -195,12 +226,17 @@ function TransactionModal({
   onSubmit: () => void;
   setForm: (form: TransactionForm) => void;
 }) {
+  const personal = isPersonalType(form.type);
+  const transfer = form.type === "transfer";
+  const filteredCategories = categories.filter((item) => item.type === form.type && item.is_active !== false);
+  const activeAccounts = accounts.filter((item) => item.is_active !== false);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
       <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-xl">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-zinc-400">Data bukan real-time</p>
+            <p className="text-sm text-zinc-400">Data manual, bukan real-time</p>
             <h3 className="text-lg font-semibold text-white">{isEditing ? "Edit Transaksi" : "Tambah Transaksi"}</h3>
           </div>
           <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300" onClick={onClose} title="Tutup" type="button">
@@ -209,12 +245,23 @@ function TransactionModal({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Instrumen">
-            <select className={inputClass} onChange={(e) => setForm({ ...form, instrument_id: e.target.value })} value={form.instrument_id}>
-              <option value="">Pilih instrumen</option>
-              {instruments.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.ticker ? `${item.ticker} - ${item.name}` : item.name}
+          <Field label="Tipe">
+            <select
+              className={inputClass}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  category_id: "",
+                  instrument_id: "",
+                  transfer_cash_account_id: "",
+                  type: event.target.value,
+                })
+              }
+              value={form.type}
+            >
+              {transactionTypes.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
                 </option>
               ))}
             </select>
@@ -222,37 +269,87 @@ function TransactionModal({
           <Field label="Tanggal">
             <input className={inputClass} onChange={(e) => setForm({ ...form, transaction_date: e.target.value })} type="date" value={form.transaction_date} />
           </Field>
-          <Field label="Tipe">
-            <select className={inputClass} onChange={(e) => setForm({ ...form, type: e.target.value })} value={form.type}>
-              <option value="buy">Beli</option>
-              <option value="sell">Jual</option>
-              <option value="dividend">Dividen</option>
-              <option value="fee">Fee</option>
-              <option value="adjustment">Penyesuaian</option>
-            </select>
-          </Field>
+
+          {personal ? (
+            <>
+              <Field label={transfer ? "Akun asal" : "Akun"}>
+                <select className={inputClass} onChange={(e) => setForm({ ...form, cash_account_id: e.target.value })} value={form.cash_account_id}>
+                  <option value="">Pilih akun</option>
+                  {activeAccounts.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.account_name} - {formatCurrency(item.balance ?? 0, item.currency)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {transfer ? (
+                <Field label="Akun tujuan">
+                  <select className={inputClass} onChange={(e) => setForm({ ...form, transfer_cash_account_id: e.target.value })} value={form.transfer_cash_account_id}>
+                    <option value="">Pilih akun tujuan</option>
+                    {activeAccounts.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.account_name} - {item.currency}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : (
+                <Field label="Kategori">
+                  <select className={inputClass} onChange={(e) => setForm({ ...form, category_id: e.target.value })} value={form.category_id}>
+                    <option value="">Pilih kategori</option>
+                    {filteredCategories.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+              <Field label="Nominal">
+                <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, amount: e.target.value })} value={form.amount} />
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field label="Instrumen">
+                <select className={inputClass} onChange={(e) => setForm({ ...form, instrument_id: e.target.value })} value={form.instrument_id}>
+                  <option value="">Pilih instrumen</option>
+                  {instruments.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.ticker ? `${item.ticker} - ${item.name}` : item.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Harga">
+                <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, price: e.target.value })} value={form.price} />
+              </Field>
+              <Field label="Unit">
+                <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, units: e.target.value })} value={form.units} />
+              </Field>
+            </>
+          )}
+
           <Field label="Mata uang">
             <select className={inputClass} onChange={(e) => setForm({ ...form, currency: e.target.value })} value={form.currency}>
               <option value="IDR">IDR</option>
               <option value="USD">USD</option>
             </select>
           </Field>
-          <Field label="Harga">
-            <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, price: e.target.value })} value={form.price} />
-          </Field>
-          <Field label="Unit">
-            <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, units: e.target.value })} value={form.units} />
-          </Field>
-          <Field label="Biaya">
-            <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, fees: e.target.value })} value={form.fees} />
-          </Field>
-          <Field label="Pajak">
-            <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, tax: e.target.value })} value={form.tax} />
-          </Field>
           {form.currency !== "IDR" ? (
             <Field label="Kurs ke IDR">
               <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, fx_rate_to_idr: e.target.value })} value={form.fx_rate_to_idr} />
             </Field>
+          ) : null}
+          {!personal ? (
+            <>
+              <Field label="Biaya">
+                <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, fees: e.target.value })} value={form.fees} />
+              </Field>
+              <Field label="Pajak">
+                <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, tax: e.target.value })} value={form.tax} />
+              </Field>
+            </>
           ) : null}
           <Field label="Catatan">
             <input className={inputClass} onChange={(e) => setForm({ ...form, notes: e.target.value })} value={form.notes} />
@@ -291,7 +388,7 @@ function ConfirmDelete({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <section className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-xl">
         <h3 className="text-lg font-semibold text-white">Hapus Transaksi</h3>
-        <p className="mt-2 text-sm text-zinc-400">Transaksi {label} akan dihapus dari catatan manual.</p>
+        <p className="mt-2 text-sm text-zinc-400">Transaksi {label} akan dihapus. Efek saldo kas akan dibalik otomatis untuk transaksi personal.</p>
         {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
         <div className="mt-5 flex justify-end gap-3">
           <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
@@ -327,16 +424,20 @@ function openEdit(
 ) {
   setEditing(item);
   setForm({
-    instrument_id: item.instrument_id ?? "",
-    transaction_date: String(item.transaction_date).slice(0, 10),
-    type: item.type,
-    price: String(item.price ?? ""),
-    units: String(item.units ?? ""),
-    fees: String(item.fees ?? 0),
-    tax: String(item.tax ?? 0),
+    amount: item.amount == null ? String(item.net_value ?? "") : String(item.amount),
+    cash_account_id: item.cash_account_id ?? "",
+    category_id: item.category_id ?? "",
     currency: item.currency ?? "IDR",
+    fees: String(item.fees ?? 0),
     fx_rate_to_idr: item.fx_rate_to_idr ? String(item.fx_rate_to_idr) : "",
+    instrument_id: item.instrument_id ?? "",
     notes: item.notes ?? "",
+    price: String(item.price ?? ""),
+    tax: String(item.tax ?? 0),
+    transaction_date: String(item.transaction_date).slice(0, 10),
+    transfer_cash_account_id: item.transfer_cash_account_id ?? "",
+    type: item.type,
+    units: String(item.units ?? ""),
   });
   setFormErrors([]);
   setFormOpen(true);
@@ -344,44 +445,76 @@ function openEdit(
 
 function validateTransaction(form: TransactionForm) {
   const errors: string[] = [];
-  if (!form.instrument_id) errors.push("Instrumen wajib dipilih.");
   if (!form.transaction_date) errors.push("Tanggal transaksi wajib diisi.");
-  if (!["buy", "sell", "dividend", "fee", "adjustment"].includes(form.type)) errors.push("Tipe transaksi tidak valid.");
-  if (!isNumeric(form.price) || numberValue(form.price) < 0) errors.push("Harga wajib diisi dan tidak boleh negatif.");
-  if ((form.type === "buy" || form.type === "sell") && (!isNumeric(form.units) || numberValue(form.units) <= 0)) errors.push("Unit wajib lebih dari 0 untuk beli/jual.");
+  if (!transactionTypes.some((item) => item.value === form.type)) errors.push("Tipe transaksi tidak valid.");
   if (!form.currency) errors.push("Mata uang wajib diisi.");
   if (form.currency !== "IDR" && (!isNumeric(form.fx_rate_to_idr) || numberValue(form.fx_rate_to_idr) <= 0)) errors.push("Kurs ke IDR wajib diisi untuk transaksi non-IDR.");
-  if (!isNumeric(form.fees) || numberValue(form.fees) < 0) errors.push("Biaya tidak boleh negatif.");
-  if (!isNumeric(form.tax) || numberValue(form.tax) < 0) errors.push("Pajak tidak boleh negatif.");
+
+  if (isPersonalType(form.type)) {
+    if (!form.cash_account_id) errors.push("Akun wajib dipilih.");
+    if (!isNumeric(form.amount) || numberValue(form.amount) <= 0) errors.push("Nominal wajib lebih dari 0.");
+    if ((form.type === "income" || form.type === "expense") && !form.category_id) errors.push("Kategori wajib dipilih.");
+    if (form.type === "transfer" && !form.transfer_cash_account_id) errors.push("Akun tujuan wajib dipilih.");
+    if (form.type === "transfer" && form.cash_account_id && form.transfer_cash_account_id && form.cash_account_id === form.transfer_cash_account_id) {
+      errors.push("Akun asal dan tujuan transfer harus berbeda.");
+    }
+  } else {
+    if (!form.instrument_id) errors.push("Instrumen wajib dipilih.");
+    if (!isNumeric(form.price) || numberValue(form.price) < 0) errors.push("Harga wajib diisi dan tidak boleh negatif.");
+    if ((form.type === "buy" || form.type === "sell") && (!isNumeric(form.units) || numberValue(form.units) <= 0)) errors.push("Unit wajib lebih dari 0 untuk beli/jual.");
+    if (!isNumeric(form.fees) || numberValue(form.fees) < 0) errors.push("Biaya tidak boleh negatif.");
+    if (!isNumeric(form.tax) || numberValue(form.tax) < 0) errors.push("Pajak tidak boleh negatif.");
+  }
   return errors;
 }
 
 function toPayload(form: TransactionForm) {
   const fxRate = form.currency === "IDR" ? undefined : numberValue(form.fx_rate_to_idr);
+  if (isPersonalType(form.type)) {
+    const amount = numberValue(form.amount);
+    return {
+      amount,
+      cash_account_id: form.cash_account_id,
+      category_id: form.type === "transfer" ? undefined : form.category_id,
+      currency: form.currency,
+      fx_rate_to_idr: fxRate,
+      gross_value: amount,
+      net_value: amount,
+      notes: form.notes || undefined,
+      price: amount,
+      transaction_date: form.transaction_date,
+      transfer_cash_account_id: form.type === "transfer" ? form.transfer_cash_account_id : undefined,
+      type: form.type,
+      units: 1,
+    };
+  }
+
   return {
+    currency: form.currency,
+    fees: numberValue(form.fees),
+    fx_rate_to_idr: fxRate,
     instrument_id: form.instrument_id,
+    notes: form.notes || undefined,
+    price: numberValue(form.price),
+    tax: numberValue(form.tax),
     transaction_date: form.transaction_date,
     type: form.type,
-    price: numberValue(form.price),
     units: numberValue(form.units),
-    fees: numberValue(form.fees),
-    tax: numberValue(form.tax),
-    currency: form.currency,
-    fx_rate_to_idr: fxRate,
-    notes: form.notes || undefined,
   };
 }
 
 function invalidateTransactionWrites(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
+  queryClient.invalidateQueries({ queryKey: queryKeys.cashAccounts.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.holdings.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.overview });
   queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.allocation });
   queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.alerts });
+  queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs.all });
 }
 
-function Field({ children, label }: { children: React.ReactNode; label: string }) {
+function Field({ children, label }: { children: ReactNode; label: string }) {
   return (
     <label className="block text-sm">
       <span className="mb-2 block text-zinc-300">{label}</span>
@@ -402,10 +535,10 @@ function Feedback({ error, errors }: { error: string; errors: string[] }) {
   );
 }
 
-function Table({ headers, children }: { headers: string[]; children: React.ReactNode }) {
+function Table({ headers, children }: { headers: string[]; children: ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800">
-      <table className="w-full min-w-[900px] text-sm">
+    <div className="overflow-x-auto rounded-xl border border-zinc-800">
+      <table className="w-full min-w-[860px] text-sm">
         <thead className="bg-zinc-900 text-zinc-400">
           <tr>
             {headers.map((header) => (
@@ -421,6 +554,17 @@ function Table({ headers, children }: { headers: string[]; children: React.React
   );
 }
 
+function accountLabel(item: Transaction) {
+  if (item.type === "transfer") {
+    return `${item.cash_account_name ?? "-"} -> ${item.transfer_cash_account_name ?? "-"}`;
+  }
+  return item.cash_account_name ?? "-";
+}
+
+function deleteLabel(item: Transaction) {
+  return item.category_name ?? item.instrument_ticker ?? item.instrument_name ?? transactionTypeLabel(item.type);
+}
+
 function errorMessage(error: unknown) {
   if (!error) return "";
   if (error instanceof Error) return error.message;
@@ -430,12 +574,19 @@ function errorMessage(error: unknown) {
 function transactionTypeLabel(type: string) {
   const labels: Record<string, string> = {
     adjustment: "Penyesuaian",
-    buy: "Beli",
+    buy: "Beli Investasi",
     dividend: "Dividen",
+    expense: "Pengeluaran",
     fee: "Fee",
-    sell: "Jual",
+    income: "Pemasukan",
+    sell: "Jual Investasi",
+    transfer: "Transfer",
   };
   return labels[type] ?? type;
+}
+
+function isPersonalType(type: string) {
+  return type === "income" || type === "expense" || type === "transfer";
 }
 
 function numberValue(value: string) {

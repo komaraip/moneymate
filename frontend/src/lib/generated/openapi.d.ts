@@ -850,6 +850,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/transaction-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List personal income and expense categories
+         * @description Categories are scoped to the authenticated user. Optional `type` filters to income or expense.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    type?: "income" | "expense";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Transaction categories. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TransactionCategoryListEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create personal transaction category
+         * @description Requires admin or user role. Categories are scoped to the authenticated user.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TransactionCategoryInput"];
+                };
+            };
+            responses: {
+                /** @description Transaction category created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TransactionCategoryEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transaction-categories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update personal transaction category
+         * @description Requires admin or user role. Categories are scoped to the authenticated user.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TransactionCategoryInput"];
+                };
+            };
+            responses: {
+                /** @description Transaction category updated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TransactionCategoryEnvelope"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Soft-delete personal transaction category
+         * @description Requires admin or user role. The implementation sets `is_active=false` to preserve historical transactions.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Transaction category deactivated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StatusEnvelope"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/transactions": {
         parameters: {
             query?: never;
@@ -861,7 +1001,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    type?: "buy" | "sell" | "dividend" | "fee" | "adjustment";
+                    type?: "buy" | "sell" | "dividend" | "fee" | "adjustment" | "income" | "expense" | "transfer";
                     instrument_id?: string;
                 };
                 header?: never;
@@ -1762,14 +1902,56 @@ export interface components {
         AssetCategoryListEnvelope: components["schemas"]["SuccessEnvelope"] & {
             data?: components["schemas"]["AssetCategory"][];
         };
+        TransactionCategoryInput: {
+            name: string;
+            /** @enum {string} */
+            type: "income" | "expense";
+            color_key?: string | null;
+            /** @default 0 */
+            sort_order: number;
+            is_active?: boolean;
+        };
+        TransactionCategory: components["schemas"]["TransactionCategoryInput"] & {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        TransactionCategoryEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["TransactionCategory"];
+        };
+        TransactionCategoryListEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["TransactionCategory"][];
+        };
         TransactionInput: {
             /** Format: uuid */
             instrument_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Required for income, expense, and transfer transactions.
+             */
+            cash_account_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Required for transfer transactions and must differ from `cash_account_id`.
+             */
+            transfer_cash_account_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Required for income and expense transactions. Category type must match transaction type.
+             */
+            category_id?: string | null;
             /** Format: date */
             transaction_date: string;
             /** @enum {string} */
-            type: "buy" | "sell" | "dividend" | "fee" | "adjustment";
+            type: "buy" | "sell" | "dividend" | "fee" | "adjustment" | "income" | "expense" | "transfer";
+            /** @description Positive personal-finance amount for income, expense, and transfer. Transfers do not count as income or expense in reports. */
+            amount?: number | null;
+            /** @default 0 */
             price: number;
+            /** @default 0 */
             units: number;
             gross_value?: number | null;
             /** @default 0 */
@@ -1786,6 +1968,9 @@ export interface components {
             id: string;
             instrument_name?: string | null;
             instrument_ticker?: string | null;
+            cash_account_name?: string | null;
+            transfer_cash_account_name?: string | null;
+            category_name?: string | null;
             source: string;
             /** Format: uuid */
             created_by?: string | null;
@@ -1847,6 +2032,8 @@ export interface components {
             note?: string | null;
             /** Format: uuid */
             created_by?: string | null;
+            /** Format: uuid */
+            related_transaction_id?: string | null;
             /** Format: date-time */
             created_at: string;
         };
@@ -1955,6 +2142,12 @@ export interface components {
             total_cost: number;
             profit_loss_value: number;
             profit_loss_percent: number;
+            /** @description Income transactions in the current calendar month. Transfers are excluded. */
+            monthly_income: number;
+            /** @description Expense transactions in the current calendar month. Transfers are excluded. */
+            monthly_expense: number;
+            /** @description Current month income minus expense. Transfers are excluded. */
+            monthly_net_cashflow: number;
             best_performer?: components["schemas"]["Performer"] | null;
             worst_performer?: components["schemas"]["Performer"] | null;
             /** Format: date-time */
@@ -2006,7 +2199,7 @@ export interface components {
         TransactionReportTotal: {
             asset_type: string;
             /** @enum {string} */
-            transaction_type: "buy" | "sell" | "dividend" | "fee" | "adjustment";
+            transaction_type: "buy" | "sell" | "dividend" | "fee" | "adjustment" | "income" | "expense" | "transfer";
             transaction_count: number;
             total_idr: number;
         };
@@ -2024,7 +2217,7 @@ export interface components {
             instrument_type: string;
             original_currency: string;
             /** @enum {string} */
-            transaction_type: "buy" | "sell" | "dividend" | "fee" | "adjustment";
+            transaction_type: "buy" | "sell" | "dividend" | "fee" | "adjustment" | "income" | "expense" | "transfer";
             transaction_count: number;
             total_idr: number;
         };
@@ -2053,6 +2246,12 @@ export interface components {
             /** @description Net signed cash movement from cash adjustment ledger rows in the requested month. */
             cash_net_movement: number;
             cash_movements: components["schemas"]["CashMovementTotal"][];
+            /** @description Total income transaction amount for the requested month. */
+            income_total: number;
+            /** @description Total expense transaction amount for the requested month. */
+            expense_total: number;
+            /** @description Income minus expense for the requested month. Transfers are excluded. */
+            net_cashflow: number;
             portfolio_value: number;
             /** Format: date */
             portfolio_snapshot_date?: string | null;

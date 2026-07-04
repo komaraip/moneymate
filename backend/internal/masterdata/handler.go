@@ -52,6 +52,17 @@ func (h Handler) CategoryRoutes() chi.Router {
 	return router
 }
 
+func (h Handler) TransactionCategoryRoutes() chi.Router {
+	router := chi.NewRouter()
+
+	router.Get("/", h.listTransactionCategories)
+	router.Post("/", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.createTransactionCategory)).ServeHTTP)
+	router.Put("/{id}", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.updateTransactionCategory)).ServeHTTP)
+	router.Delete("/{id}", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.deleteTransactionCategory)).ServeHTTP)
+
+	return router
+}
+
 func (h Handler) CashRoutes() chi.Router {
 	router := chi.NewRouter()
 
@@ -90,6 +101,14 @@ type categoryInput struct {
 	TargetAllocationPercent *float64 `json:"target_allocation_percent"`
 	ColorKey                *string  `json:"color_key"`
 	SortOrder               int      `json:"sort_order"`
+}
+
+type transactionCategoryInput struct {
+	Name      string  `json:"name"`
+	Type      string  `json:"type"`
+	ColorKey  *string `json:"color_key"`
+	SortOrder int     `json:"sort_order"`
+	IsActive  *bool   `json:"is_active"`
 }
 
 type cashInput struct {
@@ -395,6 +414,135 @@ func (h Handler) deleteCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeAudit(r, "delete", "asset_category", id, before, nil)
+	response.JSON(w, r, http.StatusOK, map[string]string{"status": "deleted"}, nil)
+}
+
+func (h Handler) listTransactionCategories(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
+	categoryType := strings.TrimSpace(r.URL.Query().Get("type"))
+	rows, err := h.db.Query(r.Context(), `
+		SELECT id::text, name, type, color_key, sort_order, is_active, created_at, updated_at
+		FROM transaction_categories
+		WHERE user_id = $1
+		  AND ($2 = '' OR type = $2)
+		ORDER BY is_active DESC, type, sort_order, name
+	`, user.ID, categoryType)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat kategori transaksi"))
+		return
+	}
+	defer rows.Close()
+
+	items := []domain.TransactionCategory{}
+	for rows.Next() {
+		item, err := scanTransactionCategory(rows)
+		if err != nil {
+			response.Error(w, r, internalErr(err, "Gagal membaca kategori transaksi"))
+			return
+		}
+		items = append(items, item)
+	}
+
+	response.JSON(w, r, http.StatusOK, items, nil)
+}
+
+func (h Handler) createTransactionCategory(w http.ResponseWriter, r *http.Request) {
+	var input transactionCategoryInput
+	if err := response.DecodeJSON(r, &input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	if err := validateTransactionCategory(input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+
+	user, _ := auth.UserFromContext(r.Context())
+	isActive := true
+	if input.IsActive != nil {
+		isActive = *input.IsActive
+	}
+
+	var item domain.TransactionCategory
+	err := h.db.QueryRow(r.Context(), `
+		INSERT INTO transaction_categories (user_id, name, type, color_key, sort_order, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id::text, name, type, color_key, sort_order, is_active, created_at, updated_at
+	`, user.ID, strings.TrimSpace(input.Name), strings.ToLower(strings.TrimSpace(input.Type)), cleanPtr(input.ColorKey), input.SortOrder, isActive).Scan(
+		&item.ID, &item.Name, &item.Type, &item.ColorKey, &item.SortOrder, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
+	)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal membuat kategori transaksi"))
+		return
+	}
+
+	h.writeAudit(r, "create", "transaction_category", item.ID, nil, item)
+	response.JSON(w, r, http.StatusCreated, item, nil)
+}
+
+func (h Handler) updateTransactionCategory(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+	user, _ := auth.UserFromContext(r.Context())
+	before, err := h.getTransactionCategoryByID(r.Context(), id, user.ID)
+	if err != nil {
+		response.Error(w, r, mapGetErr(err, "Kategori transaksi tidak ditemukan"))
+		return
+	}
+
+	var input transactionCategoryInput
+	if err := response.DecodeJSON(r, &input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	if err := validateTransactionCategory(input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+
+	isActive := before.IsActive
+	if input.IsActive != nil {
+		isActive = *input.IsActive
+	}
+
+	var item domain.TransactionCategory
+	err = h.db.QueryRow(r.Context(), `
+		UPDATE transaction_categories
+		SET name = $3, type = $4, color_key = $5, sort_order = $6, is_active = $7, updated_at = now()
+		WHERE id = $1 AND user_id = $2
+		RETURNING id::text, name, type, color_key, sort_order, is_active, created_at, updated_at
+	`, id, user.ID, strings.TrimSpace(input.Name), strings.ToLower(strings.TrimSpace(input.Type)), cleanPtr(input.ColorKey), input.SortOrder, isActive).Scan(
+		&item.ID, &item.Name, &item.Type, &item.ColorKey, &item.SortOrder, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
+	)
+	if err != nil {
+		response.Error(w, r, mapGetErr(err, "Kategori transaksi tidak ditemukan"))
+		return
+	}
+
+	h.writeAudit(r, "update", "transaction_category", item.ID, before, item)
+	response.JSON(w, r, http.StatusOK, item, nil)
+}
+
+func (h Handler) deleteTransactionCategory(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+	user, _ := auth.UserFromContext(r.Context())
+	before, err := h.getTransactionCategoryByID(r.Context(), id, user.ID)
+	if err != nil {
+		response.Error(w, r, mapGetErr(err, "Kategori transaksi tidak ditemukan"))
+		return
+	}
+
+	if _, err := h.db.Exec(r.Context(), `UPDATE transaction_categories SET is_active = FALSE, updated_at = now() WHERE id = $1 AND user_id = $2`, id, user.ID); err != nil {
+		response.Error(w, r, internalErr(err, "Gagal menonaktifkan kategori transaksi"))
+		return
+	}
+
+	h.writeAudit(r, "delete", "transaction_category", id, before, map[string]any{"is_active": false})
 	response.JSON(w, r, http.StatusOK, map[string]string{"status": "deleted"}, nil)
 }
 
@@ -720,6 +868,14 @@ func (h Handler) getCategoryByID(ctx context.Context, id string) (domain.AssetCa
 	return item, err
 }
 
+func (h Handler) getTransactionCategoryByID(ctx context.Context, id string, userID string) (domain.TransactionCategory, error) {
+	return scanTransactionCategory(h.db.QueryRow(ctx, `
+		SELECT id::text, name, type, color_key, sort_order, is_active, created_at, updated_at
+		FROM transaction_categories
+		WHERE id = $1 AND user_id = $2
+	`, id, userID))
+}
+
 func (h Handler) getCashByID(ctx context.Context, id string, userID string) (domain.CashAccount, error) {
 	return scanCash(h.db.QueryRow(ctx, `
 		SELECT id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
@@ -749,6 +905,12 @@ func scanInstrument(row scanner) (domain.Instrument, error) {
 		&item.CreatedAt,
 		&item.UpdatedAt,
 	)
+	return item, err
+}
+
+func scanTransactionCategory(row scanner) (domain.TransactionCategory, error) {
+	var item domain.TransactionCategory
+	err := row.Scan(&item.ID, &item.Name, &item.Type, &item.ColorKey, &item.SortOrder, &item.IsActive, &item.CreatedAt, &item.UpdatedAt)
 	return item, err
 }
 
@@ -835,6 +997,17 @@ func validateCash(input cashInput) error {
 	}
 	if strings.TrimSpace(input.Currency) == "" {
 		return validation("Currency wajib diisi")
+	}
+	return nil
+}
+
+func validateTransactionCategory(input transactionCategoryInput) error {
+	if strings.TrimSpace(input.Name) == "" {
+		return validation("Nama kategori transaksi wajib diisi")
+	}
+	kind := strings.ToLower(strings.TrimSpace(input.Type))
+	if kind != "income" && kind != "expense" {
+		return validation("Tipe kategori transaksi harus income atau expense")
 	}
 	return nil
 }

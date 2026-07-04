@@ -60,6 +60,19 @@ func (h Handler) overview(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, r, internalErr(err, "Gagal memuat ringkasan cash"))
 		return
 	}
+	var monthlyIncome, monthlyExpense float64
+	if err := h.db.QueryRow(r.Context(), `
+		SELECT
+		  COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0)::float8,
+		  COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0)::float8
+		FROM transactions
+		WHERE user_id = $1
+		  AND transaction_date >= date_trunc('month', CURRENT_DATE)::date
+		  AND transaction_date < (date_trunc('month', CURRENT_DATE) + INTERVAL '1 month')::date
+	`, user.ID).Scan(&monthlyIncome, &monthlyExpense); err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat cashflow bulanan"))
+		return
+	}
 
 	best, _ := h.loadPerformer(r, "DESC")
 	worst, _ := h.loadPerformer(r, "ASC")
@@ -77,6 +90,9 @@ func (h Handler) overview(w http.ResponseWriter, r *http.Request) {
 		"total_cost":            totalCost,
 		"profit_loss_value":     profitLoss,
 		"profit_loss_percent":   profitLossPercent,
+		"monthly_income":        monthlyIncome,
+		"monthly_expense":       monthlyExpense,
+		"monthly_net_cashflow":  monthlyIncome - monthlyExpense,
 		"best_performer":        best,
 		"worst_performer":       worst,
 		"last_updated_at":       lastUpdatedAt,

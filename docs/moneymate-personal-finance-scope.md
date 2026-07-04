@@ -108,6 +108,18 @@ Compatibility routes from the earlier MVP can redirect to the primary routes whi
 
 Demo data, seed credentials, and local backup scripts are local-only. No production secrets should be committed. Database backup/export workflows remain recovery and local demo tooling; they are not personal finance report exports.
 
+## Personal Transaction Behavior
+
+Income, expense, and transfer records are personal finance transactions scoped to the authenticated user:
+
+- Income increases the selected cash account balance.
+- Expense decreases the selected cash account balance.
+- Transfer moves money from one user-owned cash account to another and is excluded from income/expense totals.
+- Editing or deleting personal transactions records balancing cash ledger movements instead of silently mutating account balances without history.
+- Negative cash balances are rejected in the MVP.
+
+Legacy investment transaction types (`buy`, `sell`, `dividend`, `fee`, `adjustment`) remain available for the Assets & Net Worth module. Holdings calculation only uses investment buy/sell/adjustment transactions and ignores personal income, expense, and transfer records.
+
 ## Current Privacy Boundary
 
 The active MVP financial records are user-scoped:

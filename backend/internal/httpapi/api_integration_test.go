@@ -361,6 +361,64 @@ func TestCashAdjustmentLedgerFlow(t *testing.T) {
 	app.assertAudit(t, "cash_adjustment", "adjust")
 }
 
+func TestPersonalFinanceTransactionFlow(t *testing.T) {
+	app := newAPIIntegrationTest(t)
+	token := app.seedAndLogin(t, "user-personal-it@moneymate.local", "user")
+
+	walletCreate := app.requestJSON(t, http.MethodPost, "/api/v1/cash-accounts", token, cashPayload("Dompet Harian", 100000))
+	assertStatus(t, walletCreate, http.StatusCreated)
+	wallet := decodeData[cashAccountResponse](t, walletCreate.envelope)
+	savingsCreate := app.requestJSON(t, http.MethodPost, "/api/v1/cash-accounts", token, cashPayload("Tabungan", 10000))
+	assertStatus(t, savingsCreate, http.StatusCreated)
+	savings := decodeData[cashAccountResponse](t, savingsCreate.envelope)
+
+	incomeCategoryCreate := app.requestJSON(t, http.MethodPost, "/api/v1/transaction-categories", token, transactionCategoryPayload("Gaji", "income"))
+	assertStatus(t, incomeCategoryCreate, http.StatusCreated)
+	incomeCategory := decodeData[transactionCategoryResponse](t, incomeCategoryCreate.envelope)
+	expenseCategoryCreate := app.requestJSON(t, http.MethodPost, "/api/v1/transaction-categories", token, transactionCategoryPayload("Makan", "expense"))
+	assertStatus(t, expenseCategoryCreate, http.StatusCreated)
+	expenseCategory := decodeData[transactionCategoryResponse](t, expenseCategoryCreate.envelope)
+
+	income := app.requestJSON(t, http.MethodPost, "/api/v1/transactions", token, personalTransactionPayload(wallet.ID, "", incomeCategory.ID, "2026-07-02", "income", 500000, "Gaji Juli"))
+	assertStatus(t, income, http.StatusCreated)
+	incomeData := decodeData[transactionResponse](t, income.envelope)
+	if incomeData.Amount == nil || *incomeData.Amount != 500000 || incomeData.CashAccountName != "Dompet Harian" || incomeData.CategoryName != "Gaji" {
+		t.Fatalf("unexpected income response: %+v", incomeData)
+	}
+
+	expense := app.requestJSON(t, http.MethodPost, "/api/v1/transactions", token, personalTransactionPayload(wallet.ID, "", expenseCategory.ID, "2026-07-03", "expense", 125000, "Makan keluarga"))
+	assertStatus(t, expense, http.StatusCreated)
+
+	transfer := app.requestJSON(t, http.MethodPost, "/api/v1/transactions", token, personalTransactionPayload(wallet.ID, savings.ID, "", "2026-07-04", "transfer", 200000, "Pindah ke tabungan"))
+	assertStatus(t, transfer, http.StatusCreated)
+
+	updatedWallet := decodeData[cashAccountResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/cash-accounts/"+wallet.ID, token, nil).envelope)
+	updatedSavings := decodeData[cashAccountResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/cash-accounts/"+savings.ID, token, nil).envelope)
+	if updatedWallet.Balance != 275000 {
+		t.Fatalf("expected wallet balance 275000 after income expense transfer, got %+v", updatedWallet)
+	}
+	if updatedSavings.Balance != 210000 {
+		t.Fatalf("expected savings balance 210000 after transfer, got %+v", updatedSavings)
+	}
+
+	overview := decodeData[dashboardOverviewResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/dashboard/overview", token, nil).envelope)
+	if overview.MonthlyIncome != 500000 || overview.MonthlyExpense != 125000 || overview.MonthlyNetCashflow != 375000 {
+		t.Fatalf("expected dashboard income/expense to exclude transfer, got %+v", overview)
+	}
+
+	monthly := decodeData[monthlySummaryReportResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/reports/monthly-summary?month=2026-07", token, nil).envelope)
+	if monthly.IncomeTotal != 500000 || monthly.ExpenseTotal != 125000 || monthly.NetCashflow != 375000 {
+		t.Fatalf("expected monthly cashflow to exclude transfer, got %+v", monthly)
+	}
+
+	list := decodeData[[]transactionResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/transactions?type=income", token, nil).envelope)
+	if len(list) != 1 || list[0].Type != "income" {
+		t.Fatalf("expected income transaction filter, got %+v", list)
+	}
+
+	app.assertAudit(t, "transaction", "create")
+}
+
 func TestImportPreviewAndConfirmationFlow(t *testing.T) {
 	app := newAPIIntegrationTest(t)
 	token := app.seedAndLogin(t, "admin-it@moneymate.local", "admin")
@@ -695,6 +753,7 @@ func (app *apiTestApp) reset(t *testing.T) {
 			cash_adjustments,
 			cash_accounts,
 			transactions,
+			transaction_categories,
 			instrument_categories,
 			instruments,
 			asset_categories,
@@ -883,6 +942,34 @@ func transactionPayload(instrumentID string, date string, kind string, price flo
 	}
 }
 
+func personalTransactionPayload(cashAccountID string, transferCashAccountID string, categoryID string, date string, kind string, amount float64, note string) map[string]any {
+	payload := map[string]any{
+		"cash_account_id":  cashAccountID,
+		"transaction_date": date,
+		"type":             kind,
+		"amount":           amount,
+		"currency":         "IDR",
+		"notes":            note,
+	}
+	if transferCashAccountID != "" {
+		payload["transfer_cash_account_id"] = transferCashAccountID
+	}
+	if categoryID != "" {
+		payload["category_id"] = categoryID
+	}
+	return payload
+}
+
+func transactionCategoryPayload(name string, kind string) map[string]any {
+	return map[string]any{
+		"name":       name,
+		"type":       kind,
+		"color_key":  kind,
+		"sort_order": 10,
+		"is_active":  true,
+	}
+}
+
 func cashPayload(name string, balance float64) map[string]any {
 	return map[string]any{
 		"account_name": name,
@@ -975,8 +1062,18 @@ type instrumentResponse struct {
 }
 
 type transactionResponse struct {
-	ID    string  `json:"id"`
-	Price float64 `json:"price"`
+	ID              string   `json:"id"`
+	Type            string   `json:"type"`
+	Amount          *float64 `json:"amount"`
+	Price           float64  `json:"price"`
+	CashAccountName string   `json:"cash_account_name"`
+	CategoryName    string   `json:"category_name"`
+}
+
+type transactionCategoryResponse struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 type cashAccountResponse struct {
@@ -1027,6 +1124,9 @@ type dashboardOverviewResponse struct {
 	TotalNetWorth       float64 `json:"total_net_worth"`
 	TotalPortfolioValue float64 `json:"total_portfolio_value"`
 	TotalCash           float64 `json:"total_cash"`
+	MonthlyIncome       float64 `json:"monthly_income"`
+	MonthlyExpense      float64 `json:"monthly_expense"`
+	MonthlyNetCashflow  float64 `json:"monthly_net_cashflow"`
 }
 
 type assetAllocationResponse struct {
@@ -1052,6 +1152,9 @@ type monthlySummaryReportResponse struct {
 	EndingNetWorth                float64                 `json:"ending_net_worth"`
 	NetWorthChange                *float64                `json:"net_worth_change"`
 	CashNetMovement               float64                 `json:"cash_net_movement"`
+	IncomeTotal                   float64                 `json:"income_total"`
+	ExpenseTotal                  float64                 `json:"expense_total"`
+	NetCashflow                   float64                 `json:"net_cashflow"`
 	TransactionTotalsByInstrument []map[string]any        `json:"transaction_totals_by_instrument"`
 	Warnings                      []reportWarningResponse `json:"warnings"`
 }

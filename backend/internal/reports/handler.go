@@ -60,6 +60,9 @@ type MonthlySummaryReport struct {
 	CashBalance                   float64               `json:"cash_balance"`
 	CashNetMovement               float64               `json:"cash_net_movement"`
 	CashMovements                 []CashMovementTotal   `json:"cash_movements"`
+	IncomeTotal                   float64               `json:"income_total"`
+	ExpenseTotal                  float64               `json:"expense_total"`
+	NetCashflow                   float64               `json:"net_cashflow"`
 	PortfolioValue                float64               `json:"portfolio_value"`
 	PortfolioSnapshotDate         *string               `json:"portfolio_snapshot_date"`
 	RealizedProfitLoss            *float64              `json:"realized_profit_loss"`
@@ -199,6 +202,11 @@ func (h Handler) monthlySummary(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, r, internalErr(err, "Gagal memuat pergerakan cash"))
 		return
 	}
+	incomeTotal, expenseTotal, err := h.personalCashflowTotals(r.Context(), user.ID, monthStart, nextMonth)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat cashflow personal"))
+		return
+	}
 	assetTotals, err := h.transactionTotalsByAssetType(r.Context(), user.ID, monthStart, nextMonth)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat total transaksi per aset"))
@@ -239,6 +247,9 @@ func (h Handler) monthlySummary(w http.ResponseWriter, r *http.Request) {
 		CashBalance:                   round2(cash.TotalCash),
 		CashNetMovement:               cashNetMovement,
 		CashMovements:                 cashMovements,
+		IncomeTotal:                   incomeTotal,
+		ExpenseTotal:                  expenseTotal,
+		NetCashflow:                   round2(incomeTotal - expenseTotal),
 		PortfolioValue:                round2(ending.PortfolioValue),
 		PortfolioSnapshotDate:         dateStringPtr(ending.Date),
 		RealizedProfitLoss:            nil,
@@ -519,18 +530,43 @@ func (h Handler) cashMovementTotals(ctx context.Context, userID string, from tim
 	return items, round2(total), rows.Err()
 }
 
+func (h Handler) personalCashflowTotals(ctx context.Context, userID string, from time.Time, toExclusive time.Time) (float64, float64, error) {
+	var incomeTotal, expenseTotal float64
+	err := h.db.QueryRow(ctx, `
+		SELECT
+		  COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0)::float8,
+		  COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0)::float8
+		FROM transactions
+		WHERE user_id = $1
+		  AND transaction_date >= $2::date AND transaction_date < $3::date
+	`, userID, from.Format("2006-01-02"), toExclusive.Format("2006-01-02")).Scan(&incomeTotal, &expenseTotal)
+	return round2(incomeTotal), round2(expenseTotal), err
+}
+
 func (h Handler) transactionTotalsByAssetType(ctx context.Context, userID string, from time.Time, toExclusive time.Time) ([]TransactionTotal, error) {
 	rows, err := h.db.Query(ctx, `
-		SELECT COALESCE(i.type, 'other') AS asset_type,
-		       t.type,
-		       COUNT(*)::int,
-		       COALESCE(SUM(CASE WHEN t.currency = 'IDR' OR t.fx_rate_to_idr IS NULL THEN t.net_value ELSE t.net_value * t.fx_rate_to_idr END), 0)::float8
-		FROM transactions t
-		LEFT JOIN instruments i ON i.id = t.instrument_id
-		WHERE t.user_id = $1
-		  AND t.transaction_date >= $2::date AND t.transaction_date < $3::date
-		GROUP BY COALESCE(i.type, 'other'), t.type
-		ORDER BY asset_type, t.type
+		WITH normalized AS (
+			SELECT CASE
+			         WHEN t.type IN ('income', 'expense') THEN COALESCE(tc.name, t.type)
+			         WHEN t.type = 'transfer' THEN 'transfer'
+			         ELSE COALESCE(i.type, 'other')
+			       END AS asset_type,
+			       t.type AS transaction_type,
+			       CASE
+			         WHEN t.type = 'transfer' THEN 0
+			         WHEN t.currency = 'IDR' OR t.fx_rate_to_idr IS NULL THEN COALESCE(t.amount, t.net_value)
+			         ELSE COALESCE(t.amount, t.net_value) * t.fx_rate_to_idr
+			       END AS value_idr
+			FROM transactions t
+			LEFT JOIN instruments i ON i.id = t.instrument_id
+			LEFT JOIN transaction_categories tc ON tc.id = t.category_id AND tc.user_id = t.user_id
+			WHERE t.user_id = $1
+			  AND t.transaction_date >= $2::date AND t.transaction_date < $3::date
+		)
+		SELECT asset_type, transaction_type, COUNT(*)::int, COALESCE(SUM(value_idr), 0)::float8
+		FROM normalized
+		GROUP BY asset_type, transaction_type
+		ORDER BY asset_type, transaction_type
 	`, userID, from.Format("2006-01-02"), toExclusive.Format("2006-01-02"))
 	if err != nil {
 		return nil, err
@@ -551,20 +587,34 @@ func (h Handler) transactionTotalsByAssetType(ctx context.Context, userID string
 
 func (h Handler) transactionTotalsByInstrument(ctx context.Context, userID string, from time.Time, toExclusive time.Time) ([]InstrumentTotal, error) {
 	rows, err := h.db.Query(ctx, `
-		SELECT t.instrument_id::text,
-		       i.ticker,
-		       COALESCE(i.name, 'Tanpa Instrumen') AS name,
-		       COALESCE(i.type, 'other') AS instrument_type,
-		       t.currency,
-		       t.type,
-		       COUNT(*)::int,
-		       COALESCE(SUM(CASE WHEN t.currency = 'IDR' OR t.fx_rate_to_idr IS NULL THEN t.net_value ELSE t.net_value * t.fx_rate_to_idr END), 0)::float8
-		FROM transactions t
-		LEFT JOIN instruments i ON i.id = t.instrument_id
-		WHERE t.user_id = $1
-		  AND t.transaction_date >= $2::date AND t.transaction_date < $3::date
-		GROUP BY t.instrument_id, i.ticker, COALESCE(i.name, 'Tanpa Instrumen'), COALESCE(i.type, 'other'), t.currency, t.type
-		ORDER BY name, t.type
+		WITH normalized AS (
+			SELECT t.instrument_id::text AS instrument_id,
+			       i.ticker,
+			       COALESCE(i.name, tc.name, ca.account_name, 'Tanpa Instrumen') AS name,
+			       CASE
+			         WHEN t.type IN ('income', 'expense') THEN 'personal_category'
+			         WHEN t.type = 'transfer' THEN 'transfer'
+			         ELSE COALESCE(i.type, 'other')
+			       END AS instrument_type,
+			       t.currency,
+			       t.type AS transaction_type,
+			       CASE
+			         WHEN t.type = 'transfer' THEN 0
+			         WHEN t.currency = 'IDR' OR t.fx_rate_to_idr IS NULL THEN COALESCE(t.amount, t.net_value)
+			         ELSE COALESCE(t.amount, t.net_value) * t.fx_rate_to_idr
+			       END AS value_idr
+			FROM transactions t
+			LEFT JOIN instruments i ON i.id = t.instrument_id
+			LEFT JOIN transaction_categories tc ON tc.id = t.category_id AND tc.user_id = t.user_id
+			LEFT JOIN cash_accounts ca ON ca.id = t.cash_account_id AND ca.user_id = t.user_id
+			WHERE t.user_id = $1
+			  AND t.transaction_date >= $2::date AND t.transaction_date < $3::date
+		)
+		SELECT instrument_id, ticker, name, instrument_type, currency, transaction_type,
+		       COUNT(*)::int, COALESCE(SUM(value_idr), 0)::float8
+		FROM normalized
+		GROUP BY instrument_id, ticker, name, instrument_type, currency, transaction_type
+		ORDER BY name, transaction_type
 	`, userID, from.Format("2006-01-02"), toExclusive.Format("2006-01-02"))
 	if err != nil {
 		return nil, err

@@ -3,26 +3,33 @@ package domain
 import "time"
 
 type Transaction struct {
-	ID               string    `json:"id"`
-	InstrumentID     *string   `json:"instrument_id,omitempty"`
-	InstrumentName   *string   `json:"instrument_name,omitempty"`
-	InstrumentTicker *string   `json:"instrument_ticker,omitempty"`
-	TransactionDate  time.Time `json:"transaction_date"`
-	Type             string    `json:"type"`
-	Price            float64   `json:"price"`
-	Units            float64   `json:"units"`
-	GrossValue       float64   `json:"gross_value"`
-	Fees             float64   `json:"fees"`
-	Tax              float64   `json:"tax"`
-	NetValue         float64   `json:"net_value"`
-	Currency         string    `json:"currency"`
-	FXRateToIDR      *float64  `json:"fx_rate_to_idr,omitempty"`
-	Notes            *string   `json:"notes,omitempty"`
-	Source           string    `json:"source"`
-	CreatedBy        *string   `json:"created_by,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	Warnings         []string  `json:"warnings,omitempty"`
+	ID                  string    `json:"id"`
+	InstrumentID        *string   `json:"instrument_id,omitempty"`
+	InstrumentName      *string   `json:"instrument_name,omitempty"`
+	InstrumentTicker    *string   `json:"instrument_ticker,omitempty"`
+	CashAccountID       *string   `json:"cash_account_id,omitempty"`
+	CashAccountName     *string   `json:"cash_account_name,omitempty"`
+	TransferAccountID   *string   `json:"transfer_cash_account_id,omitempty"`
+	TransferAccountName *string   `json:"transfer_cash_account_name,omitempty"`
+	CategoryID          *string   `json:"category_id,omitempty"`
+	CategoryName        *string   `json:"category_name,omitempty"`
+	TransactionDate     time.Time `json:"transaction_date"`
+	Type                string    `json:"type"`
+	Amount              *float64  `json:"amount,omitempty"`
+	Price               float64   `json:"price"`
+	Units               float64   `json:"units"`
+	GrossValue          float64   `json:"gross_value"`
+	Fees                float64   `json:"fees"`
+	Tax                 float64   `json:"tax"`
+	NetValue            float64   `json:"net_value"`
+	Currency            string    `json:"currency"`
+	FXRateToIDR         *float64  `json:"fx_rate_to_idr,omitempty"`
+	Notes               *string   `json:"notes,omitempty"`
+	Source              string    `json:"source"`
+	CreatedBy           *string   `json:"created_by,omitempty"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
+	Warnings            []string  `json:"warnings,omitempty"`
 }
 
 type PriceSnapshot struct {

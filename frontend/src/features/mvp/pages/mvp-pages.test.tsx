@@ -24,9 +24,11 @@ vi.mock("../api", () => ({
     createInstrument: vi.fn(),
     createManualPrice: vi.fn(),
     createTransaction: vi.fn(),
+    createTransactionCategory: vi.fn(),
     deleteCashAccount: vi.fn(),
     deleteInstrument: vi.fn(),
     deleteTransaction: vi.fn(),
+    deleteTransactionCategory: vi.fn(),
     exportReportsCsv: vi.fn(),
     holdings: vi.fn(),
     instruments: vi.fn(),
@@ -35,9 +37,11 @@ vi.mock("../api", () => ({
     portfolioPerformance: vi.fn(),
     recalculateHoldings: vi.fn(),
     transactions: vi.fn(),
+    transactionCategories: vi.fn(),
     updateCashAccount: vi.fn(),
     updateInstrument: vi.fn(),
     updateTransaction: vi.fn(),
+    updateTransactionCategory: vi.fn(),
     uploadImport: vi.fn(),
   },
 }));
@@ -52,6 +56,9 @@ beforeEach(() => {
     price_disclaimer: "Data bukan real-time. Harga berasal dari input manual/mock.",
     profit_loss_percent: -0.0529,
     profit_loss_value: -753255.58,
+    monthly_expense: 125000,
+    monthly_income: 500000,
+    monthly_net_cashflow: 375000,
     total_cash: 151859,
     total_cost: 14250100.3,
     total_net_worth: 13648703.72,
@@ -62,6 +69,7 @@ beforeEach(() => {
   mockedApi.instruments.mockResolvedValue([]);
   mockedApi.assetCategories.mockResolvedValue([]);
   mockedApi.transactions.mockResolvedValue([]);
+  mockedApi.transactionCategories.mockResolvedValue([]);
   mockedApi.cashAccounts.mockResolvedValue([]);
   mockedApi.cashAdjustments.mockResolvedValue([]);
   mockedApi.createCashAdjustment.mockResolvedValue({
@@ -88,6 +96,9 @@ beforeEach(() => {
       },
     ],
     cash_net_movement: 50000,
+    expense_total: 125000,
+    income_total: 500000,
+    net_cashflow: 375000,
     data_not_realtime: "Data manual/mock, bukan real-time.",
     disclaimer: "Laporan ini bukan rekomendasi beli/jual.",
     ending_net_worth: 13648703.72,
@@ -226,9 +237,9 @@ describe("MVP modal validation", () => {
     await user.click(await screen.findByRole("button", { name: /Tambah Transaksi/i }));
     await user.click(screen.getByRole("button", { name: "Simpan" }));
 
-    expect(screen.getByText("Instrumen wajib dipilih.")).toBeInTheDocument();
-    expect(screen.getByText("Harga wajib diisi dan tidak boleh negatif.")).toBeInTheDocument();
-    expect(screen.getByText("Unit wajib lebih dari 0 untuk beli/jual.")).toBeInTheDocument();
+    expect(screen.getByText("Akun wajib dipilih.")).toBeInTheDocument();
+    expect(screen.getByText("Kategori wajib dipilih.")).toBeInTheDocument();
+    expect(screen.getByText("Nominal wajib lebih dari 0.")).toBeInTheDocument();
   });
 
   it("memvalidasi form tambah instrumen", async () => {

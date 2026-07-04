@@ -33,6 +33,9 @@ export function OverviewPage() {
           tone={data.profit_loss_value < 0 ? "negative" : "positive"}
           value={`${formatCurrency(data.profit_loss_value)} (${formatPercent(data.profit_loss_percent)})`}
         />
+        <Kpi label="Pemasukan Bulan Ini" value={formatCurrency(data.monthly_income ?? 0)} />
+        <Kpi label="Pengeluaran Bulan Ini" tone="negative" value={formatCurrency(data.monthly_expense ?? 0)} />
+        <Kpi label="Cashflow Bersih" tone={(data.monthly_net_cashflow ?? 0) < 0 ? "negative" : "positive"} value={formatCurrency(data.monthly_net_cashflow ?? 0)} />
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-2">

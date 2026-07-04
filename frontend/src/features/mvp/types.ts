@@ -8,6 +8,7 @@ export type AlertItem = Schemas["Alert"];
 export type Holding = Schemas["Holding"];
 export type Instrument = Schemas["Instrument"];
 export type Transaction = Schemas["Transaction"];
+export type TransactionCategory = Schemas["TransactionCategory"];
 export type CashAccount = Schemas["CashAccount"];
 export type CashAdjustment = Schemas["CashAdjustment"];
 export type AssetCategory = Schemas["AssetCategory"];
