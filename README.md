@@ -61,7 +61,7 @@ Frontend: http://localhost:5173
 Backend health: http://localhost:8080/healthz
 ```
 
-After login, click `Recalculate` on Portfolio or call:
+After login, open `Portofolio` and click `Hitung Ulang`, or call:
 
 ```powershell
 $login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"owner@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
@@ -302,24 +302,19 @@ go run ./cmd/seed
 
 ## Validation Commands
 
-Backend tests through Docker:
+Backend tests through Docker Compose:
 
 ```powershell
 $repoPath = (Resolve-Path .).Path
-docker run --rm -v "${repoPath}:/workspace" -w /workspace/backend golang:1.26-alpine go test ./...
+docker compose run --rm -v "${repoPath}:/workspace" -w /workspace/backend backend go test ./...
 ```
 
 Backend API integration tests through Docker:
 
 ```powershell
 docker compose up -d postgres
-$postgresPort = (docker compose port postgres 5432).Split(":")[-1]
 $repoPath = (Resolve-Path .).Path
-docker run --rm `
-  -e MONEYMATE_TEST_DATABASE_URL="postgres://moneymate:moneymate@host.docker.internal:$postgresPort/moneymate?sslmode=disable" `
-  -v "${repoPath}:/workspace" `
-  -w /workspace/backend `
-  golang:1.26-alpine go test -tags=integration ./internal/httpapi
+docker compose run --rm -v "${repoPath}:/workspace" -w /workspace/backend backend go test -tags=integration ./internal/httpapi
 ```
 
 The integration suite uses `httptest` against the actual chi router, creates a temporary PostgreSQL schema, runs migrations into that schema, truncates between tests, and drops the schema after the run. It covers auth, RBAC, write flows, manual prices, holdings recalculation, import preview/confirm, duplicate ticker handling, dashboard totals after import, and audit log creation.
@@ -334,15 +329,20 @@ npm run backend:test:integration
 Frontend build:
 
 ```powershell
-cd frontend
-npm run build
+npm --prefix frontend run build
 ```
 
 Frontend component tests:
 
 ```powershell
-cd frontend
-npm run test:run
+npm run frontend:test
+```
+
+OpenAPI and generated type drift:
+
+```powershell
+npm run api:lint
+npm run api:types:check
 ```
 
 Compose validation:
@@ -351,11 +351,39 @@ Compose validation:
 docker compose config
 ```
 
+PowerShell backup script parser checks:
+
+```powershell
+$scripts = @(
+  "scripts\restore-backup-drill.ps1",
+  "scripts\backup-db.ps1",
+  "scripts\restore-db.ps1",
+  "scripts\cleanup-backups.ps1",
+  "scripts\backup-status.ps1"
+)
+foreach ($script in $scripts) {
+  $tokens = $null
+  $errors = $null
+  $null = [System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$errors)
+  if ($errors.Count -gt 0) {
+    Write-Error "Parser errors in $script"
+    $errors | Format-List *
+    exit 1
+  }
+}
+```
+
 Backup and restore smoke check:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-db.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -DatabaseName moneymate_restore_smoke -ConfirmRestore RESTORE_LOCAL_DATABASE
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-backup-drill.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -RunRestore -ConfirmRestoreDrill RESTORE_LOCAL_BACKUP_DRILL
+```
+
+Whitespace hygiene:
+
+```powershell
+git diff --check
 ```
 
 ## API Documentation
@@ -448,7 +476,18 @@ Stop services after testing:
 docker compose down
 ```
 
-The smoke suite logs in with the seeded owner account, recalculates holdings for `2026-06-30`, checks dashboard/portfolio/reports pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, opens the cash adjustment/history UI without mutating data, previews a small CSV import fixture without confirming the import, and verifies CSV report download starts.
+The smoke suite logs in with the seeded owner account, recalculates holdings for `2026-06-30`, checks ringkasan/portofolio/laporan pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, opens the cash adjustment/history UI without mutating data, previews a small CSV import fixture without confirming the import, and verifies CSV report download starts.
+
+## Troubleshooting
+
+- If `go` is not available on PATH, use the Docker Compose backend test commands above.
+- If `npm` is not available, run the direct PowerShell backup/status/cleanup/restore-drill scripts instead of root npm shortcuts.
+- If Playwright login fails after changing ignored local `.env` seed credentials, set `E2E_OWNER_EMAIL` and `E2E_OWNER_PASSWORD` to the same values before running `npm run e2e`.
+- If Playwright still sees old frontend labels after UI changes, restart the frontend service with `docker compose restart frontend`.
+- If PostgreSQL port `5432` is already in use, set `$env:POSTGRES_PORT = "15432"` before starting services.
+- If a clean demo database is needed and losing local Docker data is acceptable, run `docker compose down -v`, then rerun migrations and seed. This deletes the local PostgreSQL volume.
+- `npm run api:lint` currently passes with documentation-style warnings from Redocly. These warnings are non-blocking for the MVP but remain useful cleanup work.
+- Avoid sharing raw `docker compose config` output publicly because it expands ignored local `.env` values.
 
 ## CI Validation
 
@@ -489,10 +528,22 @@ GitHub Actions runs:
 - Manual/mock prices only; dashboard labels data as not real-time.
 - Cash balances are manually managed; orders do not automatically move cash yet.
 - Cash adjustment ledger records manual balance movements; it does not pair transfers between accounts yet.
-- Frontend forms are intentionally basic and do not yet expose every edit/delete backend action.
+- Frontend forms cover the core MVP create/edit/deactivate and adjustment flows, but they intentionally avoid advanced production workflows.
 - Confirmed imports do not fetch market data. Imported prices remain manual; holdings snapshots are recalculated in the same database transaction as import confirmation so dashboard views use imported data immediately.
 - Reports use backend holdings snapshots for portfolio values, current active cash balances for cash, and cash adjustment ledger rows for period cash movement. Beginning net worth, complete opening cash history, realized P/L, FIFO, TWR, and MWR are not invented when the current data model cannot calculate them accurately. See `docs/realized_pl_methodology_note.md`.
 - No production deployment hardening, HTTPS termination, or managed secret workflow yet.
+
+## Demo-Ready Checklist
+
+- Core protected routes are available from the sidebar without visible placeholder pages.
+- Owner login, refresh cookie session, logout, and protected API access work for local MVP use.
+- Ringkasan, portofolio, transaksi, instrumen, kas, impor, laporan, dan log audit pages have loading/error/empty handling.
+- Import preview/confirm keeps prices manual/mock and recalculates holdings after confirmation.
+- Report CSV export is separate from full database backup and is meant for analysis only.
+- Backup, status, cleanup, restore, and disposable restore drill workflows are local-only and documented.
+- Main validation commands pass locally when Docker, npm, and Playwright browsers are available.
+
+Current demo readiness status: ready for a local MVP demo, with the known limitations listed above.
 
 ## Roadmap
 

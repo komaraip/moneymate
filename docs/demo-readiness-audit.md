@@ -109,18 +109,25 @@ Results:
 - Audit logs: backend and filterable frontend page exist.
 - Backup safety: backup, restore, status, cleanup, and restore drill scripts exist.
 
+## Closure Update
+
+The P0 and highest-impact P1 findings from this audit were addressed after the audit:
+
+- Placeholder sidebar routes were removed from visible navigation and now redirect to the dashboard if visited directly.
+- Mobile navigation now opens a responsive sidebar drawer.
+- Sidebar and top-level demo page labels were localized consistently for Indonesian UI copy.
+- Playwright smoke tests now read owner credentials from `E2E_OWNER_EMAIL` and `E2E_OWNER_PASSWORD` with safe demo defaults.
+- Full validation was rerun after the fixes, including backend tests through Docker, backend integration tests, frontend build, component tests, Playwright smoke, Docker Compose config, OpenAPI lint, generated type drift, backup script parser checks, and `git diff --check`.
+
 ## Recommended Next Fix Order
 
-1. Remove or replace visible placeholder navigation/routes.
-2. Make mobile navigation functional.
-3. Localize sidebar labels and top-level page labels consistently.
-4. Run Playwright smoke against local services after the P0 route cleanup.
-5. Reduce OpenAPI lint warning noise in a later docs-only pass.
+1. Reduce OpenAPI lint warning noise in a docs-only pass.
+2. Consider a typed API client wrapper generated from the OpenAPI paths.
+3. Add paired cash transfer workflow only after transfer modeling is explicit.
+4. Add advanced realized P/L or return methodology only after the product decision is explicit.
 
 ## Demo Readiness Assessment
 
-Current status: **not fully demo-ready yet**.
+Current status: **demo-ready for the local MVP scope**.
 
-Exact blocker: visible placeholder routes in the primary navigation (`Asset Allocation`, `Insights`, `Settings`) still open unfinished pages.
-
-Once placeholder routes are removed or completed and smoke tests pass against local services, the application should be close to demo-ready for the current MVP scope.
+No P0 demo blocker remains in the current audited scope. Remaining items are P1/P2 documentation cleanup and future product decisions, not blockers for a local demo.
