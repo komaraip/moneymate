@@ -3,8 +3,8 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import path from "node:path";
 
 const apiBaseURL = process.env.E2E_API_BASE_URL ?? "http://localhost:8080";
-const ownerEmail = "owner@moneymate.local";
-const ownerPassword = "changeme-local-demo";
+const ownerEmail = process.env.E2E_OWNER_EMAIL ?? "owner@moneymate.local";
+const ownerPassword = process.env.E2E_OWNER_PASSWORD ?? "changeme-local-demo";
 
 test.describe("MoneyMate MVP smoke", () => {
   test("login owner dan dashboard menampilkan net worth", async ({ page, request }) => {

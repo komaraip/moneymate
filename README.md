@@ -34,6 +34,7 @@ Password: changeme-local-demo
 ```
 
 These are local placeholders only. Do not use them in production.
+If you change `SEED_OWNER_EMAIL` or `SEED_OWNER_PASSWORD` in your ignored local `.env`, update `E2E_OWNER_EMAIL` and `E2E_OWNER_PASSWORD` to match before running Playwright smoke tests.
 
 ## First Run With Docker
 
@@ -429,6 +430,15 @@ docker compose up -d backend frontend
 Run the smoke suite:
 
 ```powershell
+npm run e2e
+```
+
+The suite reads these optional local environment variables and falls back to the safe demo placeholders in `.env.example`:
+
+```powershell
+$env:E2E_API_BASE_URL = "http://localhost:8080"
+$env:E2E_OWNER_EMAIL = "owner@moneymate.local"
+$env:E2E_OWNER_PASSWORD = "changeme-local-demo"
 npm run e2e
 ```
 
