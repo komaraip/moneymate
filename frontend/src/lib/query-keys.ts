@@ -20,6 +20,10 @@ export const queryKeys = {
   transactionCategories: {
     all: ["transaction-categories"] as const,
   },
+  budgets: {
+    all: ["budgets"] as const,
+    month: (month: string) => ["budgets", month] as const,
+  },
   cashAccounts: {
     all: ["cash-accounts"] as const,
     adjustments: (id: string) => ["cash-accounts", id, "adjustments"] as const,

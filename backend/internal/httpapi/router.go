@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/cors"
 
 	"moneymate/backend/internal/auth"
+	"moneymate/backend/internal/budget"
 	"moneymate/backend/internal/config"
 	"moneymate/backend/internal/dashboard"
 	httpmw "moneymate/backend/internal/httpapi/middleware"
@@ -52,9 +53,10 @@ func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service
 	dashboardHandler := dashboard.NewHandler(db, cfg)
 	importHandler := importer.NewHandler(db)
 	reportHandler := reports.NewHandler(db, cfg)
+	budgetHandler := budget.NewHandler(db)
 	protected := chi.NewRouter()
 	protected.Use(auth.RequireAuth(authService))
-	mountUserRoutes(protected, masterHandler, ledgerHandler, portfolioHandler, dashboardHandler, importHandler, reportHandler)
+	mountUserRoutes(protected, masterHandler, ledgerHandler, portfolioHandler, dashboardHandler, importHandler, reportHandler, budgetHandler)
 	mountAdminRoutes(protected, masterHandler)
 	chiRouter.Mount("/api/v1", protected)
 
@@ -69,6 +71,7 @@ func mountUserRoutes(
 	dashboardHandler dashboard.Handler,
 	importHandler importer.Handler,
 	reportHandler reports.Handler,
+	budgetHandler budget.Handler,
 ) {
 	router.Mount("/dashboard", dashboardHandler.Routes())
 	router.Mount("/holdings", portfolioHandler.Routes())
@@ -80,6 +83,7 @@ func mountUserRoutes(
 	router.Mount("/prices", ledgerHandler.PriceRoutes())
 	router.Mount("/imports", importHandler.Routes())
 	router.Mount("/reports", reportHandler.Routes())
+	router.Mount("/budgets", budgetHandler.Routes())
 }
 
 func mountAdminRoutes(router chi.Router, masterHandler masterdata.Handler) {

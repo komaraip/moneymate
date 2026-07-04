@@ -433,6 +433,72 @@ func TestPersonalFinanceTransactionFlow(t *testing.T) {
 	app.assertAudit(t, "transaction", "create")
 }
 
+func TestBudgetingFlow(t *testing.T) {
+	app := newAPIIntegrationTest(t)
+	token := app.seedAndLogin(t, "user-budget-it@moneymate.local", "user")
+
+	walletCreate := app.requestJSON(t, http.MethodPost, "/api/v1/cash-accounts", token, cashPayload("Dompet Budget", 500000))
+	assertStatus(t, walletCreate, http.StatusCreated)
+	wallet := decodeData[cashAccountResponse](t, walletCreate.envelope)
+
+	expenseCategoryCreate := app.requestJSON(t, http.MethodPost, "/api/v1/transaction-categories", token, transactionCategoryPayload("Makan Budget", "expense"))
+	assertStatus(t, expenseCategoryCreate, http.StatusCreated)
+	expenseCategory := decodeData[transactionCategoryResponse](t, expenseCategoryCreate.envelope)
+
+	incomeCategoryCreate := app.requestJSON(t, http.MethodPost, "/api/v1/transaction-categories", token, transactionCategoryPayload("Gaji Budget", "income"))
+	assertStatus(t, incomeCategoryCreate, http.StatusCreated)
+	incomeCategory := decodeData[transactionCategoryResponse](t, incomeCategoryCreate.envelope)
+
+	createBudget := app.requestJSON(t, http.MethodPost, "/api/v1/budgets", token, budgetPayload(expenseCategory.ID, "2026-07", 100000))
+	assertStatus(t, createBudget, http.StatusCreated)
+	budget := decodeData[budgetResponse](t, createBudget.envelope)
+	if budget.CategoryName != "Makan Budget" || budget.Amount != 100000 || budget.Spent != 0 {
+		t.Fatalf("unexpected budget create response: %+v", budget)
+	}
+
+	invalidBudget := app.requestJSON(t, http.MethodPost, "/api/v1/budgets", token, budgetPayload(incomeCategory.ID, "2026-07", 500000))
+	assertStatus(t, invalidBudget, http.StatusBadRequest)
+
+	expense := app.requestJSON(t, http.MethodPost, "/api/v1/transactions", token, personalTransactionPayload(wallet.ID, "", expenseCategory.ID, "2026-07-12", "expense", 125000, "Makan over budget"))
+	assertStatus(t, expense, http.StatusCreated)
+
+	list := app.requestJSON(t, http.MethodGet, "/api/v1/budgets?month=2026-07", token, nil)
+	assertStatus(t, list, http.StatusOK)
+	budgets := decodeData[[]budgetResponse](t, list.envelope)
+	if len(budgets) != 1 {
+		t.Fatalf("expected one budget row, got %+v", budgets)
+	}
+	if budgets[0].Spent != 125000 || budgets[0].Remaining != -25000 || !budgets[0].OverBudget {
+		t.Fatalf("expected overbudget progress, got %+v", budgets[0])
+	}
+
+	monthly := decodeData[monthlySummaryReportResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/reports/monthly-summary?month=2026-07", token, nil).envelope)
+	if len(monthly.Budgets) != 1 || !monthly.Budgets[0].OverBudget {
+		t.Fatalf("expected monthly report budget progress, got %+v", monthly.Budgets)
+	}
+	if !hasWarning(monthly.Warnings, "OVER_BUDGET") {
+		t.Fatalf("expected OVER_BUDGET warning, got %+v", monthly.Warnings)
+	}
+
+	updateBudget := app.requestJSON(t, http.MethodPut, "/api/v1/budgets/"+budget.ID, token, budgetPayload(expenseCategory.ID, "2026-07", 150000))
+	assertStatus(t, updateBudget, http.StatusOK)
+	updatedBudget := decodeData[budgetResponse](t, updateBudget.envelope)
+	if updatedBudget.Amount != 150000 || updatedBudget.OverBudget {
+		t.Fatalf("expected updated budget to clear overbudget, got %+v", updatedBudget)
+	}
+
+	removeBudget := app.requestJSON(t, http.MethodDelete, "/api/v1/budgets/"+budget.ID, token, nil)
+	assertStatus(t, removeBudget, http.StatusOK)
+	deletedList := decodeData[[]budgetResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/budgets?month=2026-07", token, nil).envelope)
+	if len(deletedList) != 0 {
+		t.Fatalf("expected soft-deleted budget to be hidden, got %+v", deletedList)
+	}
+
+	app.assertAudit(t, "budget", "create")
+	app.assertAudit(t, "budget", "update")
+	app.assertAudit(t, "budget", "delete")
+}
+
 func TestImportPreviewAndConfirmationFlow(t *testing.T) {
 	app := newAPIIntegrationTest(t)
 	token := app.seedAndLogin(t, "admin-it@moneymate.local", "admin")
@@ -767,6 +833,7 @@ func (app *apiTestApp) reset(t *testing.T) {
 			cash_adjustments,
 			cash_accounts,
 			transactions,
+			budgets,
 			transaction_categories,
 			instrument_categories,
 			instruments,
@@ -915,6 +982,15 @@ func assertStatus(t *testing.T, res apiTestResponse, expected int) {
 	}
 }
 
+func hasWarning(values []reportWarningResponse, expected string) bool {
+	for _, value := range values {
+		if value.Code == expected {
+			return true
+		}
+	}
+	return false
+}
+
 func (app *apiTestApp) assertAudit(t *testing.T, entityType string, action string) {
 	t.Helper()
 	var count int
@@ -981,6 +1057,16 @@ func transactionCategoryPayload(name string, kind string) map[string]any {
 		"color_key":  kind,
 		"sort_order": 10,
 		"is_active":  true,
+	}
+}
+
+func budgetPayload(categoryID string, month string, amount float64) map[string]any {
+	return map[string]any{
+		"category_id": categoryID,
+		"month":       month,
+		"amount":      amount,
+		"notes":       "Anggaran integration test",
+		"is_active":   true,
 	}
 }
 
@@ -1169,8 +1255,21 @@ type monthlySummaryReportResponse struct {
 	IncomeTotal                   float64                 `json:"income_total"`
 	ExpenseTotal                  float64                 `json:"expense_total"`
 	NetCashflow                   float64                 `json:"net_cashflow"`
+	Budgets                       []budgetResponse        `json:"budgets"`
 	TransactionTotalsByInstrument []map[string]any        `json:"transaction_totals_by_instrument"`
 	Warnings                      []reportWarningResponse `json:"warnings"`
+}
+
+type budgetResponse struct {
+	ID           string  `json:"id"`
+	CategoryID   string  `json:"category_id"`
+	CategoryName string  `json:"category_name"`
+	Month        string  `json:"month"`
+	Amount       float64 `json:"amount"`
+	Spent        float64 `json:"spent"`
+	Remaining    float64 `json:"remaining"`
+	PercentUsed  float64 `json:"percent_used"`
+	OverBudget   bool    `json:"over_budget"`
 }
 
 type portfolioPerformanceReportResponse struct {

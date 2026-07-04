@@ -995,6 +995,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List monthly budgets with spending progress */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Budget month. Defaults to the current server month. */
+                    month?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description User-scoped active budgets for the requested month. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BudgetListEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create or upsert a monthly expense category budget
+         * @description Requires admin or user role. Budgets are scoped to the authenticated user and only support expense categories.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BudgetInput"];
+                };
+            };
+            responses: {
+                /** @description Budget saved. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BudgetEnvelope"];
+                    };
+                };
+                400: components["responses"]["ValidationError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/budgets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a monthly budget
+         * @description Requires admin or user role. Budget ownership is scoped to the authenticated user.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BudgetInput"];
+                };
+            };
+            responses: {
+                /** @description Budget updated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BudgetEnvelope"];
+                    };
+                };
+                404: components["responses"]["NotFoundError"];
+            };
+        };
+        post?: never;
+        /**
+         * Soft-delete a monthly budget
+         * @description Requires admin or user role. The implementation sets `is_active=false`; historical expense transactions are not modified.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Budget deactivated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StatusEnvelope"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/transactions": {
         parameters: {
             query?: never;
@@ -1930,6 +2070,56 @@ export interface components {
         TransactionCategoryListEnvelope: components["schemas"]["SuccessEnvelope"] & {
             data?: components["schemas"]["TransactionCategory"][];
         };
+        BudgetInput: {
+            /**
+             * Format: uuid
+             * @description Must reference an active expense transaction category owned by the authenticated user.
+             */
+            category_id: string;
+            month: string;
+            amount: number;
+            notes?: string | null;
+            /** @default true */
+            is_active: boolean;
+        };
+        Budget: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            category_id: string;
+            category_name: string;
+            month: string;
+            amount: number;
+            spent: number;
+            remaining: number;
+            percent_used: number;
+            over_budget: boolean;
+            notes?: string | null;
+            is_active: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        BudgetProgress: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            category_id: string;
+            category_name: string;
+            month: string;
+            amount: number;
+            spent: number;
+            remaining: number;
+            percent_used: number;
+            over_budget: boolean;
+        };
+        BudgetEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["Budget"];
+        };
+        BudgetListEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["Budget"][];
+        };
         TransactionInput: {
             /** Format: uuid */
             instrument_id?: string | null;
@@ -2257,6 +2447,8 @@ export interface components {
             expense_total: number;
             /** @description Income minus expense for the requested month. Transfers are excluded. */
             net_cashflow: number;
+            /** @description Monthly expense category budget progress for the requested month. */
+            budgets: components["schemas"]["BudgetProgress"][];
             portfolio_value: number;
             /** Format: date */
             portfolio_snapshot_date?: string | null;

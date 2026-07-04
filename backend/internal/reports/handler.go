@@ -63,6 +63,7 @@ type MonthlySummaryReport struct {
 	IncomeTotal                   float64               `json:"income_total"`
 	ExpenseTotal                  float64               `json:"expense_total"`
 	NetCashflow                   float64               `json:"net_cashflow"`
+	Budgets                       []BudgetProgress      `json:"budgets"`
 	PortfolioValue                float64               `json:"portfolio_value"`
 	PortfolioSnapshotDate         *string               `json:"portfolio_snapshot_date"`
 	RealizedProfitLoss            *float64              `json:"realized_profit_loss"`
@@ -170,6 +171,18 @@ type CashSummary struct {
 	Note             string  `json:"note"`
 }
 
+type BudgetProgress struct {
+	ID           string  `json:"id"`
+	CategoryID   string  `json:"category_id"`
+	CategoryName string  `json:"category_name"`
+	Month        string  `json:"month"`
+	Amount       float64 `json:"amount"`
+	Spent        float64 `json:"spent"`
+	Remaining    float64 `json:"remaining"`
+	PercentUsed  float64 `json:"percent_used"`
+	OverBudget   bool    `json:"over_budget"`
+}
+
 type snapshotSummary struct {
 	Date           *time.Time
 	PortfolioValue float64
@@ -207,6 +220,11 @@ func (h Handler) monthlySummary(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, r, internalErr(err, "Gagal memuat cashflow personal"))
 		return
 	}
+	budgets, err := h.budgetProgress(r.Context(), user.ID, monthStart)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat progress anggaran"))
+		return
+	}
 	assetTotals, err := h.transactionTotalsByAssetType(r.Context(), user.ID, monthStart, nextMonth)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat total transaksi per aset"))
@@ -237,6 +255,11 @@ func (h Handler) monthlySummary(w http.ResponseWriter, r *http.Request) {
 		warning("BEGINNING_NET_WORTH_UNAVAILABLE", "Beginning net worth tidak dihitung karena histori cash dan snapshot awal bulan belum cukup akurat.", "info"),
 		warning("REALIZED_PL_UNAVAILABLE", "Realized profit/loss belum dihitung karena metode FIFO/average realized P/L belum tersedia di MVP.", "info"),
 	)
+	for _, budget := range budgets {
+		if budget.OverBudget {
+			warnings = append(warnings, warning("OVER_BUDGET", "Kategori "+budget.CategoryName+" melewati anggaran bulanan.", "warning"))
+		}
+	}
 
 	report := MonthlySummaryReport{
 		Month:                         monthStart.Format("2006-01"),
@@ -250,6 +273,7 @@ func (h Handler) monthlySummary(w http.ResponseWriter, r *http.Request) {
 		IncomeTotal:                   incomeTotal,
 		ExpenseTotal:                  expenseTotal,
 		NetCashflow:                   round2(incomeTotal - expenseTotal),
+		Budgets:                       budgets,
 		PortfolioValue:                round2(ending.PortfolioValue),
 		PortfolioSnapshotDate:         dateStringPtr(ending.Date),
 		RealizedProfitLoss:            nil,
@@ -541,6 +565,52 @@ func (h Handler) personalCashflowTotals(ctx context.Context, userID string, from
 		  AND transaction_date >= $2::date AND transaction_date < $3::date
 	`, userID, from.Format("2006-01-02"), toExclusive.Format("2006-01-02")).Scan(&incomeTotal, &expenseTotal)
 	return round2(incomeTotal), round2(expenseTotal), err
+}
+
+func (h Handler) budgetProgress(ctx context.Context, userID string, month time.Time) ([]BudgetProgress, error) {
+	rows, err := h.db.Query(ctx, `
+		WITH spent AS (
+			SELECT category_id, COALESCE(SUM(amount), 0)::float8 AS spent
+			FROM transactions
+			WHERE user_id = $1
+			  AND type = 'expense'
+			  AND transaction_date >= $2::date
+			  AND transaction_date < ($2::date + INTERVAL '1 month')::date
+			GROUP BY category_id
+		)
+		SELECT b.id::text, b.category_id::text, tc.name, to_char(b.month, 'YYYY-MM'),
+		       b.amount::float8, COALESCE(spent.spent, 0)::float8,
+		       (b.amount - COALESCE(spent.spent, 0))::float8,
+		       CASE WHEN b.amount > 0 THEN COALESCE(spent.spent, 0) / b.amount ELSE 0 END::float8,
+		       COALESCE(spent.spent, 0) > b.amount
+		FROM budgets b
+		JOIN transaction_categories tc ON tc.id = b.category_id
+		LEFT JOIN spent ON spent.category_id = b.category_id
+		WHERE b.user_id = $1
+		  AND b.month = $2::date
+		  AND b.is_active = TRUE
+		ORDER BY COALESCE(spent.spent, 0) > b.amount DESC,
+		         CASE WHEN b.amount > 0 THEN COALESCE(spent.spent, 0) / b.amount ELSE 0 END DESC,
+		         tc.sort_order,
+		         tc.name
+	`, userID, month.Format("2006-01-02"))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := []BudgetProgress{}
+	for rows.Next() {
+		var item BudgetProgress
+		if err := rows.Scan(&item.ID, &item.CategoryID, &item.CategoryName, &item.Month, &item.Amount, &item.Spent, &item.Remaining, &item.PercentUsed, &item.OverBudget); err != nil {
+			return nil, err
+		}
+		item.Amount = round2(item.Amount)
+		item.Spent = round2(item.Spent)
+		item.Remaining = round2(item.Remaining)
+		items = append(items, item)
+	}
+	return items, rows.Err()
 }
 
 func (h Handler) transactionTotalsByAssetType(ctx context.Context, userID string, from time.Time, toExclusive time.Time) ([]TransactionTotal, error) {

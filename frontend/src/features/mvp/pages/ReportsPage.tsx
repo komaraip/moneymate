@@ -127,6 +127,18 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card>
+          <h4 className="font-semibold text-white">Progress Anggaran</h4>
+          <SimpleTable
+            emptyLabel="Belum ada anggaran pada bulan ini."
+            rows={(data.budgets ?? []).map((row) => ({
+              key: row.id,
+              left: row.category_name,
+              right: formatCurrency(row.spent),
+              detail: `${formatCurrency(row.amount)} / ${formatPercent(row.percent_used)}${row.over_budget ? " / melewati anggaran" : ""}`,
+            }))}
+          />
+        </Card>
+        <Card>
           <h4 className="font-semibold text-white">Total Transaksi per Aset</h4>
           <SimpleTable
             emptyLabel="Belum ada transaksi pada bulan ini."

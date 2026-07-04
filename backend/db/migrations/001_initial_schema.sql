@@ -103,6 +103,20 @@ CREATE TABLE transactions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE budgets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category_id UUID NOT NULL REFERENCES transaction_categories(id),
+  month DATE NOT NULL,
+  amount NUMERIC(22, 2) NOT NULL,
+  notes TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (amount > 0),
+  UNIQUE(user_id, category_id, month)
+);
+
 CREATE TABLE cash_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id),
@@ -201,6 +215,8 @@ CREATE INDEX idx_transactions_user_category_date ON transactions(user_id, catego
 CREATE INDEX idx_transactions_user_cash_account_date ON transactions(user_id, cash_account_id, transaction_date DESC);
 CREATE INDEX idx_transactions_instrument ON transactions(instrument_id);
 CREATE INDEX idx_transactions_created_by ON transactions(created_by);
+CREATE INDEX idx_budgets_user_month_active ON budgets(user_id, month DESC, is_active);
+CREATE INDEX idx_budgets_user_category_month ON budgets(user_id, category_id, month DESC);
 CREATE INDEX idx_cash_accounts_user_active ON cash_accounts(user_id, is_active, account_name);
 CREATE INDEX idx_cash_adjustments_account ON cash_adjustments(cash_account_id, created_at DESC);
 CREATE INDEX idx_cash_adjustments_user_account_date ON cash_adjustments(user_id, cash_account_id, created_at DESC);

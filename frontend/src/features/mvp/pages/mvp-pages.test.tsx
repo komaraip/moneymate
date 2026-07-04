@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../../../test/render";
 import { mvpApi } from "../api";
+import { BudgetsPage } from "./BudgetsPage";
 import { CashPage } from "./CashPage";
 import { ImportPage } from "./ImportPage";
 import { InstrumentsPage } from "./InstrumentsPage";
@@ -16,15 +17,18 @@ vi.mock("../api", () => ({
     allocation: vi.fn(),
     assetCategories: vi.fn(),
     auditLogs: vi.fn(),
+    budgets: vi.fn(),
     cashAccounts: vi.fn(),
     cashAdjustments: vi.fn(),
     confirmImport: vi.fn(),
+    createBudget: vi.fn(),
     createCashAdjustment: vi.fn(),
     createCashAccount: vi.fn(),
     createInstrument: vi.fn(),
     createManualPrice: vi.fn(),
     createTransaction: vi.fn(),
     createTransactionCategory: vi.fn(),
+    deleteBudget: vi.fn(),
     deleteCashAccount: vi.fn(),
     deleteInstrument: vi.fn(),
     deleteTransaction: vi.fn(),
@@ -38,6 +42,7 @@ vi.mock("../api", () => ({
     recalculateHoldings: vi.fn(),
     transactions: vi.fn(),
     transactionCategories: vi.fn(),
+    updateBudget: vi.fn(),
     updateCashAccount: vi.fn(),
     updateInstrument: vi.fn(),
     updateTransaction: vi.fn(),
@@ -70,6 +75,7 @@ beforeEach(() => {
   mockedApi.assetCategories.mockResolvedValue([]);
   mockedApi.transactions.mockResolvedValue([]);
   mockedApi.transactionCategories.mockResolvedValue([]);
+  mockedApi.budgets.mockResolvedValue([]);
   mockedApi.cashAccounts.mockResolvedValue([]);
   mockedApi.cashAdjustments.mockResolvedValue([]);
   mockedApi.createCashAdjustment.mockResolvedValue({
@@ -99,6 +105,19 @@ beforeEach(() => {
     expense_total: 125000,
     income_total: 500000,
     net_cashflow: 375000,
+    budgets: [
+      {
+        amount: 1000000,
+        category_id: "category-food",
+        category_name: "Makan",
+        id: "budget-1",
+        month: "2026-06",
+        over_budget: false,
+        percent_used: 0.125,
+        remaining: 875000,
+        spent: 125000,
+      },
+    ],
     data_not_realtime: "Data manual/mock, bukan real-time.",
     disclaimer: "Laporan ini bukan rekomendasi beli/jual.",
     ending_net_worth: 13648703.72,
@@ -286,6 +305,30 @@ describe("MVP modal validation", () => {
     await user.click(screen.getByRole("button", { name: "Simpan Penyesuaian" }));
 
     expect(screen.getByText("Nominal penyesuaian wajib lebih dari 0.")).toBeInTheDocument();
+  });
+
+  it("memvalidasi form tambah anggaran", async () => {
+    const user = userEvent.setup();
+    mockedApi.transactionCategories.mockResolvedValue([
+      {
+        color_key: "expense",
+        created_at: "2026-06-01T10:00:00Z",
+        id: "category-food",
+        is_active: true,
+        name: "Makan",
+        sort_order: 10,
+        type: "expense",
+        updated_at: "2026-06-01T10:00:00Z",
+      },
+    ]);
+
+    renderWithProviders(<BudgetsPage />);
+
+    await user.click(await screen.findByRole("button", { name: /Tambah Anggaran/i }));
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
+
+    expect(screen.getByText("Kategori pengeluaran wajib dipilih.")).toBeInTheDocument();
+    expect(screen.getByText("Nominal anggaran wajib lebih dari 0.")).toBeInTheDocument();
   });
 });
 

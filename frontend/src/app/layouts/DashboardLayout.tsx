@@ -9,6 +9,7 @@ import {
   Landmark,
   LogOut,
   Menu,
+  PiggyBank,
   Settings,
   X,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const navGroups = [
     items: [
       { label: "Transaksi", href: "/transactions", icon: ClipboardList },
       { label: "Akun & Wallet", href: "/accounts", icon: Banknote },
+      { label: "Anggaran", href: "/budgets", icon: PiggyBank },
     ],
   },
   {

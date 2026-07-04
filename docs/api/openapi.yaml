@@ -29,6 +29,7 @@ tags:
   - name: Asset Categories
   - name: Transaction Categories
   - name: Transactions
+  - name: Budgets
   - name: Cash Accounts
   - name: Imports
   - name: Reports
@@ -688,6 +689,106 @@ paths:
       responses:
         "200":
           description: Transaction category deactivated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusEnvelope"
+
+  /api/v1/budgets:
+    get:
+      tags: [Budgets]
+      summary: List monthly budgets with spending progress
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+          description: Budget month. Defaults to the current server month.
+      responses:
+        "200":
+          description: User-scoped active budgets for the requested month.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetListEnvelope"
+              examples:
+                july:
+                  value:
+                    success: true
+                    data:
+                      - id: 55555555-5555-5555-5555-555555555555
+                        category_id: 66666666-6666-6666-6666-666666666666
+                        category_name: Makan
+                        month: "2026-07"
+                        amount: 1000000
+                        spent: 125000
+                        remaining: 875000
+                        percent_used: 0.125
+                        over_budget: false
+                        notes: Makan dan groceries
+                        is_active: true
+                        created_at: "2026-07-01T08:00:00+07:00"
+                        updated_at: "2026-07-01T08:00:00+07:00"
+                    request_id: req_123
+    post:
+      tags: [Budgets]
+      summary: Create or upsert a monthly expense category budget
+      security:
+        - bearerAuth: []
+      description: Requires admin or user role. Budgets are scoped to the authenticated user and only support expense categories.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetInput"
+      responses:
+        "201":
+          description: Budget saved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetEnvelope"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/budgets/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    put:
+      tags: [Budgets]
+      summary: Update a monthly budget
+      security:
+        - bearerAuth: []
+      description: Requires admin or user role. Budget ownership is scoped to the authenticated user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetInput"
+      responses:
+        "200":
+          description: Budget updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetEnvelope"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+    delete:
+      tags: [Budgets]
+      summary: Soft-delete a monthly budget
+      security:
+        - bearerAuth: []
+      description: Requires admin or user role. The implementation sets `is_active=false`; historical expense transactions are not modified.
+      responses:
+        "200":
+          description: Budget deactivated.
           content:
             application/json:
               schema:
@@ -1697,6 +1798,110 @@ components:
               items:
                 $ref: "#/components/schemas/TransactionCategory"
 
+    BudgetInput:
+      type: object
+      required: [category_id, month, amount]
+      properties:
+        category_id:
+          type: string
+          format: uuid
+          description: Must reference an active expense transaction category owned by the authenticated user.
+        month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        notes:
+          type:
+            - string
+            - "null"
+        is_active:
+          type: boolean
+          default: true
+
+    Budget:
+      type: object
+      required: [id, category_id, category_name, month, amount, spent, remaining, percent_used, over_budget, is_active, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        category_name:
+          type: string
+        month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+        amount:
+          type: number
+        spent:
+          type: number
+        remaining:
+          type: number
+        percent_used:
+          type: number
+        over_budget:
+          type: boolean
+        notes:
+          type:
+            - string
+            - "null"
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BudgetProgress:
+      type: object
+      required: [id, category_id, category_name, month, amount, spent, remaining, percent_used, over_budget]
+      properties:
+        id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        category_name:
+          type: string
+        month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+        amount:
+          type: number
+        spent:
+          type: number
+        remaining:
+          type: number
+        percent_used:
+          type: number
+        over_budget:
+          type: boolean
+
+    BudgetEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Budget"
+
+    BudgetListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Budget"
+
     TransactionInput:
       type: object
       required: [transaction_date, type, currency]
@@ -2390,6 +2595,7 @@ components:
         - income_total
         - expense_total
         - net_cashflow
+        - budgets
         - portfolio_value
         - unrealized_profit_loss
         - transaction_totals_by_asset_type
@@ -2436,6 +2642,11 @@ components:
         net_cashflow:
           type: number
           description: Income minus expense for the requested month. Transfers are excluded.
+        budgets:
+          type: array
+          description: Monthly expense category budget progress for the requested month.
+          items:
+            $ref: "#/components/schemas/BudgetProgress"
         portfolio_value:
           type: number
         portfolio_snapshot_date:
