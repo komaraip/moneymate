@@ -114,7 +114,7 @@ export function DashboardLayout() {
             <div className="flex items-center gap-3">
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-medium text-white">
-                  {user?.full_name ?? "Owner"}
+                  {user?.full_name ?? "Pengguna"}
                 </p>
                 <p className="text-xs uppercase text-zinc-500">
                   {roleLabel(user?.role)}
@@ -171,10 +171,9 @@ function Brand() {
 function roleLabel(role?: string) {
   const labels: Record<string, string> = {
     admin: "Admin",
-    owner: "Pemilik",
-    viewer: "Viewer",
+    user: "User",
   };
-  return labels[role ?? "owner"] ?? "Pemilik";
+  return labels[role ?? "user"] ?? "User";
 }
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {

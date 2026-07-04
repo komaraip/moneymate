@@ -58,9 +58,9 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgres://${POSTGRES_USER:-moneymate}:${POSTGRES_PASSWORD:-moneymate}@postgres:5432/${POSTGRES_DB:-moneymate}?sslmode=disable
-      SEED_OWNER_EMAIL: ${SEED_OWNER_EMAIL:-owner@moneymate.local}
-      SEED_OWNER_PASSWORD: ${SEED_OWNER_PASSWORD:-changeme-local-demo}
-      SEED_OWNER_NAME: ${SEED_OWNER_NAME:-MoneyMate Owner}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@moneymate.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-changeme-local-demo}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-MoneyMate Admin}
     depends_on:
       postgres:
         condition: service_healthy

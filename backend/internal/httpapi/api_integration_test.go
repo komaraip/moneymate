@@ -65,18 +65,18 @@ func TestMain(m *testing.M) {
 
 func TestAuthIntegration(t *testing.T) {
 	app := newAPIIntegrationTest(t)
-	app.seedUser(t, "owner-it@moneymate.local", "owner")
+	app.seedUser(t, "admin-it@moneymate.local", "admin")
 
-	login := app.login(t, "owner-it@moneymate.local", integrationPassword)
+	login := app.login(t, "admin-it@moneymate.local", integrationPassword)
 	if login.AccessToken == "" {
 		t.Fatal("expected access token")
 	}
-	if login.User.Email != "owner-it@moneymate.local" {
+	if login.User.Email != "admin-it@moneymate.local" {
 		t.Fatalf("unexpected login user email: %s", login.User.Email)
 	}
 
 	invalid := app.requestJSON(t, http.MethodPost, "/api/v1/auth/login", "", map[string]any{
-		"email":    "owner-it@moneymate.local",
+		"email":    "admin-it@moneymate.local",
 		"password": "wrong-password",
 	})
 	assertStatus(t, invalid, http.StatusUnauthorized)
@@ -87,7 +87,7 @@ func TestAuthIntegration(t *testing.T) {
 	me := app.requestJSON(t, http.MethodGet, "/api/v1/auth/me", login.AccessToken, nil)
 	assertStatus(t, me, http.StatusOK)
 	meUser := decodeData[userResponse](t, me.envelope)
-	if meUser.Email != "owner-it@moneymate.local" {
+	if meUser.Email != "admin-it@moneymate.local" {
 		t.Fatalf("unexpected /me email: %s", meUser.Email)
 	}
 }
@@ -104,12 +104,12 @@ func TestProtectedEndpointsRejectMissingOrInvalidToken(t *testing.T) {
 
 func TestRoleRestrictionsForWriteEndpoints(t *testing.T) {
 	app := newAPIIntegrationTest(t)
-	app.seedUser(t, "viewer-it@moneymate.local", "viewer")
+	app.seedUser(t, "user-it@moneymate.local", "user")
 	app.seedUser(t, "admin-it@moneymate.local", "admin")
 
-	viewer := app.login(t, "viewer-it@moneymate.local", integrationPassword)
-	viewerWrite := app.requestJSON(t, http.MethodPost, "/api/v1/instruments", viewer.AccessToken, instrumentPayload("VIEW", "Viewer Instrument"))
-	assertStatus(t, viewerWrite, http.StatusForbidden)
+	user := app.login(t, "user-it@moneymate.local", integrationPassword)
+	userWrite := app.requestJSON(t, http.MethodPost, "/api/v1/instruments", user.AccessToken, instrumentPayload("USER", "User Instrument"))
+	assertStatus(t, userWrite, http.StatusForbidden)
 
 	admin := app.login(t, "admin-it@moneymate.local", integrationPassword)
 	adminWrite := app.requestJSON(t, http.MethodPost, "/api/v1/instruments", admin.AccessToken, instrumentPayload("ADMIN", "Admin Instrument"))
@@ -118,7 +118,7 @@ func TestRoleRestrictionsForWriteEndpoints(t *testing.T) {
 
 func TestInstrumentWriteFlowCreatesAuditLogs(t *testing.T) {
 	app := newAPIIntegrationTest(t)
-	token := app.seedAndLogin(t, "owner-it@moneymate.local", "owner")
+	token := app.seedAndLogin(t, "admin-it@moneymate.local", "admin")
 
 	create := app.requestJSON(t, http.MethodPost, "/api/v1/instruments", token, instrumentPayload("MMIT", "MoneyMate Integration"))
 	assertStatus(t, create, http.StatusCreated)
@@ -153,7 +153,7 @@ func TestInstrumentWriteFlowCreatesAuditLogs(t *testing.T) {
 
 func TestTransactionManualPriceHoldingsAndAuditFlow(t *testing.T) {
 	app := newAPIIntegrationTest(t)
-	token := app.seedAndLogin(t, "owner-it@moneymate.local", "owner")
+	token := app.seedAndLogin(t, "admin-it@moneymate.local", "admin")
 	instrumentID := app.seedInstrument(t, "BBRI", "Bank Rakyat Indonesia", "stock", "IDR")
 
 	txPayload := transactionPayload(instrumentID, "2026-06-30", "buy", 3000, 10, "IDR", nil)
@@ -208,7 +208,7 @@ func TestTransactionManualPriceHoldingsAndAuditFlow(t *testing.T) {
 
 func TestCashAccountWriteFlowCreatesAuditLogs(t *testing.T) {
 	app := newAPIIntegrationTest(t)
-	token := app.seedAndLogin(t, "owner-it@moneymate.local", "owner")
+	token := app.seedAndLogin(t, "admin-it@moneymate.local", "admin")
 
 	create := app.requestJSON(t, http.MethodPost, "/api/v1/cash-accounts", token, cashPayload("Seabank Integration", 100000))
 	assertStatus(t, create, http.StatusCreated)
@@ -241,7 +241,7 @@ func TestCashAccountWriteFlowCreatesAuditLogs(t *testing.T) {
 
 func TestCashAdjustmentLedgerFlow(t *testing.T) {
 	app := newAPIIntegrationTest(t)
-	token := app.seedAndLogin(t, "owner-it@moneymate.local", "owner")
+	token := app.seedAndLogin(t, "admin-it@moneymate.local", "admin")
 
 	create := app.requestJSON(t, http.MethodPost, "/api/v1/cash-accounts", token, cashPayload("Seabank Ledger", 100000))
 	assertStatus(t, create, http.StatusCreated)
@@ -307,7 +307,7 @@ func TestCashAdjustmentLedgerFlow(t *testing.T) {
 
 func TestImportPreviewAndConfirmationFlow(t *testing.T) {
 	app := newAPIIntegrationTest(t)
-	token := app.seedAndLogin(t, "owner-it@moneymate.local", "owner")
+	token := app.seedAndLogin(t, "admin-it@moneymate.local", "admin")
 	app.seedInstrument(t, "BBRI", "Bank Rakyat Indonesia", "stock", "IDR")
 
 	preview := app.uploadCSV(t, token, "moneymate-import.csv", sampleImportCSV())
@@ -393,7 +393,7 @@ func TestImportPreviewAndConfirmationFlow(t *testing.T) {
 
 func TestReportEndpoints(t *testing.T) {
 	app := newAPIIntegrationTest(t)
-	token := app.seedAndLogin(t, "owner-it@moneymate.local", "owner")
+	token := app.seedAndLogin(t, "admin-it@moneymate.local", "admin")
 	instrumentID := app.seedInstrument(t, "BBRI", "Bank Rakyat Indonesia", "stock", "IDR")
 
 	createTx := app.requestJSON(t, http.MethodPost, "/api/v1/transactions", token, transactionPayload(instrumentID, "2026-06-30", "buy", 3000, 10, "IDR", nil))

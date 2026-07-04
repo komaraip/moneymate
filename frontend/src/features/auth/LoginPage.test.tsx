@@ -37,14 +37,14 @@ describe("LoginPage", () => {
     renderWithProviders(<LoginPage />, { route: "/login" });
 
     await user.clear(screen.getByLabelText("Email"));
-    await user.type(screen.getByLabelText("Email"), "owner@moneymate.local");
+    await user.type(screen.getByLabelText("Email"), "admin@moneymate.local");
     await user.clear(screen.getByLabelText("Password"));
     await user.type(screen.getByLabelText("Password"), "password-salah");
     await user.click(screen.getByRole("button", { name: "Masuk" }));
 
     expect(await screen.findByText("Email atau password salah")).toBeInTheDocument();
     expect(login).toHaveBeenCalledWith({
-      email: "owner@moneymate.local",
+      email: "admin@moneymate.local",
       password: "password-salah",
     });
   });

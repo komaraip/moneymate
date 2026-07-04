@@ -33,10 +33,10 @@ func (h Handler) InstrumentRoutes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", h.listInstruments)
-	router.Post("/", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.createInstrument)).ServeHTTP)
+	router.Post("/", auth.RequireAdmin()(http.HandlerFunc(h.createInstrument)).ServeHTTP)
 	router.Get("/{id}", h.getInstrument)
-	router.Put("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.updateInstrument)).ServeHTTP)
-	router.Delete("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.deleteInstrument)).ServeHTTP)
+	router.Put("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.updateInstrument)).ServeHTTP)
+	router.Delete("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.deleteInstrument)).ServeHTTP)
 
 	return router
 }
@@ -45,9 +45,9 @@ func (h Handler) CategoryRoutes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", h.listCategories)
-	router.Post("/", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.createCategory)).ServeHTTP)
-	router.Put("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.updateCategory)).ServeHTTP)
-	router.Delete("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.deleteCategory)).ServeHTTP)
+	router.Post("/", auth.RequireAdmin()(http.HandlerFunc(h.createCategory)).ServeHTTP)
+	router.Put("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.updateCategory)).ServeHTTP)
+	router.Delete("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.deleteCategory)).ServeHTTP)
 
 	return router
 }
@@ -56,12 +56,12 @@ func (h Handler) CashRoutes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", h.listCashAccounts)
-	router.Post("/", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.createCashAccount)).ServeHTTP)
+	router.Post("/", auth.RequireAdmin()(http.HandlerFunc(h.createCashAccount)).ServeHTTP)
 	router.Get("/{id}/adjustments", h.listCashAdjustments)
-	router.Post("/{id}/adjust", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.adjustCashAccount)).ServeHTTP)
+	router.Post("/{id}/adjust", auth.RequireAdmin()(http.HandlerFunc(h.adjustCashAccount)).ServeHTTP)
 	router.Get("/{id}", h.getCashAccount)
-	router.Put("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.updateCashAccount)).ServeHTTP)
-	router.Delete("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.deleteCashAccount)).ServeHTTP)
+	router.Put("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.updateCashAccount)).ServeHTTP)
+	router.Delete("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.deleteCashAccount)).ServeHTTP)
 
 	return router
 }

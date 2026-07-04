@@ -20,9 +20,9 @@ type Config struct {
 	CookieSecure       bool
 	AccessTokenTTL     time.Duration
 	RefreshTokenTTL    time.Duration
-	SeedOwnerEmail     string
-	SeedOwnerPassword  string
-	SeedOwnerName      string
+	SeedAdminEmail     string
+	SeedAdminPassword  string
+	SeedAdminName      string
 }
 
 func Load() Config {
@@ -39,9 +39,9 @@ func Load() Config {
 		CookieSecure:       getBool("COOKIE_SECURE", false),
 		AccessTokenTTL:     15 * time.Minute,
 		RefreshTokenTTL:    30 * 24 * time.Hour,
-		SeedOwnerEmail:     getEnv("SEED_OWNER_EMAIL", "owner@moneymate.local"),
-		SeedOwnerPassword:  getEnv("SEED_OWNER_PASSWORD", "changeme-local-demo"),
-		SeedOwnerName:      getEnv("SEED_OWNER_NAME", "MoneyMate Owner"),
+		SeedAdminEmail:     getEnv("SEED_ADMIN_EMAIL", getEnv("SEED_OWNER_EMAIL", "admin@moneymate.local")),
+		SeedAdminPassword:  getEnv("SEED_ADMIN_PASSWORD", getEnv("SEED_OWNER_PASSWORD", "changeme-local-demo")),
+		SeedAdminName:      getEnv("SEED_ADMIN_NAME", getEnv("SEED_OWNER_NAME", "MoneyMate Admin")),
 	}
 }
 

@@ -50,7 +50,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Login with owner/admin/viewer credentials
+         * Login with admin/user credentials
          * @description Returns a JWT access token and sets the HTTP-only refresh cookie.
          */
         post: {
@@ -397,7 +397,7 @@ export interface paths {
         put?: never;
         /**
          * Recalculate holdings snapshots from transactions and manual prices
-         * @description Requires owner or admin role.
+         * @description Requires admin role during the role transition.
          */
         post: {
             parameters: {
@@ -478,7 +478,7 @@ export interface paths {
         put?: never;
         /**
          * Create or update a manual price snapshot
-         * @description Requires owner or admin role. Prices are manual/mock and not real-time.
+         * @description Requires admin role during the role transition. Prices are manual/mock and not real-time.
          */
         post: {
             parameters: {
@@ -521,7 +521,7 @@ export interface paths {
         put?: never;
         /**
          * Create or update multiple manual price snapshots
-         * @description Requires owner or admin role.
+         * @description Requires admin role during the role transition.
          */
         post: {
             parameters: {
@@ -588,7 +588,7 @@ export interface paths {
         put?: never;
         /**
          * Create instrument
-         * @description Requires owner or admin role.
+         * @description Requires admin role during the role transition.
          */
         post: {
             parameters: {
@@ -655,7 +655,7 @@ export interface paths {
         };
         /**
          * Update instrument
-         * @description Requires owner or admin role.
+         * @description Requires admin role during the role transition.
          */
         put: {
             parameters: {
@@ -686,7 +686,7 @@ export interface paths {
         post?: never;
         /**
          * Soft-delete instrument
-         * @description Requires owner or admin role. Current implementation sets `is_active=false`; it does not delete historical transactions.
+         * @description Requires admin role during the role transition. Current implementation sets `is_active=false`; it does not delete historical transactions.
          */
         delete: {
             parameters: {
@@ -746,7 +746,7 @@ export interface paths {
         put?: never;
         /**
          * Create asset category
-         * @description Requires owner or admin role.
+         * @description Requires admin role during the role transition.
          */
         post: {
             parameters: {
@@ -790,7 +790,7 @@ export interface paths {
         get?: never;
         /**
          * Update asset category
-         * @description Requires owner or admin role.
+         * @description Requires admin role during the role transition.
          */
         put: {
             parameters: {
@@ -821,7 +821,7 @@ export interface paths {
         post?: never;
         /**
          * Delete asset category
-         * @description Requires owner or admin role.
+         * @description Requires admin role during the role transition.
          */
         delete: {
             parameters: {
@@ -884,7 +884,7 @@ export interface paths {
         put?: never;
         /**
          * Create transaction
-         * @description Requires owner or admin role. Non-IDR transactions require `fx_rate_to_idr`.
+         * @description Requires admin role during the role transition. Non-IDR transactions require `fx_rate_to_idr`.
          */
         post: {
             parameters: {
@@ -950,7 +950,7 @@ export interface paths {
         };
         /**
          * Update transaction
-         * @description Requires owner or admin role.
+         * @description Requires admin role during the role transition.
          */
         put: {
             parameters: {
@@ -981,7 +981,7 @@ export interface paths {
         post?: never;
         /**
          * Delete transaction
-         * @description Requires owner or admin role.
+         * @description Requires admin role during the role transition.
          */
         delete: {
             parameters: {
@@ -1041,7 +1041,7 @@ export interface paths {
         put?: never;
         /**
          * Create cash account
-         * @description Requires owner or admin role. Balances are manual in the MVP.
+         * @description Requires admin role during the role transition. Balances are manual in the MVP.
          */
         post: {
             parameters: {
@@ -1107,7 +1107,7 @@ export interface paths {
         };
         /**
          * Update cash account
-         * @description Requires owner or admin role.
+         * @description Requires admin role during the role transition.
          */
         put: {
             parameters: {
@@ -1138,7 +1138,7 @@ export interface paths {
         post?: never;
         /**
          * Soft-delete cash account
-         * @description Requires owner or admin role. Current implementation sets `is_active=false`.
+         * @description Requires admin role during the role transition. Current implementation sets `is_active=false`.
          */
         delete: {
             parameters: {
@@ -1225,7 +1225,7 @@ export interface paths {
         put?: never;
         /**
          * Create cash adjustment
-         * @description Requires owner or admin role. Amount in the request must be positive; withdrawal and transfer_out are stored as negative ledger movements. Cash balances cannot become negative.
+         * @description Requires admin role during the role transition. Amount in the request must be positive; withdrawal and transfer_out are stored as negative ledger movements. Cash balances cannot become negative.
          */
         post: {
             parameters: {
@@ -1274,7 +1274,7 @@ export interface paths {
         put?: never;
         /**
          * Upload CSV/XLSX and create import preview
-         * @description Requires owner or admin role. Stores import job rows but does not write portfolio data until confirm.
+         * @description Requires admin role during the role transition. Stores import job rows but does not write portfolio data until confirm.
          */
         post: {
             parameters: {
@@ -1401,7 +1401,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm import job and write valid rows
-         * @description Requires owner or admin role. Writes instruments, transactions, cash accounts, manual prices, import row statuses, recalculates holdings in the same database transaction, and records the import audit log where applicable.
+         * @description Requires admin role during the role transition. Writes instruments, transactions, cash accounts, manual prices, import row statuses, recalculates holdings in the same database transaction, and records the import audit log where applicable.
          */
         post: {
             parameters: {
@@ -1708,7 +1708,7 @@ export interface components {
             email: string;
             full_name: string;
             /** @enum {string} */
-            role: "owner" | "admin" | "viewer";
+            role: "admin" | "user";
             is_active: boolean;
             /** Format: date-time */
             created_at: string;

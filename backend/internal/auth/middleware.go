@@ -59,6 +59,10 @@ func RequireRoles(roles ...string) func(http.Handler) http.Handler {
 	}
 }
 
+func RequireAdmin() func(http.Handler) http.Handler {
+	return RequireRoles("admin")
+}
+
 func UserFromContext(ctx context.Context) (domain.User, bool) {
 	user, ok := ctx.Value(userContextKey).(domain.User)
 	return user, ok

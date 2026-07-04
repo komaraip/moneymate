@@ -6,7 +6,7 @@ export type AuthUser = {
   id: string;
   email: string;
   full_name: string;
-  role: "owner" | "admin" | "viewer";
+  role: "admin" | "user";
   is_active: boolean;
 };
 

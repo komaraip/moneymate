@@ -28,7 +28,7 @@ func (h Handler) Routes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", h.listHoldings)
-	router.Post("/recalculate", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.recalculate)).ServeHTTP)
+	router.Post("/recalculate", auth.RequireAdmin()(http.HandlerFunc(h.recalculate)).ServeHTTP)
 
 	return router
 }

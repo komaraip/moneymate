@@ -3,11 +3,11 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import path from "node:path";
 
 const apiBaseURL = process.env.E2E_API_BASE_URL ?? "http://localhost:8080";
-const ownerEmail = process.env.E2E_OWNER_EMAIL ?? "owner@moneymate.local";
-const ownerPassword = process.env.E2E_OWNER_PASSWORD ?? "changeme-local-demo";
+const adminEmail = process.env.E2E_ADMIN_EMAIL ?? process.env.E2E_OWNER_EMAIL ?? "admin@moneymate.local";
+const adminPassword = process.env.E2E_ADMIN_PASSWORD ?? process.env.E2E_OWNER_PASSWORD ?? "changeme-local-demo";
 
 test.describe("MoneyMate MVP smoke", () => {
-  test("login owner dan dashboard menampilkan net worth", async ({ page, request }) => {
+  test("login admin dan dashboard menampilkan net worth", async ({ page, request }) => {
     await login(page);
     await recalculateHoldings(page, request);
     await page.goto("/");
@@ -119,8 +119,8 @@ async function loginAndPrepare(page: Page, request: APIRequestContext) {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill(ownerEmail);
-  await page.getByLabel("Password").fill(ownerPassword);
+  await page.getByLabel("Email").fill(adminEmail);
+  await page.getByLabel("Password").fill(adminPassword);
   await page.getByRole("button", { name: "Masuk" }).click();
   await expect(page.getByRole("heading", { name: "Dashboard Keuangan" })).toBeVisible();
 }

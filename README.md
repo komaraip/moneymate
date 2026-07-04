@@ -29,12 +29,12 @@ Copy-Item .env.example .env
 Safe local demo credentials:
 
 ```txt
-Email: owner@moneymate.local
+Email: admin@moneymate.local
 Password: changeme-local-demo
 ```
 
 These are local placeholders only. Do not use them in production.
-If you change `SEED_OWNER_EMAIL` or `SEED_OWNER_PASSWORD` in your ignored local `.env`, update `E2E_OWNER_EMAIL` and `E2E_OWNER_PASSWORD` to match before running Playwright smoke tests.
+If you change `SEED_ADMIN_EMAIL` or `SEED_ADMIN_PASSWORD` in your ignored local `.env`, update `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` to match before running Playwright smoke tests.
 
 ## First Run With Docker
 
@@ -64,7 +64,7 @@ Backend health: http://localhost:8080/healthz
 After login, open `Portofolio` and click `Hitung Ulang`, or call:
 
 ```powershell
-$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"owner@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
+$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"admin@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
 $headers = @{ Authorization = "Bearer $($login.data.access_token)" }
 Invoke-RestMethod "http://localhost:8080/api/v1/holdings/recalculate?date=2026-06-30" -Method Post -Headers $headers
 ```
@@ -80,7 +80,7 @@ The import parser recognizes spreadsheet-like sections named `INVESTMENT`, `INVE
 PowerShell API smoke path using `curl.exe` for multipart upload:
 
 ```powershell
-$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"owner@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
+$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"admin@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
 $token = $login.data.access_token
 $preview = curl.exe -s -X POST "http://localhost:8080/api/v1/imports/upload" -H "Authorization: Bearer $token" -F "file=@.\sample-assets.csv" | ConvertFrom-Json
 $jobId = $preview.data.job_id
@@ -96,7 +96,7 @@ http://localhost:5173/reports
 PowerShell API examples:
 
 ```powershell
-$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"owner@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
+$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"admin@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
 $headers = @{ Authorization = "Bearer $($login.data.access_token)" }
 Invoke-RestMethod "http://localhost:8080/api/v1/reports/monthly-summary?month=2026-06" -Headers $headers
 Invoke-RestMethod "http://localhost:8080/api/v1/reports/portfolio-performance?from=2026-06-01&to=2026-06-30" -Headers $headers
@@ -481,8 +481,8 @@ The suite reads these optional local environment variables and falls back to the
 
 ```powershell
 $env:E2E_API_BASE_URL = "http://localhost:8080"
-$env:E2E_OWNER_EMAIL = "owner@moneymate.local"
-$env:E2E_OWNER_PASSWORD = "changeme-local-demo"
+$env:E2E_ADMIN_EMAIL = "admin@moneymate.local"
+$env:E2E_ADMIN_PASSWORD = "changeme-local-demo"
 npm run e2e
 ```
 
@@ -492,13 +492,13 @@ Stop services after testing:
 docker compose down
 ```
 
-The smoke suite logs in with the seeded owner account, recalculates holdings for `2026-06-30`, checks ringkasan/portofolio/laporan pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, opens the cash adjustment/history UI without mutating data, previews a small CSV import fixture without confirming the import, and verifies CSV report download starts.
+The smoke suite logs in with the seeded admin account, recalculates holdings for `2026-06-30`, checks ringkasan/portofolio/laporan pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, opens the cash adjustment/history UI without mutating data, previews a small CSV import fixture without confirming the import, and verifies CSV report download starts.
 
 ## Troubleshooting
 
 - If `go` is not available on PATH, use the Docker Compose backend test commands above.
 - If `npm` is not available, run the direct PowerShell backup/status/cleanup/restore-drill scripts instead of root npm shortcuts.
-- If Playwright login fails after changing ignored local `.env` seed credentials, set `E2E_OWNER_EMAIL` and `E2E_OWNER_PASSWORD` to the same values before running `npm run e2e`.
+- If Playwright login fails after changing ignored local `.env` seed credentials, set `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` to the same values before running `npm run e2e`.
 - If Playwright still sees old frontend labels after UI changes, restart the frontend service with `docker compose restart frontend`.
 - If PostgreSQL port `5432` is already in use, set `$env:POSTGRES_PORT = "15432"` before starting services.
 - If a clean demo database is needed and losing local Docker data is acceptable, run `docker compose down -v`, then rerun migrations and seed. This deletes the local PostgreSQL volume.

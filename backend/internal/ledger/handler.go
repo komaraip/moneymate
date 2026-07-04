@@ -31,10 +31,10 @@ func (h Handler) TransactionRoutes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", h.listTransactions)
-	router.Post("/", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.createTransaction)).ServeHTTP)
+	router.Post("/", auth.RequireAdmin()(http.HandlerFunc(h.createTransaction)).ServeHTTP)
 	router.Get("/{id}", h.getTransaction)
-	router.Put("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.updateTransaction)).ServeHTTP)
-	router.Delete("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.deleteTransaction)).ServeHTTP)
+	router.Put("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.updateTransaction)).ServeHTTP)
+	router.Delete("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.deleteTransaction)).ServeHTTP)
 
 	return router
 }
@@ -43,8 +43,8 @@ func (h Handler) PriceRoutes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", h.listPrices)
-	router.Post("/manual", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.createManualPrice)).ServeHTTP)
-	router.Post("/bulk-manual", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.createBulkManualPrices)).ServeHTTP)
+	router.Post("/manual", auth.RequireAdmin()(http.HandlerFunc(h.createManualPrice)).ServeHTTP)
+	router.Post("/bulk-manual", auth.RequireAdmin()(http.HandlerFunc(h.createBulkManualPrices)).ServeHTTP)
 
 	return router
 }

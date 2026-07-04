@@ -32,10 +32,10 @@ func NewHandler(db *pgxpool.Pool) Handler {
 func (h Handler) Routes() chi.Router {
 	router := chi.NewRouter()
 
-	router.Post("/upload", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.upload)).ServeHTTP)
+	router.Post("/upload", auth.RequireAdmin()(http.HandlerFunc(h.upload)).ServeHTTP)
 	router.Get("/jobs", h.listJobs)
 	router.Get("/jobs/{id}", h.getJob)
-	router.Post("/jobs/{id}/confirm", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.confirm)).ServeHTTP)
+	router.Post("/jobs/{id}/confirm", auth.RequireAdmin()(http.HandlerFunc(h.confirm)).ServeHTTP)
 
 	return router
 }

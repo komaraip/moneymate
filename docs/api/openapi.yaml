@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
-  title: MoneyMate Admin Dashboard API
+  title: MoneyMate Personal Finance API
   version: 0.1.0
   description: |
-    MVP REST API contract for MoneyMate Admin Dashboard.
+    MVP REST API contract for MoneyMate Personal Finance.
 
     All API responses use the same envelope shape:
     `{ "success": true, "data": {}, "meta": {}, "request_id": "req_xxx" }`.
@@ -59,7 +59,7 @@ paths:
   /api/v1/auth/login:
     post:
       tags: [Auth]
-      summary: Login with owner/admin/viewer credentials
+      summary: Login with admin/user credentials
       security: []
       description: Returns a JWT access token and sets the HTTP-only refresh cookie.
       requestBody:
@@ -69,9 +69,9 @@ paths:
             schema:
               $ref: "#/components/schemas/LoginRequest"
             examples:
-              owner:
+              admin:
                 value:
-                  email: owner@moneymate.local
+                  email: admin@moneymate.local
                   password: changeme-local-demo
       responses:
         "200":
@@ -86,7 +86,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthEnvelope"
               examples:
-                owner:
+                admin:
                   value:
                     success: true
                     data:
@@ -94,9 +94,9 @@ paths:
                       access_expires_at: "2026-07-01T10:15:00+07:00"
                       user:
                         id: 11111111-1111-1111-1111-111111111111
-                        email: owner@moneymate.local
-                        full_name: MoneyMate Owner
-                        role: owner
+                        email: admin@moneymate.local
+                        full_name: MoneyMate Admin
+                        role: admin
                         is_active: true
                         created_at: "2026-06-30T08:00:00+07:00"
                         updated_at: "2026-06-30T08:00:00+07:00"
@@ -320,7 +320,7 @@ paths:
       summary: Recalculate holdings snapshots from transactions and manual prices
       security:
         - bearerAuth: []
-      description: Requires owner or admin role.
+      description: Requires admin role during the role transition.
       parameters:
         - name: date
           in: query
@@ -375,7 +375,7 @@ paths:
       summary: Create or update a manual price snapshot
       security:
         - bearerAuth: []
-      description: Requires owner or admin role. Prices are manual/mock and not real-time.
+      description: Requires admin role during the role transition. Prices are manual/mock and not real-time.
       requestBody:
         required: true
         content:
@@ -404,7 +404,7 @@ paths:
       summary: Create or update multiple manual price snapshots
       security:
         - bearerAuth: []
-      description: Requires owner or admin role.
+      description: Requires admin role during the role transition.
       requestBody:
         required: true
         content:
@@ -449,7 +449,7 @@ paths:
       summary: Create instrument
       security:
         - bearerAuth: []
-      description: Requires owner or admin role.
+      description: Requires admin role during the role transition.
       requestBody:
         required: true
         content:
@@ -486,7 +486,7 @@ paths:
       summary: Update instrument
       security:
         - bearerAuth: []
-      description: Requires owner or admin role.
+      description: Requires admin role during the role transition.
       requestBody:
         required: true
         content:
@@ -505,7 +505,7 @@ paths:
       summary: Soft-delete instrument
       security:
         - bearerAuth: []
-      description: Requires owner or admin role. Current implementation sets `is_active=false`; it does not delete historical transactions.
+      description: Requires admin role during the role transition. Current implementation sets `is_active=false`; it does not delete historical transactions.
       responses:
         "200":
           description: Instrument deactivated.
@@ -532,7 +532,7 @@ paths:
       summary: Create asset category
       security:
         - bearerAuth: []
-      description: Requires owner or admin role.
+      description: Requires admin role during the role transition.
       requestBody:
         required: true
         content:
@@ -555,7 +555,7 @@ paths:
       summary: Update asset category
       security:
         - bearerAuth: []
-      description: Requires owner or admin role.
+      description: Requires admin role during the role transition.
       requestBody:
         required: true
         content:
@@ -574,7 +574,7 @@ paths:
       summary: Delete asset category
       security:
         - bearerAuth: []
-      description: Requires owner or admin role.
+      description: Requires admin role during the role transition.
       responses:
         "200":
           description: Asset category deleted.
@@ -636,7 +636,7 @@ paths:
       summary: Create transaction
       security:
         - bearerAuth: []
-      description: Requires owner or admin role. Non-IDR transactions require `fx_rate_to_idr`.
+      description: Requires admin role during the role transition. Non-IDR transactions require `fx_rate_to_idr`.
       requestBody:
         required: true
         content:
@@ -671,7 +671,7 @@ paths:
       summary: Update transaction
       security:
         - bearerAuth: []
-      description: Requires owner or admin role.
+      description: Requires admin role during the role transition.
       requestBody:
         required: true
         content:
@@ -690,7 +690,7 @@ paths:
       summary: Delete transaction
       security:
         - bearerAuth: []
-      description: Requires owner or admin role.
+      description: Requires admin role during the role transition.
       responses:
         "200":
           description: Transaction deleted.
@@ -717,7 +717,7 @@ paths:
       summary: Create cash account
       security:
         - bearerAuth: []
-      description: Requires owner or admin role. Balances are manual in the MVP.
+      description: Requires admin role during the role transition. Balances are manual in the MVP.
       requestBody:
         required: true
         content:
@@ -760,7 +760,7 @@ paths:
       summary: Update cash account
       security:
         - bearerAuth: []
-      description: Requires owner or admin role.
+      description: Requires admin role during the role transition.
       requestBody:
         required: true
         content:
@@ -779,7 +779,7 @@ paths:
       summary: Soft-delete cash account
       security:
         - bearerAuth: []
-      description: Requires owner or admin role. Current implementation sets `is_active=false`.
+      description: Requires admin role during the role transition. Current implementation sets `is_active=false`.
       responses:
         "200":
           description: Cash account deactivated.
@@ -817,7 +817,7 @@ paths:
       summary: Create cash adjustment
       security:
         - bearerAuth: []
-      description: Requires owner or admin role. Amount in the request must be positive; withdrawal and transfer_out are stored as negative ledger movements. Cash balances cannot become negative.
+      description: Requires admin role during the role transition. Amount in the request must be positive; withdrawal and transfer_out are stored as negative ledger movements. Cash balances cannot become negative.
       requestBody:
         required: true
         content:
@@ -853,7 +853,7 @@ paths:
       summary: Upload CSV/XLSX and create import preview
       security:
         - bearerAuth: []
-      description: Requires owner or admin role. Stores import job rows but does not write portfolio data until confirm.
+      description: Requires admin role during the role transition. Stores import job rows but does not write portfolio data until confirm.
       requestBody:
         required: true
         content:
@@ -942,7 +942,7 @@ paths:
       summary: Confirm import job and write valid rows
       security:
         - bearerAuth: []
-      description: Requires owner or admin role. Writes instruments, transactions, cash accounts, manual prices, import row statuses, recalculates holdings in the same database transaction, and records the import audit log where applicable.
+      description: Requires admin role during the role transition. Writes instruments, transactions, cash accounts, manual prices, import row statuses, recalculates holdings in the same database transaction, and records the import audit log where applicable.
       responses:
         "200":
           description: Import confirm result.
@@ -1395,7 +1395,7 @@ components:
           type: string
         role:
           type: string
-          enum: [owner, admin, viewer]
+          enum: [admin, user]
         is_active:
           type: boolean
         created_at:

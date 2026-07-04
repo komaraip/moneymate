@@ -28,9 +28,9 @@ func main() {
 	}
 	defer db.Close()
 
-	email := strings.TrimSpace(strings.ToLower(cfg.SeedOwnerEmail))
-	password := cfg.SeedOwnerPassword
-	fullName := strings.TrimSpace(cfg.SeedOwnerName)
+	email := strings.TrimSpace(strings.ToLower(cfg.SeedAdminEmail))
+	password := cfg.SeedAdminPassword
+	fullName := strings.TrimSpace(cfg.SeedAdminName)
 
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
@@ -40,16 +40,16 @@ func main() {
 
 	_, err = db.Exec(ctx, `
 		INSERT INTO users (email, full_name, password_hash, role)
-		VALUES ($1, $2, $3, 'owner')
+		VALUES ($1, $2, $3, 'admin')
 		ON CONFLICT (email) DO UPDATE
 		SET full_name = EXCLUDED.full_name,
 		    password_hash = EXCLUDED.password_hash,
-		    role = 'owner',
+		    role = 'admin',
 		    is_active = TRUE,
 		    updated_at = now()
 	`, email, fullName, passwordHash)
 	if err != nil {
-		logger.Error("seed owner failed", "error", err)
+		logger.Error("seed admin failed", "error", err)
 		os.Exit(1)
 	}
 
@@ -62,7 +62,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info("seed owner complete", "email", email)
+	logger.Info("seed admin complete", "email", email)
 }
 
 func seedMasterData(ctx context.Context, db *pgxpool.Pool) error {
