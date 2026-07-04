@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { LoginPage } from "../features/auth/LoginPage";
 import { ProtectedRoute } from "../features/auth/ProtectedRoute";
-import { PlaceholderPage } from "../features/placeholder/PlaceholderPage";
 import { AuditLogPage } from "../features/mvp/pages/AuditLogPage";
 import { CashPage } from "../features/mvp/pages/CashPage";
 import { HoldingsPage } from "../features/mvp/pages/HoldingsPage";
@@ -18,12 +17,12 @@ const dashboardChildren = [
   { path: "orders", element: <TransactionsPage /> },
   { path: "cash", element: <CashPage /> },
   { path: "instruments", element: <InstrumentsPage /> },
-  { path: "asset-allocation", element: <PlaceholderPage title="Asset Allocation" /> },
+  { path: "asset-allocation", element: <Navigate to="/" replace /> },
   { path: "reports", element: <ReportsPage /> },
   { path: "import-data", element: <ImportPage /> },
-  { path: "insights", element: <PlaceholderPage title="Insights" /> },
+  { path: "insights", element: <Navigate to="/" replace /> },
   { path: "audit-log", element: <AuditLogPage /> },
-  { path: "settings", element: <PlaceholderPage title="Settings" /> },
+  { path: "settings", element: <Navigate to="/" replace /> },
 ];
 
 export const router = createBrowserRouter([

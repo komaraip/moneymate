@@ -1,9 +1,7 @@
 import {
-  Activity,
   Banknote,
   BarChart3,
   ClipboardList,
-  Coins,
   FileText,
   Gauge,
   History,
@@ -11,8 +9,6 @@ import {
   Landmark,
   LogOut,
   Menu,
-  Settings,
-  ShieldAlert,
 } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../features/auth/useAuth";
@@ -23,12 +19,9 @@ const navItems = [
   { label: "Orders", href: "/orders", icon: ClipboardList },
   { label: "Cash", href: "/cash", icon: Banknote },
   { label: "Instruments", href: "/instruments", icon: Landmark },
-  { label: "Asset Allocation", href: "/asset-allocation", icon: Coins },
   { label: "Reports", href: "/reports", icon: FileText },
   { label: "Import Data", href: "/import-data", icon: Import },
-  { label: "Insights", href: "/insights", icon: ShieldAlert },
   { label: "Audit Log", href: "/audit-log", icon: History },
-  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function DashboardLayout() {
