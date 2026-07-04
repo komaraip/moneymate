@@ -151,6 +151,32 @@ backups/moneymate-moneymate-YYYYMMDD-HHMMSS.metadata.md
 
 The metadata file records the generated timestamp, local environment name, database name, Docker Compose service, backup file name, and restore command. It intentionally does not store passwords, tokens, cookies, or production secrets.
 
+### Local Backup Status
+
+The backup status workflow is read-only. It inspects matched MoneyMate backup files inside `backups/` and reports backup count, total dump size, newest/oldest timestamps, old backups, largest files, and metadata coverage.
+
+Inspect backup status:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-status.ps1 -OlderThanDays 30 -LargestCount 5
+```
+
+Or with the root npm shortcut:
+
+```powershell
+npm run db:backup:status
+```
+
+Use the direct PowerShell command when changing parameters such as `-OlderThanDays`, `-LargestCount`, or `-IncludeMetadataDetails`.
+
+Show missing/orphan metadata details:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-status.ps1 -OlderThanDays 30 -LargestCount 5 -IncludeMetadataDetails
+```
+
+The status script never deletes or uploads files. It only matches files named like `moneymate-<database>-YYYYMMDD-HHMMSS.dump` and refuses to inspect paths outside the repository `backups/` folder.
+
 ### Local Backup Retention
 
 Backups are local-only and ignored by Git. The cleanup workflow is dry-run by default and only matches MoneyMate backup files named like `moneymate-<database>-YYYYMMDD-HHMMSS.dump` plus matching `.metadata.md` files inside `backups/`.
@@ -166,19 +192,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-backups.ps1 
 Or with the root npm shortcut:
 
 ```powershell
-npm run db:backup:cleanup -- -KeepNewest 10 -OlderThanDays 30
+npm run db:backup:cleanup
 ```
+
+Use the direct PowerShell command when changing retention parameters.
 
 Apply cleanup explicitly:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-backups.ps1 -KeepNewest 10 -OlderThanDays 30 -Apply -ConfirmCleanup DELETE_LOCAL_BACKUPS
-```
-
-Or with npm:
-
-```powershell
-npm run db:backup:cleanup -- -KeepNewest 10 -OlderThanDays 30 -Apply -ConfirmCleanup DELETE_LOCAL_BACKUPS
 ```
 
 The cleanup script:
