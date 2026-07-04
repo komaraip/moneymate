@@ -119,6 +119,7 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
         <Metric label="Ending Net Worth" value={formatMaybeCurrency(data.ending_net_worth)} />
         <Metric label="Portfolio" value={formatMaybeCurrency(data.portfolio_value)} />
         <Metric label="Cash" value={formatMaybeCurrency(data.cash_balance)} />
+        <Metric label="Pergerakan Cash" value={formatMaybeCurrency(data.cash_net_movement)} />
         <Metric label="Unrealized P/L" value={formatMaybeCurrency(data.unrealized_profit_loss)} />
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
@@ -200,6 +201,7 @@ function PerformanceSummary({ data }: { data: PortfolioPerformanceReport }) {
         <p className="mt-2 text-sm text-zinc-300">
           {formatCurrency(data.cash_summary.total_cash)} dari {data.cash_summary.active_accounts} akun aktif.
         </p>
+        <p className="mt-1 text-sm text-zinc-300">Pergerakan periode: {formatCurrency(data.cash_summary.period_movement)}</p>
         <p className="mt-1 text-sm text-zinc-500">{data.cash_summary.note}</p>
       </Card>
       <Warnings warnings={data.warnings} />

@@ -57,6 +57,8 @@ type MonthlySummaryReport struct {
 	EndingNetWorth                float64               `json:"ending_net_worth"`
 	NetWorthChange                *float64              `json:"net_worth_change"`
 	CashBalance                   float64               `json:"cash_balance"`
+	CashNetMovement               float64               `json:"cash_net_movement"`
+	CashMovements                 []CashMovementTotal   `json:"cash_movements"`
 	PortfolioValue                float64               `json:"portfolio_value"`
 	PortfolioSnapshotDate         *string               `json:"portfolio_snapshot_date"`
 	RealizedProfitLoss            *float64              `json:"realized_profit_loss"`
@@ -96,6 +98,12 @@ type TransactionTotal struct {
 	TransactionType  string  `json:"transaction_type"`
 	TransactionCount int     `json:"transaction_count"`
 	TotalIDR         float64 `json:"total_idr"`
+}
+
+type CashMovementTotal struct {
+	Type            string  `json:"type"`
+	AdjustmentCount int     `json:"adjustment_count"`
+	TotalIDR        float64 `json:"total_idr"`
 }
 
 type InstrumentTotal struct {
@@ -151,6 +159,7 @@ type HoldingPerformance struct {
 
 type CashSummary struct {
 	TotalCash        float64 `json:"total_cash"`
+	PeriodMovement   float64 `json:"period_movement"`
 	ActiveAccounts   int     `json:"active_accounts"`
 	Currency         string  `json:"currency"`
 	HistoryAvailable bool    `json:"history_available"`
@@ -181,6 +190,11 @@ func (h Handler) monthlySummary(w http.ResponseWriter, r *http.Request) {
 	cash, err := h.cashSummary(r.Context())
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat ringkasan cash"))
+		return
+	}
+	cashMovements, cashNetMovement, err := h.cashMovementTotals(r.Context(), monthStart, nextMonth)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat pergerakan cash"))
 		return
 	}
 	assetTotals, err := h.transactionTotalsByAssetType(r.Context(), monthStart, nextMonth)
@@ -221,6 +235,8 @@ func (h Handler) monthlySummary(w http.ResponseWriter, r *http.Request) {
 		EndingNetWorth:                round2(ending.PortfolioValue + cash.TotalCash),
 		NetWorthChange:                nil,
 		CashBalance:                   round2(cash.TotalCash),
+		CashNetMovement:               cashNetMovement,
+		CashMovements:                 cashMovements,
 		PortfolioValue:                round2(ending.PortfolioValue),
 		PortfolioSnapshotDate:         dateStringPtr(ending.Date),
 		RealizedProfitLoss:            nil,
@@ -264,6 +280,12 @@ func (h Handler) portfolioPerformance(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, r, internalErr(err, "Gagal memuat ringkasan cash"))
 		return
 	}
+	_, cashPeriodMovement, err := h.cashMovementTotals(r.Context(), fromDate, toDate.AddDate(0, 0, 1))
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat pergerakan cash"))
+		return
+	}
+	cash.PeriodMovement = cashPeriodMovement
 	allocation, err := h.allocationBreakdown(r.Context(), ending.Date, cash.TotalCash)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat alokasi portfolio"))
@@ -460,8 +482,35 @@ func (h Handler) cashSummary(ctx context.Context) (CashSummary, error) {
 	summary.TotalCash = round2(summary.TotalCash)
 	summary.Currency = h.baseCurrency()
 	summary.HistoryAvailable = false
-	summary.Note = "Cash balance memakai saldo aktif saat laporan dibuat; histori saldo cash belum tersedia di MVP."
+	summary.Note = "Cash balance memakai saldo aktif saat laporan dibuat; pergerakan periode memakai cash adjustment ledger."
 	return summary, nil
+}
+
+func (h Handler) cashMovementTotals(ctx context.Context, from time.Time, toExclusive time.Time) ([]CashMovementTotal, float64, error) {
+	rows, err := h.db.Query(ctx, `
+		SELECT type, COUNT(*)::int, COALESCE(SUM(amount), 0)::float8
+		FROM cash_adjustments
+		WHERE adjustment_date >= $1::date AND adjustment_date < $2::date
+		GROUP BY type
+		ORDER BY type
+	`, from.Format("2006-01-02"), toExclusive.Format("2006-01-02"))
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	items := []CashMovementTotal{}
+	total := 0.0
+	for rows.Next() {
+		var item CashMovementTotal
+		if err := rows.Scan(&item.Type, &item.AdjustmentCount, &item.TotalIDR); err != nil {
+			return nil, 0, err
+		}
+		item.TotalIDR = round2(item.TotalIDR)
+		total += item.TotalIDR
+		items = append(items, item)
+	}
+	return items, round2(total), rows.Err()
 }
 
 func (h Handler) transactionTotalsByAssetType(ctx context.Context, from time.Time, toExclusive time.Time) ([]TransactionTotal, error) {
@@ -664,7 +713,7 @@ func (h Handler) reportWarnings(ctx context.Context, snapshotDate *time.Time, fr
 	warnings := []ReportWarning{
 		warning("DATA_NOT_REALTIME", "Semua harga MVP berasal dari input manual/mock dan bukan real-time.", "info"),
 		warning("NO_RECOMMENDATION", "Laporan tidak berisi rekomendasi beli/jual.", "info"),
-		warning("CASH_HISTORY_UNAVAILABLE", "Histori saldo cash belum tersedia; cash summary memakai saldo aktif saat ini.", "info"),
+		warning("CASH_OPENING_BALANCE_UNAVAILABLE", "Pergerakan cash memakai adjustment ledger, tetapi opening cash historis sebelum ledger lengkap belum dapat dijamin akurat.", "info"),
 	}
 
 	var missingFXTransactions int

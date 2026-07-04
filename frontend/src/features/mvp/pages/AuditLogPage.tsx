@@ -8,8 +8,8 @@ import { mvpApi } from "../api";
 import { Card } from "../components/Card";
 import { PageHeader } from "../components/PageHeader";
 
-const actions = ["create", "update", "delete", "confirm_import"];
-const entityTypes = ["transaction", "instrument", "cash_account", "price_snapshot", "import_job", "asset_category"];
+const actions = ["create", "update", "delete", "adjust", "confirm_import"];
+const entityTypes = ["transaction", "instrument", "cash_account", "cash_adjustment", "price_snapshot", "import_job", "asset_category"];
 
 export function AuditLogPage() {
   const [filters, setFilters] = useState({ entity_type: "", action: "" });

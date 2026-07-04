@@ -102,6 +102,22 @@ Invoke-RestMethod "http://localhost:8080/api/v1/reports/portfolio-performance?fr
 Invoke-WebRequest "http://localhost:8080/api/v1/reports/export.csv" -Headers $headers -OutFile ".\moneymate-portfolio-export.csv"
 ```
 
+Cash adjustment ledger:
+
+```powershell
+$cashAccountId = (Invoke-RestMethod "http://localhost:8080/api/v1/cash-accounts" -Headers $headers).data[0].id
+$adjustment = @{
+  adjustment_date = "2026-06-15"
+  type = "deposit"
+  amount = 50000
+  note = "Top up cash"
+} | ConvertTo-Json
+Invoke-RestMethod "http://localhost:8080/api/v1/cash-accounts/$cashAccountId/adjust" -Method Post -Headers $headers -ContentType "application/json" -Body $adjustment
+Invoke-RestMethod "http://localhost:8080/api/v1/cash-accounts/$cashAccountId/adjustments" -Headers $headers
+```
+
+Adjustment request amounts must be positive. `withdrawal` and `transfer_out` are stored as negative ledger movements. Cash balances are not allowed to become negative.
+
 CSV export columns are stable for the MVP:
 
 ```txt
@@ -280,7 +296,7 @@ Stop services after testing:
 docker compose down
 ```
 
-The smoke suite logs in with the seeded owner account, recalculates holdings for `2026-06-30`, checks dashboard/portfolio/reports pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, previews a small CSV import fixture without confirming the import, and verifies CSV report download starts. Cash adjustment is not covered because no separate adjustment UI exists in the current MVP.
+The smoke suite logs in with the seeded owner account, recalculates holdings for `2026-06-30`, checks dashboard/portfolio/reports pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, opens the cash adjustment/history UI without mutating data, previews a small CSV import fixture without confirming the import, and verifies CSV report download starts.
 
 ## CI Validation
 
@@ -302,6 +318,7 @@ GitHub Actions runs:
 - RBAC middleware foundation.
 - PostgreSQL migrations for users, sessions, instruments, categories, transactions, cash accounts, prices, holdings, imports, and audit logs.
 - Instruments, asset categories, cash accounts, transactions, manual prices, holdings, dashboard, and audit APIs.
+- Cash adjustment ledger with transactional balance updates and adjustment history.
 - Weighted-average holdings calculation in backend.
 - Dashboard overview, asset allocation, performance, and alerts APIs.
 - Read-only report APIs for monthly summary, simple portfolio performance, and CSV export.
@@ -319,10 +336,10 @@ GitHub Actions runs:
 - No external market data integration.
 - Manual/mock prices only; dashboard labels data as not real-time.
 - Cash balances are manually managed; orders do not automatically move cash yet.
-- `cash_adjustments` exists in the schema, but no cash adjustment API route is implemented yet.
+- Cash adjustment ledger records manual balance movements; it does not pair transfers between accounts yet.
 - Frontend forms are intentionally basic and do not yet expose every edit/delete backend action.
 - Confirmed imports do not fetch market data. Imported prices remain manual; holdings snapshots are recalculated in the same database transaction as import confirmation so dashboard views use imported data immediately.
-- Reports use backend holdings snapshots for portfolio values and current active cash balances for cash. Beginning net worth, historical cash, realized P/L, FIFO, TWR, and MWR are not invented when the current data model cannot calculate them accurately.
+- Reports use backend holdings snapshots for portfolio values, current active cash balances for cash, and cash adjustment ledger rows for period cash movement. Beginning net worth, complete opening cash history, realized P/L, FIFO, TWR, and MWR are not invented when the current data model cannot calculate them accurately. See `docs/realized_pl_methodology_note.md`.
 - No production deployment hardening, HTTPS termination, or managed secret workflow yet.
 
 ## Roadmap
@@ -331,5 +348,5 @@ Recommended next phase:
 
 1. Consider a typed API client wrapper generated from the OpenAPI paths.
 2. Tighten Redocly warning cleanup for quieter contract validation.
-3. Add deeper transaction/cash adjustment workflows if product scope requires.
+3. Add paired transfer workflow only after transfer modeling is explicit.
 4. Add advanced realized P/L or return methodology only after the product decision is explicit.

@@ -1167,6 +1167,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cash-accounts/{id}/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List cash adjustment history
+         * @description Lists adjustment ledger rows for one cash account, newest first.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Cash adjustment history. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CashAdjustmentListEnvelope"];
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                404: components["responses"]["NotFoundError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-accounts/{id}/adjust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create cash adjustment
+         * @description Requires owner or admin role. Amount in the request must be positive; withdrawal and transfer_out are stored as negative ledger movements. Cash balances cannot become negative.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CashAdjustmentInput"];
+                };
+            };
+            responses: {
+                /** @description Cash adjustment created and account balance updated transactionally. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CashAdjustmentEnvelope"];
+                    };
+                };
+                400: components["responses"]["ValidationError"];
+                401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
+                404: components["responses"]["NotFoundError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/imports/upload": {
         parameters: {
             query?: never;
@@ -1677,20 +1773,43 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
-        /** @description Database-backed schema for cash adjustment rows. No cash adjustment API route is implemented in the current MVP. */
+        CashAdjustmentInput: {
+            /**
+             * Format: date
+             * @description Defaults to current date when omitted.
+             */
+            adjustment_date?: string;
+            /** @enum {string} */
+            type: "deposit" | "withdrawal" | "correction" | "transfer_in" | "transfer_out";
+            /** @description Positive request amount. Withdrawal and transfer_out become negative ledger movements after validation. */
+            amount: number;
+            note?: string | null;
+        };
         CashAdjustment: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             cash_account_id: string;
+            /** Format: date */
+            adjustment_date: string;
+            /** @enum {string} */
+            type: "deposit" | "withdrawal" | "correction" | "transfer_in" | "transfer_out";
+            /** @description Signed ledger movement in the cash account currency. */
             amount: number;
+            balance_before: number;
             balance_after: number;
             currency: string;
-            notes?: string | null;
+            note?: string | null;
             /** Format: uuid */
             created_by?: string | null;
             /** Format: date-time */
             created_at: string;
+        };
+        CashAdjustmentEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["CashAdjustment"];
+        };
+        CashAdjustmentListEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["CashAdjustment"][];
         };
         CashAccountEnvelope: components["schemas"]["SuccessEnvelope"] & {
             data?: components["schemas"]["CashAccount"];
@@ -1846,6 +1965,12 @@ export interface components {
             transaction_count: number;
             total_idr: number;
         };
+        CashMovementTotal: {
+            /** @enum {string} */
+            type: "deposit" | "withdrawal" | "correction" | "transfer_in" | "transfer_out";
+            adjustment_count: number;
+            total_idr: number;
+        };
         InstrumentReportTotal: {
             /** Format: uuid */
             instrument_id?: string | null;
@@ -1880,6 +2005,9 @@ export interface components {
             ending_net_worth: number;
             net_worth_change?: number | null;
             cash_balance: number;
+            /** @description Net signed cash movement from cash adjustment ledger rows in the requested month. */
+            cash_net_movement: number;
+            cash_movements: components["schemas"]["CashMovementTotal"][];
             portfolio_value: number;
             /** Format: date */
             portfolio_snapshot_date?: string | null;
@@ -1901,6 +2029,8 @@ export interface components {
         };
         CashSummary: {
             total_cash: number;
+            /** @description Net signed cash movement from cash adjustment ledger rows in the requested performance range. */
+            period_movement: number;
             active_accounts: number;
             currency: string;
             history_available: boolean;

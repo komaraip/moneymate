@@ -5,6 +5,7 @@ import type {
   AuditLog,
   AssetCategory,
   CashAccount,
+  CashAdjustment,
   Holding,
   ImportConfirmResult,
   ImportPreview,
@@ -40,6 +41,8 @@ export const mvpApi = {
   createCashAccount: (body: unknown) => apiClient.post<CashAccount>("/api/v1/cash-accounts", body),
   updateCashAccount: (id: string, body: unknown) => apiClient.put<CashAccount>(`/api/v1/cash-accounts/${id}`, body),
   deleteCashAccount: (id: string) => apiClient.delete<{ status: string }>(`/api/v1/cash-accounts/${id}`),
+  cashAdjustments: (id: string) => apiClient.get<CashAdjustment[]>(`/api/v1/cash-accounts/${id}/adjustments`),
+  createCashAdjustment: (id: string, body: unknown) => apiClient.post<CashAdjustment>(`/api/v1/cash-accounts/${id}/adjust`, body),
   createManualPrice: (body: unknown) => apiClient.post("/api/v1/prices/manual", body),
   auditLogs: (filters?: { entity_type?: string; action?: string }) => {
     const params = new URLSearchParams();

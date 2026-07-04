@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -55,6 +57,8 @@ func (h Handler) CashRoutes() chi.Router {
 
 	router.Get("/", h.listCashAccounts)
 	router.Post("/", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.createCashAccount)).ServeHTTP)
+	router.Get("/{id}/adjustments", h.listCashAdjustments)
+	router.Post("/{id}/adjust", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.adjustCashAccount)).ServeHTTP)
 	router.Get("/{id}", h.getCashAccount)
 	router.Put("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.updateCashAccount)).ServeHTTP)
 	router.Delete("/{id}", auth.RequireRoles("owner", "admin")(http.HandlerFunc(h.deleteCashAccount)).ServeHTTP)
@@ -95,6 +99,13 @@ type cashInput struct {
 	Balance     float64 `json:"balance"`
 	Notes       *string `json:"notes"`
 	IsActive    *bool   `json:"is_active"`
+}
+
+type cashAdjustmentInput struct {
+	AdjustmentDate string  `json:"adjustment_date"`
+	Type           string  `json:"type"`
+	Amount         float64 `json:"amount"`
+	Note           *string `json:"note"`
 }
 
 func (h Handler) listInstruments(w http.ResponseWriter, r *http.Request) {
@@ -522,6 +533,129 @@ func (h Handler) deleteCashAccount(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, r, http.StatusOK, map[string]string{"status": "deleted"}, nil)
 }
 
+func (h Handler) listCashAdjustments(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.getCashByID(r.Context(), id); err != nil {
+		response.Error(w, r, mapGetErr(err, "Akun cash tidak ditemukan"))
+		return
+	}
+
+	rows, err := h.db.Query(r.Context(), `
+		SELECT id::text, cash_account_id::text, adjustment_date, type, amount::float8,
+		       balance_before::float8, balance_after::float8, currency, notes, created_by::text, created_at
+		FROM cash_adjustments
+		WHERE cash_account_id = $1
+		ORDER BY adjustment_date DESC, created_at DESC
+		LIMIT 200
+	`, id)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat histori adjustment cash"))
+		return
+	}
+	defer rows.Close()
+
+	items := []domain.CashAdjustment{}
+	for rows.Next() {
+		item, err := scanCashAdjustment(rows)
+		if err != nil {
+			response.Error(w, r, internalErr(err, "Gagal membaca histori adjustment cash"))
+			return
+		}
+		items = append(items, item)
+	}
+
+	response.JSON(w, r, http.StatusOK, items, nil)
+}
+
+func (h Handler) adjustCashAccount(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+
+	var input cashAdjustmentInput
+	if err := response.DecodeJSON(r, &input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	adjustmentDate, normalizedType, delta, err := normalizeCashAdjustment(input)
+	if err != nil {
+		response.Error(w, r, err)
+		return
+	}
+
+	tx, err := h.db.Begin(r.Context())
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memulai adjustment cash"))
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	var account domain.CashAccount
+	if err := tx.QueryRow(r.Context(), `
+		SELECT id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
+		FROM cash_accounts
+		WHERE id = $1
+		FOR UPDATE
+	`, id).Scan(&account.ID, &account.AccountName, &account.AccountType, &account.Currency, &account.Balance, &account.Notes, &account.IsActive, &account.CreatedAt, &account.UpdatedAt); err != nil {
+		response.Error(w, r, mapGetErr(err, "Akun cash tidak ditemukan"))
+		return
+	}
+	if !account.IsActive {
+		response.Error(w, r, validation("Akun cash nonaktif tidak dapat di-adjust"))
+		return
+	}
+
+	balanceBefore := roundMoney(account.Balance)
+	balanceAfter := roundMoney(balanceBefore + delta)
+	if balanceAfter < 0 {
+		response.Error(w, r, validation("Saldo cash tidak boleh negatif"))
+		return
+	}
+
+	user, _ := auth.UserFromContext(r.Context())
+	var item domain.CashAdjustment
+	err = tx.QueryRow(r.Context(), `
+		INSERT INTO cash_adjustments (
+			cash_account_id, adjustment_date, type, amount, balance_before,
+			balance_after, currency, notes, created_by
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING id::text, cash_account_id::text, adjustment_date, type, amount::float8,
+		          balance_before::float8, balance_after::float8, currency, notes, created_by::text, created_at
+	`, id, adjustmentDate, normalizedType, delta, balanceBefore, balanceAfter, account.Currency, cleanPtr(input.Note), user.ID).Scan(
+		&item.ID, &item.CashAccountID, &item.AdjustmentDate, &item.Type, &item.Amount,
+		&item.BalanceBefore, &item.BalanceAfter, &item.Currency, &item.Note, &item.CreatedBy, &item.CreatedAt,
+	)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal menyimpan adjustment cash"))
+		return
+	}
+
+	if _, err := tx.Exec(r.Context(), `UPDATE cash_accounts SET balance = $2, updated_at = now() WHERE id = $1`, id, balanceAfter); err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memperbarui saldo cash"))
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		response.Error(w, r, internalErr(err, "Gagal menyelesaikan adjustment cash"))
+		return
+	}
+
+	h.writeAudit(r, "adjust", "cash_adjustment", item.ID, map[string]any{
+		"cash_account_id": id,
+		"balance_before":  balanceBefore,
+	}, map[string]any{
+		"adjustment":      item,
+		"cash_account_id": id,
+		"balance_after":   balanceAfter,
+	})
+	response.JSON(w, r, http.StatusCreated, item, nil)
+}
+
 func (h Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
 	entityType := strings.TrimSpace(r.URL.Query().Get("entity_type"))
 	action := strings.TrimSpace(r.URL.Query().Get("action"))
@@ -617,6 +751,24 @@ func scanCash(row scanner) (domain.CashAccount, error) {
 	return item, err
 }
 
+func scanCashAdjustment(row scanner) (domain.CashAdjustment, error) {
+	var item domain.CashAdjustment
+	err := row.Scan(
+		&item.ID,
+		&item.CashAccountID,
+		&item.AdjustmentDate,
+		&item.Type,
+		&item.Amount,
+		&item.BalanceBefore,
+		&item.BalanceAfter,
+		&item.Currency,
+		&item.Note,
+		&item.CreatedBy,
+		&item.CreatedAt,
+	)
+	return item, err
+}
+
 func (h Handler) writeAudit(r *http.Request, action string, entityType string, entityID string, before any, after any) {
 	user, _ := auth.UserFromContext(r.Context())
 	actorID := user.ID
@@ -678,6 +830,54 @@ func validateCash(input cashInput) error {
 		return validation("Currency wajib diisi")
 	}
 	return nil
+}
+
+func normalizeCashAdjustment(input cashAdjustmentInput) (string, string, float64, error) {
+	adjustmentDate := strings.TrimSpace(input.AdjustmentDate)
+	if adjustmentDate == "" {
+		adjustmentDate = time.Now().Format("2006-01-02")
+	} else {
+		parsed, err := parseDate(adjustmentDate)
+		if err != nil {
+			return "", "", 0, validation("Tanggal adjustment wajib format YYYY-MM-DD")
+		}
+		adjustmentDate = parsed
+	}
+
+	kind := strings.ToLower(strings.TrimSpace(input.Type))
+	validTypes := map[string]bool{
+		"deposit":      true,
+		"withdrawal":   true,
+		"correction":   true,
+		"transfer_in":  true,
+		"transfer_out": true,
+	}
+	if !validTypes[kind] {
+		return "", "", 0, validation("Tipe adjustment cash tidak valid")
+	}
+	if input.Amount <= 0 {
+		return "", "", 0, validation("Nominal adjustment wajib lebih dari 0")
+	}
+
+	delta := roundMoney(input.Amount)
+	switch kind {
+	case "withdrawal", "transfer_out":
+		delta = -delta
+	}
+
+	return adjustmentDate, kind, delta, nil
+}
+
+func parseDate(value string) (string, error) {
+	parsed, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return "", err
+	}
+	return parsed.Format("2006-01-02"), nil
+}
+
+func roundMoney(value float64) float64 {
+	return math.Round(value*100) / 100
 }
 
 func validation(message string) error {

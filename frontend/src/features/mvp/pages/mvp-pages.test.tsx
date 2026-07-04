@@ -17,7 +17,9 @@ vi.mock("../api", () => ({
     assetCategories: vi.fn(),
     auditLogs: vi.fn(),
     cashAccounts: vi.fn(),
+    cashAdjustments: vi.fn(),
     confirmImport: vi.fn(),
+    createCashAdjustment: vi.fn(),
     createCashAccount: vi.fn(),
     createInstrument: vi.fn(),
     createManualPrice: vi.fn(),
@@ -61,10 +63,31 @@ beforeEach(() => {
   mockedApi.assetCategories.mockResolvedValue([]);
   mockedApi.transactions.mockResolvedValue([]);
   mockedApi.cashAccounts.mockResolvedValue([]);
+  mockedApi.cashAdjustments.mockResolvedValue([]);
+  mockedApi.createCashAdjustment.mockResolvedValue({
+    adjustment_date: "2026-06-15",
+    amount: 50000,
+    balance_after: 150000,
+    balance_before: 100000,
+    cash_account_id: "cash-1",
+    created_at: "2026-06-15T10:00:00Z",
+    currency: "IDR",
+    id: "adjustment-1",
+    note: "Top up",
+    type: "deposit",
+  });
   mockedApi.monthlySummary.mockResolvedValue({
     base_currency: "IDR",
     beginning_net_worth: null,
     cash_balance: 151859,
+    cash_movements: [
+      {
+        adjustment_count: 1,
+        total_idr: 50000,
+        type: "deposit",
+      },
+    ],
+    cash_net_movement: 50000,
     data_not_realtime: "Data manual/mock, bukan real-time.",
     disclaimer: "Laporan ini bukan rekomendasi beli/jual.",
     ending_net_worth: 13648703.72,
@@ -120,6 +143,7 @@ beforeEach(() => {
       currency: "IDR",
       history_available: false,
       note: "Cash memakai saldo aktif saat ini.",
+      period_movement: 50000,
       total_cash: 151859,
     },
     data_not_realtime: "Data manual/mock, bukan real-time.",
@@ -228,6 +252,69 @@ describe("MVP modal validation", () => {
 
     expect(screen.getByText("Nama akun cash wajib diisi.")).toBeInTheDocument();
     expect(screen.getByText("Saldo wajib berupa angka.")).toBeInTheDocument();
+  });
+
+  it("memvalidasi form adjustment cash", async () => {
+    const user = userEvent.setup();
+    mockedApi.cashAccounts.mockResolvedValue([
+      {
+        account_name: "Seabank",
+        account_type: "bank",
+        balance: 100000,
+        created_at: "2026-06-01T10:00:00Z",
+        currency: "IDR",
+        id: "cash-1",
+        is_active: true,
+        updated_at: "2026-06-01T10:00:00Z",
+      },
+    ]);
+
+    renderWithProviders(<CashPage />);
+
+    await user.click(await screen.findByRole("button", { name: /Adjust Saldo/i }));
+    await user.click(screen.getByRole("button", { name: "Simpan Adjustment" }));
+
+    expect(screen.getByText("Nominal adjustment wajib lebih dari 0.")).toBeInTheDocument();
+  });
+});
+
+describe("Cash history", () => {
+  it("menampilkan histori adjustment cash", async () => {
+    const user = userEvent.setup();
+    mockedApi.cashAccounts.mockResolvedValue([
+      {
+        account_name: "Seabank",
+        account_type: "bank",
+        balance: 150000,
+        created_at: "2026-06-01T10:00:00Z",
+        currency: "IDR",
+        id: "cash-1",
+        is_active: true,
+        updated_at: "2026-06-15T10:00:00Z",
+      },
+    ]);
+    mockedApi.cashAdjustments.mockResolvedValue([
+      {
+        adjustment_date: "2026-06-15",
+        amount: 50000,
+        balance_after: 150000,
+        balance_before: 100000,
+        cash_account_id: "cash-1",
+        created_at: "2026-06-15T10:00:00Z",
+        currency: "IDR",
+        id: "adjustment-1",
+        note: "Top up",
+        type: "deposit",
+      },
+    ]);
+
+    renderWithProviders(<CashPage />);
+
+    await user.click(await screen.findByRole("button", { name: "Histori" }));
+
+    expect(await screen.findByText("Histori Adjustment Cash")).toBeInTheDocument();
+    expect(screen.getByText("Deposit")).toBeInTheDocument();
+    expect(screen.getByText("Top up")).toBeInTheDocument();
   });
 });
 

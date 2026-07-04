@@ -6,6 +6,7 @@ export const queryKeys = {
     alerts: ["dashboard", "alerts"] as const,
   },
   reports: {
+    all: ["reports"] as const,
     monthly: (month: string) => ["reports", "monthly", month] as const,
     performance: (from: string, to: string) => ["reports", "performance", from, to] as const,
   },
@@ -17,6 +18,7 @@ export const queryKeys = {
   },
   cashAccounts: {
     all: ["cash-accounts"] as const,
+    adjustments: (id: string) => ["cash-accounts", id, "adjustments"] as const,
   },
   instruments: {
     all: ["instruments"] as const,

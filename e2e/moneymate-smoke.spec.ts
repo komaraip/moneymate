@@ -68,6 +68,12 @@ test.describe("MoneyMate MVP smoke", () => {
     await page.getByTitle("Edit akun cash").first().click();
     await expect(page.getByRole("heading", { name: "Edit Akun Cash" })).toBeVisible();
     await page.getByRole("button", { name: "Batal" }).click();
+    await page.getByRole("button", { name: /Adjust Saldo/i }).first().click();
+    await expect(page.getByRole("heading", { name: "Adjust Saldo Cash" })).toBeVisible();
+    await page.getByRole("button", { name: "Batal" }).click();
+    await page.getByRole("button", { name: "Histori" }).first().click();
+    await expect(page.getByRole("heading", { name: "Histori Adjustment Cash" })).toBeVisible();
+    await page.getByTitle("Tutup").click();
     await page.getByTitle("Nonaktifkan akun cash").first().click();
     await expect(page.getByRole("heading", { name: "Nonaktifkan Akun Cash" })).toBeVisible();
     await page.getByRole("button", { name: "Batal" }).click();

@@ -788,6 +788,65 @@ paths:
               schema:
                 $ref: "#/components/schemas/StatusEnvelope"
 
+  /api/v1/cash-accounts/{id}/adjustments:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      tags: [Cash Accounts]
+      summary: List cash adjustment history
+      security:
+        - bearerAuth: []
+      description: Lists adjustment ledger rows for one cash account, newest first.
+      responses:
+        "200":
+          description: Cash adjustment history.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashAdjustmentListEnvelope"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /api/v1/cash-accounts/{id}/adjust:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      tags: [Cash Accounts]
+      summary: Create cash adjustment
+      security:
+        - bearerAuth: []
+      description: Requires owner or admin role. Amount in the request must be positive; withdrawal and transfer_out are stored as negative ledger movements. Cash balances cannot become negative.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CashAdjustmentInput"
+            examples:
+              deposit:
+                value:
+                  adjustment_date: "2026-06-15"
+                  type: deposit
+                  amount: 50000
+                  note: Top up cash
+      responses:
+        "201":
+          description: Cash adjustment created and account balance updated transactionally.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashAdjustmentEnvelope"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
   /api/v1/imports/upload:
     post:
       tags: [Imports]
@@ -941,6 +1000,8 @@ paths:
                       ending_net_worth: 13648703.72
                       net_worth_change: null
                       cash_balance: 151859
+                      cash_net_movement: 0
+                      cash_movements: []
                       portfolio_value: 13496844.72
                       portfolio_snapshot_date: "2026-06-30"
                       realized_profit_loss: null
@@ -1043,10 +1104,11 @@ paths:
                           warnings: []
                       cash_summary:
                         total_cash: 151859
+                        period_movement: 0
                         active_accounts: 3
                         currency: IDR
                         history_available: false
-                        note: Cash balance memakai saldo aktif saat laporan dibuat; histori saldo cash belum tersedia di MVP.
+                        note: Cash balance memakai saldo aktif saat laporan dibuat; pergerakan periode memakai cash adjustment ledger.
                       warnings:
                         - code: DATA_NOT_REALTIME
                           message: Semua harga MVP berasal dari input manual/mock dan bukan real-time.
@@ -1575,10 +1637,29 @@ components:
               type: string
               format: date-time
 
+    CashAdjustmentInput:
+      type: object
+      required: [type, amount]
+      properties:
+        adjustment_date:
+          type: string
+          format: date
+          description: Defaults to current date when omitted.
+        type:
+          type: string
+          enum: [deposit, withdrawal, correction, transfer_in, transfer_out]
+        amount:
+          type: number
+          exclusiveMinimum: 0
+          description: Positive request amount. Withdrawal and transfer_out become negative ledger movements after validation.
+        note:
+          type:
+            - string
+            - "null"
+
     CashAdjustment:
       type: object
-      description: Database-backed schema for cash adjustment rows. No cash adjustment API route is implemented in the current MVP.
-      required: [id, cash_account_id, amount, balance_after, currency, created_at]
+      required: [id, cash_account_id, adjustment_date, type, amount, balance_before, balance_after, currency, created_at]
       properties:
         id:
           type: string
@@ -1586,13 +1667,22 @@ components:
         cash_account_id:
           type: string
           format: uuid
+        adjustment_date:
+          type: string
+          format: date
+        type:
+          type: string
+          enum: [deposit, withdrawal, correction, transfer_in, transfer_out]
         amount:
+          type: number
+          description: Signed ledger movement in the cash account currency.
+        balance_before:
           type: number
         balance_after:
           type: number
         currency:
           type: string
-        notes:
+        note:
           type:
             - string
             - "null"
@@ -1604,6 +1694,24 @@ components:
         created_at:
           type: string
           format: date-time
+
+    CashAdjustmentEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/CashAdjustment"
+
+    CashAdjustmentListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/CashAdjustment"
 
     CashAccountEnvelope:
       allOf:
@@ -1957,6 +2065,18 @@ components:
         total_idr:
           type: number
 
+    CashMovementTotal:
+      type: object
+      required: [type, adjustment_count, total_idr]
+      properties:
+        type:
+          type: string
+          enum: [deposit, withdrawal, correction, transfer_in, transfer_out]
+        adjustment_count:
+          type: integer
+        total_idr:
+          type: number
+
     InstrumentReportTotal:
       type: object
       required: [name, instrument_type, original_currency, transaction_type, transaction_count, total_idr]
@@ -2021,6 +2141,8 @@ components:
         - base_currency
         - ending_net_worth
         - cash_balance
+        - cash_net_movement
+        - cash_movements
         - portfolio_value
         - unrealized_profit_loss
         - transaction_totals_by_asset_type
@@ -2051,6 +2173,13 @@ components:
             - "null"
         cash_balance:
           type: number
+        cash_net_movement:
+          type: number
+          description: Net signed cash movement from cash adjustment ledger rows in the requested month.
+        cash_movements:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashMovementTotal"
         portfolio_value:
           type: number
         portfolio_snapshot_date:
@@ -2103,10 +2232,13 @@ components:
 
     CashSummary:
       type: object
-      required: [total_cash, active_accounts, currency, history_available, note]
+      required: [total_cash, period_movement, active_accounts, currency, history_available, note]
       properties:
         total_cash:
           type: number
+        period_movement:
+          type: number
+          description: Net signed cash movement from cash adjustment ledger rows in the requested performance range.
         active_accounts:
           type: integer
         currency:

@@ -9,6 +9,7 @@ export type Holding = Schemas["Holding"];
 export type Instrument = Schemas["Instrument"];
 export type Transaction = Schemas["Transaction"];
 export type CashAccount = Schemas["CashAccount"];
+export type CashAdjustment = Schemas["CashAdjustment"];
 export type AssetCategory = Schemas["AssetCategory"];
 export type AuditLog = Schemas["AuditLog"];
 export type ImportPreviewRow = Schemas["ImportPreviewRow"];

@@ -239,6 +239,72 @@ func TestCashAccountWriteFlowCreatesAuditLogs(t *testing.T) {
 	app.assertAudit(t, "cash_account", "delete")
 }
 
+func TestCashAdjustmentLedgerFlow(t *testing.T) {
+	app := newAPIIntegrationTest(t)
+	token := app.seedAndLogin(t, "owner-it@moneymate.local", "owner")
+
+	create := app.requestJSON(t, http.MethodPost, "/api/v1/cash-accounts", token, cashPayload("Seabank Ledger", 100000))
+	assertStatus(t, create, http.StatusCreated)
+	account := decodeData[cashAccountResponse](t, create.envelope)
+
+	deposit := app.requestJSON(t, http.MethodPost, "/api/v1/cash-accounts/"+account.ID+"/adjust", token, map[string]any{
+		"adjustment_date": "2026-06-15",
+		"type":            "deposit",
+		"amount":          50000,
+		"note":            "Top up cash",
+	})
+	assertStatus(t, deposit, http.StatusCreated)
+	depositData := decodeData[cashAdjustmentResponse](t, deposit.envelope)
+	if depositData.BalanceBefore != 100000 || depositData.BalanceAfter != 150000 || depositData.Amount != 50000 {
+		t.Fatalf("unexpected deposit ledger row: %+v", depositData)
+	}
+
+	withdrawal := app.requestJSON(t, http.MethodPost, "/api/v1/cash-accounts/"+account.ID+"/adjust", token, map[string]any{
+		"adjustment_date": "2026-06-20",
+		"type":            "withdrawal",
+		"amount":          25000,
+		"note":            "Tarik cash",
+	})
+	assertStatus(t, withdrawal, http.StatusCreated)
+	withdrawalData := decodeData[cashAdjustmentResponse](t, withdrawal.envelope)
+	if withdrawalData.BalanceBefore != 150000 || withdrawalData.BalanceAfter != 125000 || withdrawalData.Amount != -25000 {
+		t.Fatalf("unexpected withdrawal ledger row: %+v", withdrawalData)
+	}
+
+	list := app.requestJSON(t, http.MethodGet, "/api/v1/cash-accounts/"+account.ID+"/adjustments", token, nil)
+	assertStatus(t, list, http.StatusOK)
+	rows := decodeData[[]cashAdjustmentResponse](t, list.envelope)
+	if len(rows) != 2 {
+		t.Fatalf("expected two adjustment rows, got %+v", rows)
+	}
+	if rows[0].Type != "withdrawal" || rows[1].Type != "deposit" {
+		t.Fatalf("expected newest adjustment first, got %+v", rows)
+	}
+
+	get := app.requestJSON(t, http.MethodGet, "/api/v1/cash-accounts/"+account.ID, token, nil)
+	assertStatus(t, get, http.StatusOK)
+	updated := decodeData[cashAccountResponse](t, get.envelope)
+	if updated.Balance != 125000 {
+		t.Fatalf("expected updated cash balance 125000, got %+v", updated)
+	}
+
+	invalid := app.requestJSON(t, http.MethodPost, "/api/v1/cash-accounts/"+account.ID+"/adjust", token, map[string]any{
+		"adjustment_date": "2026-06-21",
+		"type":            "withdrawal",
+		"amount":          999999,
+	})
+	assertStatus(t, invalid, http.StatusBadRequest)
+
+	monthly := app.requestJSON(t, http.MethodGet, "/api/v1/reports/monthly-summary?month=2026-06", token, nil)
+	assertStatus(t, monthly, http.StatusOK)
+	monthlyData := decodeData[monthlySummaryReportResponse](t, monthly.envelope)
+	if monthlyData.CashNetMovement != 25000 {
+		t.Fatalf("expected monthly cash net movement 25000, got %+v", monthlyData)
+	}
+
+	app.assertAudit(t, "cash_adjustment", "adjust")
+}
+
 func TestImportPreviewAndConfirmationFlow(t *testing.T) {
 	app := newAPIIntegrationTest(t)
 	token := app.seedAndLogin(t, "owner-it@moneymate.local", "owner")
@@ -863,6 +929,13 @@ type cashAccountResponse struct {
 	IsActive bool    `json:"is_active"`
 }
 
+type cashAdjustmentResponse struct {
+	Type          string  `json:"type"`
+	Amount        float64 `json:"amount"`
+	BalanceBefore float64 `json:"balance_before"`
+	BalanceAfter  float64 `json:"balance_after"`
+}
+
 type holdingResponse struct {
 	CurrentValue float64 `json:"current_value"`
 }
@@ -922,6 +995,7 @@ type monthlySummaryReportResponse struct {
 	BeginningNetWorth             *float64                `json:"beginning_net_worth"`
 	EndingNetWorth                float64                 `json:"ending_net_worth"`
 	NetWorthChange                *float64                `json:"net_worth_change"`
+	CashNetMovement               float64                 `json:"cash_net_movement"`
 	TransactionTotalsByInstrument []map[string]any        `json:"transaction_totals_by_instrument"`
 	Warnings                      []reportWarningResponse `json:"warnings"`
 }

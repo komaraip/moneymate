@@ -40,6 +40,20 @@ type CashAccount struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+type CashAdjustment struct {
+	ID             string    `json:"id"`
+	CashAccountID  string    `json:"cash_account_id"`
+	AdjustmentDate time.Time `json:"adjustment_date"`
+	Type           string    `json:"type"`
+	Amount         float64   `json:"amount"`
+	BalanceBefore  float64   `json:"balance_before"`
+	BalanceAfter   float64   `json:"balance_after"`
+	Currency       string    `json:"currency"`
+	Note           *string   `json:"note,omitempty"`
+	CreatedBy      *string   `json:"created_by,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 type AuditLog struct {
 	ID          string    `json:"id"`
 	ActorUserID *string   `json:"actor_user_id,omitempty"`
