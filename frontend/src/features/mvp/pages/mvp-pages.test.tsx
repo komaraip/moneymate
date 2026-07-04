@@ -9,6 +9,7 @@ import { ImportPage } from "./ImportPage";
 import { InstrumentsPage } from "./InstrumentsPage";
 import { OverviewPage } from "./OverviewPage";
 import { ReportsPage } from "./ReportsPage";
+import { SavingsGoalsPage } from "./SavingsGoalsPage";
 import { TransactionsPage } from "./TransactionsPage";
 
 vi.mock("../api", () => ({
@@ -26,11 +27,13 @@ vi.mock("../api", () => ({
     createCashAccount: vi.fn(),
     createInstrument: vi.fn(),
     createManualPrice: vi.fn(),
+    createSavingsGoal: vi.fn(),
     createTransaction: vi.fn(),
     createTransactionCategory: vi.fn(),
     deleteBudget: vi.fn(),
     deleteCashAccount: vi.fn(),
     deleteInstrument: vi.fn(),
+    deleteSavingsGoal: vi.fn(),
     deleteTransaction: vi.fn(),
     deleteTransactionCategory: vi.fn(),
     exportReportsCsv: vi.fn(),
@@ -40,11 +43,13 @@ vi.mock("../api", () => ({
     overview: vi.fn(),
     portfolioPerformance: vi.fn(),
     recalculateHoldings: vi.fn(),
+    savingsGoals: vi.fn(),
     transactions: vi.fn(),
     transactionCategories: vi.fn(),
     updateBudget: vi.fn(),
     updateCashAccount: vi.fn(),
     updateInstrument: vi.fn(),
+    updateSavingsGoal: vi.fn(),
     updateTransaction: vi.fn(),
     updateTransactionCategory: vi.fn(),
     uploadImport: vi.fn(),
@@ -76,6 +81,7 @@ beforeEach(() => {
   mockedApi.transactions.mockResolvedValue([]);
   mockedApi.transactionCategories.mockResolvedValue([]);
   mockedApi.budgets.mockResolvedValue([]);
+  mockedApi.savingsGoals.mockResolvedValue([]);
   mockedApi.cashAccounts.mockResolvedValue([]);
   mockedApi.cashAdjustments.mockResolvedValue([]);
   mockedApi.createCashAdjustment.mockResolvedValue({
@@ -329,6 +335,18 @@ describe("MVP modal validation", () => {
 
     expect(screen.getByText("Kategori pengeluaran wajib dipilih.")).toBeInTheDocument();
     expect(screen.getByText("Nominal anggaran wajib lebih dari 0.")).toBeInTheDocument();
+  });
+
+  it("memvalidasi form tambah tujuan tabungan", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<SavingsGoalsPage />);
+
+    await user.click(await screen.findByRole("button", { name: /Tambah Tujuan/i }));
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
+
+    expect(screen.getByText("Nama tujuan tabungan wajib diisi.")).toBeInTheDocument();
+    expect(screen.getByText("Target tabungan wajib lebih dari 0.")).toBeInTheDocument();
   });
 });
 

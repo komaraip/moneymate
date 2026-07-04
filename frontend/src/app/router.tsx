@@ -8,6 +8,7 @@ import { InstrumentsPage } from "../features/assets/pages/InstrumentsPage";
 import { ImportPage } from "../features/imports/pages/ImportPage";
 import { AccountsPage } from "../features/money/pages/AccountsPage";
 import { BudgetsPage } from "../features/money/pages/BudgetsPage";
+import { SavingsGoalsPage } from "../features/money/pages/SavingsGoalsPage";
 import { TransactionsPage } from "../features/money/pages/TransactionsPage";
 import { OverviewPage } from "../features/overview/pages/OverviewPage";
 import { ReportsPage } from "../features/reports/pages/ReportsPage";
@@ -18,6 +19,7 @@ const dashboardChildren = [
   { path: "transactions", element: <TransactionsPage /> },
   { path: "accounts", element: <AccountsPage /> },
   { path: "budgets", element: <BudgetsPage /> },
+  { path: "savings-goals", element: <SavingsGoalsPage /> },
   { path: "reports", element: <ReportsPage /> },
   { path: "assets/portfolio", element: <HoldingsPage /> },
   { path: "assets/instruments", element: <InstrumentsPage /> },

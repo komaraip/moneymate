@@ -18,6 +18,7 @@ import (
 	"moneymate/backend/internal/masterdata"
 	"moneymate/backend/internal/portfolio"
 	"moneymate/backend/internal/reports"
+	"moneymate/backend/internal/savings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -54,9 +55,10 @@ func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service
 	importHandler := importer.NewHandler(db)
 	reportHandler := reports.NewHandler(db, cfg)
 	budgetHandler := budget.NewHandler(db)
+	savingsHandler := savings.NewHandler(db)
 	protected := chi.NewRouter()
 	protected.Use(auth.RequireAuth(authService))
-	mountUserRoutes(protected, masterHandler, ledgerHandler, portfolioHandler, dashboardHandler, importHandler, reportHandler, budgetHandler)
+	mountUserRoutes(protected, masterHandler, ledgerHandler, portfolioHandler, dashboardHandler, importHandler, reportHandler, budgetHandler, savingsHandler)
 	mountAdminRoutes(protected, masterHandler)
 	chiRouter.Mount("/api/v1", protected)
 
@@ -72,6 +74,7 @@ func mountUserRoutes(
 	importHandler importer.Handler,
 	reportHandler reports.Handler,
 	budgetHandler budget.Handler,
+	savingsHandler savings.Handler,
 ) {
 	router.Mount("/dashboard", dashboardHandler.Routes())
 	router.Mount("/holdings", portfolioHandler.Routes())
@@ -84,6 +87,7 @@ func mountUserRoutes(
 	router.Mount("/imports", importHandler.Routes())
 	router.Mount("/reports", reportHandler.Routes())
 	router.Mount("/budgets", budgetHandler.Routes())
+	router.Mount("/savings-goals", savingsHandler.Routes())
 }
 
 func mountAdminRoutes(router chi.Router, masterHandler masterdata.Handler) {

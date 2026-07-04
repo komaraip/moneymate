@@ -7,7 +7,7 @@ import { queryKeys } from "../../../lib/query-keys";
 import { mvpApi } from "../api";
 import { Card } from "../components/Card";
 import { PageHeader } from "../components/PageHeader";
-import type { Budget } from "../types";
+import type { Budget, SavingsGoal } from "../types";
 
 export function OverviewPage() {
   const month = defaultMonth();
@@ -15,6 +15,7 @@ export function OverviewPage() {
   const allocation = useQuery({ queryKey: queryKeys.dashboard.allocation, queryFn: mvpApi.allocation });
   const alerts = useQuery({ queryKey: queryKeys.dashboard.alerts, queryFn: mvpApi.alerts });
   const budgets = useQuery({ queryKey: queryKeys.budgets.month(month), queryFn: () => mvpApi.budgets(month) });
+  const savingsGoals = useQuery({ queryKey: queryKeys.savingsGoals.all, queryFn: mvpApi.savingsGoals });
 
   if (overview.isLoading) return <LoadingState />;
   if (overview.isError) return <ErrorState message="Ringkasan belum bisa dimuat." />;
@@ -41,7 +42,7 @@ export function OverviewPage() {
         <Kpi label="Cashflow Bersih" tone={(data.monthly_net_cashflow ?? 0) < 0 ? "negative" : "positive"} value={formatCurrency(data.monthly_net_cashflow ?? 0)} />
       </div>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-3">
+      <div className="mt-6 grid gap-4 xl:grid-cols-2">
         <Card>
           <h3 className="font-semibold text-white">Alokasi Aset</h3>
           <div className="mt-4 space-y-3">
@@ -62,6 +63,7 @@ export function OverviewPage() {
           </div>
         </Card>
         <BudgetWidget budgets={budgets.data ?? []} isError={budgets.isError} isLoading={budgets.isLoading} />
+        <SavingsGoalWidget goals={savingsGoals.data ?? []} isError={savingsGoals.isError} isLoading={savingsGoals.isLoading} />
         <Card>
           <h3 className="font-semibold text-white">Peringatan Data</h3>
           <div className="mt-4 space-y-3">
@@ -81,6 +83,41 @@ export function OverviewPage() {
 
       <p className="mt-6 text-sm text-zinc-500">{data.price_disclaimer}</p>
     </div>
+  );
+}
+
+function SavingsGoalWidget({ goals, isError, isLoading }: { goals: SavingsGoal[]; isError: boolean; isLoading: boolean }) {
+  const totalTarget = goals.reduce((sum, item) => sum + item.target_amount, 0);
+  const totalSaved = goals.reduce((sum, item) => sum + item.current_amount, 0);
+  const percent = totalTarget > 0 ? totalSaved / totalTarget : 0;
+
+  return (
+    <Card>
+      <h3 className="font-semibold text-white">Tujuan Tabungan</h3>
+      {isLoading ? <p className="mt-4 text-sm text-zinc-500">Memuat tujuan tabungan...</p> : null}
+      {isError ? <p className="mt-4 text-sm text-red-200">Tujuan tabungan belum bisa dimuat.</p> : null}
+      {!isLoading && !isError && goals.length === 0 ? <p className="mt-4 text-sm text-zinc-500">Belum ada tujuan tabungan aktif.</p> : null}
+      {!isLoading && !isError && goals.length > 0 ? (
+        <div className="mt-4">
+          <div className="flex justify-between text-sm">
+            <span>{formatCurrency(totalSaved)}</span>
+            <span>{formatCurrency(totalTarget)}</span>
+          </div>
+          <div className="mt-2 h-2 rounded-full bg-zinc-800">
+            <div className="h-2 rounded-full bg-sky-300" style={{ width: `${Math.min(percent, 1) * 100}%` }} />
+          </div>
+          <p className="mt-2 text-sm text-zinc-400">{formatPercent(percent)} terkumpul dari target aktif.</p>
+          <div className="mt-4 space-y-2">
+            {goals.slice(0, 3).map((item) => (
+              <div className="flex justify-between gap-3 text-sm" key={item.id}>
+                <span className="truncate text-zinc-300">{item.name}</span>
+                <span className={item.is_completed ? "text-emerald-300" : "text-zinc-200"}>{formatPercent(item.progress_percent)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </Card>
   );
 }
 

@@ -499,6 +499,46 @@ func TestBudgetingFlow(t *testing.T) {
 	app.assertAudit(t, "budget", "delete")
 }
 
+func TestSavingsGoalFlow(t *testing.T) {
+	app := newAPIIntegrationTest(t)
+	token := app.seedAndLogin(t, "user-savings-it@moneymate.local", "user")
+
+	create := app.requestJSON(t, http.MethodPost, "/api/v1/savings-goals", token, savingsGoalPayload("Dana Darurat", 10000000, 2500000, "2026-12-31"))
+	assertStatus(t, create, http.StatusCreated)
+	goal := decodeData[savingsGoalResponse](t, create.envelope)
+	if goal.Name != "Dana Darurat" || goal.RemainingAmount != 7500000 || goal.ProgressPercent != 0.25 || goal.IsCompleted {
+		t.Fatalf("unexpected savings goal create response: %+v", goal)
+	}
+
+	invalid := app.requestJSON(t, http.MethodPost, "/api/v1/savings-goals", token, savingsGoalPayload("Invalid", 1000000, -1, "2026-12-31"))
+	assertStatus(t, invalid, http.StatusBadRequest)
+
+	list := app.requestJSON(t, http.MethodGet, "/api/v1/savings-goals", token, nil)
+	assertStatus(t, list, http.StatusOK)
+	goals := decodeData[[]savingsGoalResponse](t, list.envelope)
+	if len(goals) != 1 || goals[0].ID != goal.ID {
+		t.Fatalf("expected one savings goal row, got %+v", goals)
+	}
+
+	update := app.requestJSON(t, http.MethodPut, "/api/v1/savings-goals/"+goal.ID, token, savingsGoalPayload("Dana Darurat", 10000000, 10000000, "2026-12-31"))
+	assertStatus(t, update, http.StatusOK)
+	updated := decodeData[savingsGoalResponse](t, update.envelope)
+	if !updated.IsCompleted || updated.RemainingAmount != 0 || updated.ProgressPercent != 1 {
+		t.Fatalf("expected completed savings goal, got %+v", updated)
+	}
+
+	remove := app.requestJSON(t, http.MethodDelete, "/api/v1/savings-goals/"+goal.ID, token, nil)
+	assertStatus(t, remove, http.StatusOK)
+	deletedList := decodeData[[]savingsGoalResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/savings-goals", token, nil).envelope)
+	if len(deletedList) != 0 {
+		t.Fatalf("expected soft-deleted goal hidden, got %+v", deletedList)
+	}
+
+	app.assertAudit(t, "savings_goal", "create")
+	app.assertAudit(t, "savings_goal", "update")
+	app.assertAudit(t, "savings_goal", "delete")
+}
+
 func TestImportPreviewAndConfirmationFlow(t *testing.T) {
 	app := newAPIIntegrationTest(t)
 	token := app.seedAndLogin(t, "admin-it@moneymate.local", "admin")
@@ -833,6 +873,7 @@ func (app *apiTestApp) reset(t *testing.T) {
 			cash_adjustments,
 			cash_accounts,
 			transactions,
+			savings_goals,
 			budgets,
 			transaction_categories,
 			instrument_categories,
@@ -1070,6 +1111,17 @@ func budgetPayload(categoryID string, month string, amount float64) map[string]a
 	}
 }
 
+func savingsGoalPayload(name string, targetAmount float64, currentAmount float64, targetDate string) map[string]any {
+	return map[string]any{
+		"name":           name,
+		"target_amount":  targetAmount,
+		"current_amount": currentAmount,
+		"target_date":    targetDate,
+		"notes":          "Tujuan tabungan integration test",
+		"is_active":      true,
+	}
+}
+
 func cashPayload(name string, balance float64) map[string]any {
 	return map[string]any{
 		"account_name": name,
@@ -1270,6 +1322,16 @@ type budgetResponse struct {
 	Remaining    float64 `json:"remaining"`
 	PercentUsed  float64 `json:"percent_used"`
 	OverBudget   bool    `json:"over_budget"`
+}
+
+type savingsGoalResponse struct {
+	ID              string  `json:"id"`
+	Name            string  `json:"name"`
+	TargetAmount    float64 `json:"target_amount"`
+	CurrentAmount   float64 `json:"current_amount"`
+	RemainingAmount float64 `json:"remaining_amount"`
+	ProgressPercent float64 `json:"progress_percent"`
+	IsCompleted     bool    `json:"is_completed"`
 }
 
 type portfolioPerformanceReportResponse struct {

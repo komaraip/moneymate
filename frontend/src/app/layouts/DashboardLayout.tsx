@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   PiggyBank,
+  Target,
   Settings,
   X,
 } from "lucide-react";
@@ -28,6 +29,7 @@ const navGroups = [
       { label: "Transaksi", href: "/transactions", icon: ClipboardList },
       { label: "Akun & Wallet", href: "/accounts", icon: Banknote },
       { label: "Anggaran", href: "/budgets", icon: PiggyBank },
+      { label: "Tujuan Tabungan", href: "/savings-goals", icon: Target },
     ],
   },
   {

@@ -30,6 +30,7 @@ tags:
   - name: Transaction Categories
   - name: Transactions
   - name: Budgets
+  - name: Savings Goals
   - name: Cash Accounts
   - name: Imports
   - name: Reports
@@ -789,6 +790,97 @@ paths:
       responses:
         "200":
           description: Budget deactivated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusEnvelope"
+
+  /api/v1/savings-goals:
+    get:
+      tags: [Savings Goals]
+      summary: List active personal savings goals
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User-scoped active savings goals with progress fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavingsGoalListEnvelope"
+              examples:
+                emergencyFund:
+                  value:
+                    success: true
+                    data:
+                      - id: 77777777-7777-7777-7777-777777777777
+                        name: Dana Darurat
+                        target_amount: 10000000
+                        current_amount: 2500000
+                        remaining_amount: 7500000
+                        progress_percent: 0.25
+                        target_date: "2026-12-31"
+                        notes: Target dana darurat keluarga.
+                        is_active: true
+                        is_completed: false
+                        created_at: "2026-07-01T08:00:00+07:00"
+                        updated_at: "2026-07-01T08:00:00+07:00"
+                    request_id: req_123
+    post:
+      tags: [Savings Goals]
+      summary: Create a personal savings goal
+      security:
+        - bearerAuth: []
+      description: Requires admin or user role. Savings goals are scoped to the authenticated user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavingsGoalInput"
+      responses:
+        "201":
+          description: Savings goal created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavingsGoalEnvelope"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/savings-goals/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    put:
+      tags: [Savings Goals]
+      summary: Update a personal savings goal
+      security:
+        - bearerAuth: []
+      description: Requires admin or user role. Goal ownership is scoped to the authenticated user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavingsGoalInput"
+      responses:
+        "200":
+          description: Savings goal updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavingsGoalEnvelope"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+    delete:
+      tags: [Savings Goals]
+      summary: Soft-delete a personal savings goal
+      security:
+        - bearerAuth: []
+      description: Requires admin or user role. The implementation sets `is_active=false`.
+      responses:
+        "200":
+          description: Savings goal deactivated.
           content:
             application/json:
               schema:
@@ -1901,6 +1993,97 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/Budget"
+
+    SavingsGoalInput:
+      type: object
+      required: [name, target_amount, current_amount]
+      properties:
+        name:
+          type: string
+        target_amount:
+          type: number
+          exclusiveMinimum: 0
+        current_amount:
+          type: number
+          minimum: 0
+          description: Manual MVP progress value. It is not automatically tied to cash transfers yet.
+        target_date:
+          type:
+            - string
+            - "null"
+          format: date
+        notes:
+          type:
+            - string
+            - "null"
+        is_active:
+          type: boolean
+          default: true
+
+    SavingsGoal:
+      type: object
+      required:
+        - id
+        - name
+        - target_amount
+        - current_amount
+        - remaining_amount
+        - progress_percent
+        - is_active
+        - is_completed
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        target_amount:
+          type: number
+        current_amount:
+          type: number
+        remaining_amount:
+          type: number
+        progress_percent:
+          type: number
+        target_date:
+          type:
+            - string
+            - "null"
+          format: date
+        notes:
+          type:
+            - string
+            - "null"
+        is_active:
+          type: boolean
+        is_completed:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SavingsGoalEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/SavingsGoal"
+
+    SavingsGoalListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/SavingsGoal"
 
     TransactionInput:
       type: object

@@ -1135,6 +1135,143 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/savings-goals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List active personal savings goals */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description User-scoped active savings goals with progress fields. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SavingsGoalListEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a personal savings goal
+         * @description Requires admin or user role. Savings goals are scoped to the authenticated user.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SavingsGoalInput"];
+                };
+            };
+            responses: {
+                /** @description Savings goal created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SavingsGoalEnvelope"];
+                    };
+                };
+                400: components["responses"]["ValidationError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/savings-goals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a personal savings goal
+         * @description Requires admin or user role. Goal ownership is scoped to the authenticated user.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SavingsGoalInput"];
+                };
+            };
+            responses: {
+                /** @description Savings goal updated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SavingsGoalEnvelope"];
+                    };
+                };
+                404: components["responses"]["NotFoundError"];
+            };
+        };
+        post?: never;
+        /**
+         * Soft-delete a personal savings goal
+         * @description Requires admin or user role. The implementation sets `is_active=false`.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Savings goal deactivated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StatusEnvelope"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/transactions": {
         parameters: {
             query?: never;
@@ -2119,6 +2256,41 @@ export interface components {
         };
         BudgetListEnvelope: components["schemas"]["SuccessEnvelope"] & {
             data?: components["schemas"]["Budget"][];
+        };
+        SavingsGoalInput: {
+            name: string;
+            target_amount: number;
+            /** @description Manual MVP progress value. It is not automatically tied to cash transfers yet. */
+            current_amount: number;
+            /** Format: date */
+            target_date?: string | null;
+            notes?: string | null;
+            /** @default true */
+            is_active: boolean;
+        };
+        SavingsGoal: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            target_amount: number;
+            current_amount: number;
+            remaining_amount: number;
+            progress_percent: number;
+            /** Format: date */
+            target_date?: string | null;
+            notes?: string | null;
+            is_active: boolean;
+            is_completed: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        SavingsGoalEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["SavingsGoal"];
+        };
+        SavingsGoalListEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["SavingsGoal"][];
         };
         TransactionInput: {
             /** Format: uuid */
