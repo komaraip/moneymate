@@ -41,6 +41,7 @@ vi.mock("../api", () => ({
     instruments: vi.fn(),
     monthlySummary: vi.fn(),
     overview: vi.fn(),
+    personalInsights: vi.fn(),
     portfolioPerformance: vi.fn(),
     recalculateHoldings: vi.fn(),
     savingsGoals: vi.fn(),
@@ -163,6 +164,40 @@ beforeEach(() => {
         severity: "info",
       },
     ],
+  });
+  mockedApi.personalInsights.mockResolvedValue({
+    base_currency: "IDR",
+    cashflow_trend: [
+      {
+        expense: 0,
+        income: 0,
+        month: "2026-05",
+        net_cashflow: 0,
+      },
+      {
+        expense: 125000,
+        income: 500000,
+        month: "2026-06",
+        net_cashflow: 375000,
+      },
+    ],
+    category_breakdown: [
+      {
+        category_id: "category-food",
+        category_name: "Makan",
+        percent: 1,
+        total_idr: 125000,
+        transaction_count: 1,
+        type: "expense",
+      },
+    ],
+    data_not_realtime: "Data manual/mock, bukan real-time.",
+    disclaimer: "Laporan ini bukan rekomendasi beli/jual.",
+    expense_total: 125000,
+    generated_at: "2026-07-02T10:00:00Z",
+    income_total: 500000,
+    month: "2026-06",
+    net_cashflow: 375000,
   });
   mockedApi.portfolioPerformance.mockResolvedValue({
     absolute_change: null,
@@ -449,6 +484,7 @@ describe("ReportsPage", () => {
     renderWithProviders(<ReportsPage />);
 
     expect(await screen.findByText("Ringkasan Bulanan 2026-06")).toBeInTheDocument();
+    expect(screen.getByText("Insight Personal 2026-06")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Ekspor CSV/i })).toBeInTheDocument();
     expect(screen.getAllByText("DATA_NOT_REALTIME").length).toBeGreaterThan(0);
   });

@@ -410,6 +410,16 @@ func TestPersonalFinanceTransactionFlow(t *testing.T) {
 	if monthly.IncomeTotal != 500000 || monthly.ExpenseTotal != 125000 || monthly.NetCashflow != 375000 {
 		t.Fatalf("expected monthly cashflow to exclude transfer, got %+v", monthly)
 	}
+	insights := decodeData[personalInsightsResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/reports/personal-insights?month=2026-07&months=3", token, nil).envelope)
+	if insights.IncomeTotal != 500000 || insights.ExpenseTotal != 125000 || insights.NetCashflow != 375000 {
+		t.Fatalf("expected personal insights cashflow, got %+v", insights)
+	}
+	if !hasCategoryBreakdown(insights.CategoryBreakdown, "Makan", "expense", 125000) {
+		t.Fatalf("expected expense category breakdown, got %+v", insights.CategoryBreakdown)
+	}
+	if len(insights.CashflowTrend) != 3 || insights.CashflowTrend[2].Month != "2026-07" || insights.CashflowTrend[2].NetCashflow != 375000 {
+		t.Fatalf("expected 3-month cashflow trend ending July, got %+v", insights.CashflowTrend)
+	}
 
 	list := decodeData[[]transactionResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/transactions?type=income", token, nil).envelope)
 	if len(list) != 1 || list[0].Type != "income" {
@@ -687,7 +697,7 @@ func TestReportEndpoints(t *testing.T) {
 		t.Fatalf("unexpected CSV disposition: %s", csv.Header().Get("Content-Disposition"))
 	}
 	csvBody := csv.Body.String()
-	for _, expected := range []string{"section,generated_at", "metadata", "holdings", "transactions", "cash_accounts", "manual_prices", "Data manual/mock"} {
+	for _, expected := range []string{"section,generated_at", "metadata", "holdings", "transactions", "cash_accounts", "manual_prices", "category_name", "cash_account_name", "amount", "Data manual/mock"} {
 		if !strings.Contains(csvBody, expected) {
 			t.Fatalf("expected CSV to contain %q, got:\n%s", expected, csvBody)
 		}
@@ -1032,6 +1042,15 @@ func hasWarning(values []reportWarningResponse, expected string) bool {
 	return false
 }
 
+func hasCategoryBreakdown(values []categoryBreakdownResponse, name string, kind string, total float64) bool {
+	for _, value := range values {
+		if value.CategoryName == name && value.Type == kind && value.TotalIDR == total {
+			return true
+		}
+	}
+	return false
+}
+
 func (app *apiTestApp) assertAudit(t *testing.T, entityType string, action string) {
 	t.Helper()
 	var count int
@@ -1339,4 +1358,23 @@ type portfolioPerformanceReportResponse struct {
 	EndingValue         float64                   `json:"ending_value"`
 	AllocationBreakdown []assetAllocationResponse `json:"allocation_breakdown"`
 	Warnings            []reportWarningResponse   `json:"warnings"`
+}
+
+type personalInsightsResponse struct {
+	IncomeTotal       float64                     `json:"income_total"`
+	ExpenseTotal      float64                     `json:"expense_total"`
+	NetCashflow       float64                     `json:"net_cashflow"`
+	CategoryBreakdown []categoryBreakdownResponse `json:"category_breakdown"`
+	CashflowTrend     []cashflowTrendResponse     `json:"cashflow_trend"`
+}
+
+type categoryBreakdownResponse struct {
+	CategoryName string  `json:"category_name"`
+	Type         string  `json:"type"`
+	TotalIDR     float64 `json:"total_idr"`
+}
+
+type cashflowTrendResponse struct {
+	Month       string  `json:"month"`
+	NetCashflow float64 `json:"net_cashflow"`
 }

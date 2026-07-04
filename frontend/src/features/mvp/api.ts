@@ -13,6 +13,7 @@ import type {
   Instrument,
   MonthlySummaryReport,
   Overview,
+  PersonalInsightsReport,
   PortfolioPerformanceReport,
   SavingsGoal,
   Transaction,
@@ -28,6 +29,8 @@ export const mvpApi = {
     apiClient.get<PortfolioPerformanceReport>(
       `/api/v1/reports/portfolio-performance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
     ),
+  personalInsights: (month: string, months = 6) =>
+    apiClient.get<PersonalInsightsReport>(`/api/v1/reports/personal-insights?month=${encodeURIComponent(month)}&months=${months}`),
   exportReportsCsv: () => apiClient.download("/api/v1/reports/export.csv"),
   holdings: () => apiClient.get<Holding[]>("/api/v1/holdings"),
   recalculateHoldings: () => apiClient.post<{ count: number; message: string }>("/api/v1/holdings/recalculate?date=2026-06-30", {}),

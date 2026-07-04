@@ -1428,6 +1428,76 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
+  /api/v1/reports/personal-insights:
+    get:
+      tags: [Reports]
+      summary: Personal finance income, expense, and cashflow insights
+      security:
+        - bearerAuth: []
+      description: Read-only personal finance report in IDR for income vs expense, category breakdown, and monthly cashflow trend. Transfers are excluded from income and expense totals.
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+          description: Report month in `YYYY-MM`.
+        - name: months
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 24
+            default: 6
+          description: Number of months to include in the cashflow trend.
+      responses:
+        "200":
+          description: Personal finance insights.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalInsightsReportEnvelope"
+              examples:
+                july:
+                  value:
+                    success: true
+                    data:
+                      month: "2026-07"
+                      base_currency: IDR
+                      income_total: 500000
+                      expense_total: 125000
+                      net_cashflow: 375000
+                      category_breakdown:
+                        - category_id: 66666666-6666-6666-6666-666666666666
+                          category_name: Makan
+                          type: expense
+                          transaction_count: 1
+                          total_idr: 125000
+                          percent: 1
+                      cashflow_trend:
+                        - month: "2026-05"
+                          income: 0
+                          expense: 0
+                          net_cashflow: 0
+                        - month: "2026-06"
+                          income: 0
+                          expense: 0
+                          net_cashflow: 0
+                        - month: "2026-07"
+                          income: 500000
+                          expense: 125000
+                          net_cashflow: 375000
+                      data_not_realtime: Data manual/mock, bukan real-time.
+                      disclaimer: Laporan ini bersifat ringkasan pencatatan, bukan rekomendasi beli/jual.
+                      generated_at: "2026-07-02T10:00:00+07:00"
+                    request_id: req_123
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
   /api/v1/reports/export.csv:
     get:
       tags: [Reports]
@@ -1452,8 +1522,8 @@ paths:
               examples:
                 sample:
                   value: |
-                    section,generated_at,record_id,snapshot_date,transaction_date,price_date,account_name,instrument_type,ticker,name,transaction_type,units,price,average_price_idr,current_price_idr,gross_value,fees,tax,net_value,balance,total_cost_idr,current_value_idr,profit_loss_idr,profit_loss_percent,currency,original_currency,fx_rate_to_idr,source,is_realtime,warnings,note
-                    metadata,2026-07-02T10:00:00+07:00,,,,,,,,,,,,,,,,,,,,,,,,,,,,Data manual/mock, bukan real-time.
+                    section,generated_at,record_id,snapshot_date,transaction_date,price_date,account_name,instrument_type,ticker,name,transaction_type,units,price,average_price_idr,current_price_idr,gross_value,fees,tax,net_value,balance,total_cost_idr,current_value_idr,profit_loss_idr,profit_loss_percent,currency,original_currency,fx_rate_to_idr,source,is_realtime,warnings,note,category_name,cash_account_name,transfer_cash_account_name,amount
+                    metadata,2026-07-02T10:00:00+07:00,,,,,,,,,,,,,,,,,,,,,,,,,,,,Data manual/mock, bukan real-time.,,,,
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
@@ -2708,6 +2778,91 @@ components:
           type: integer
         total_idr:
           type: number
+
+    CategoryBreakdown:
+      type: object
+      required: [category_name, type, transaction_count, total_idr, percent]
+      properties:
+        category_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        category_name:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        transaction_count:
+          type: integer
+        total_idr:
+          type: number
+        percent:
+          type: number
+
+    CashflowTrend:
+      type: object
+      required: [month, income, expense, net_cashflow]
+      properties:
+        month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+        income:
+          type: number
+        expense:
+          type: number
+        net_cashflow:
+          type: number
+
+    PersonalInsightsReport:
+      type: object
+      required:
+        - month
+        - base_currency
+        - income_total
+        - expense_total
+        - net_cashflow
+        - category_breakdown
+        - cashflow_trend
+        - data_not_realtime
+        - disclaimer
+        - generated_at
+      properties:
+        month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+        base_currency:
+          type: string
+          example: IDR
+        income_total:
+          type: number
+        expense_total:
+          type: number
+        net_cashflow:
+          type: number
+        category_breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryBreakdown"
+        cashflow_trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashflowTrend"
+        data_not_realtime:
+          type: string
+        disclaimer:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+
+    PersonalInsightsReportEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PersonalInsightsReport"
 
     InstrumentReportTotal:
       type: object

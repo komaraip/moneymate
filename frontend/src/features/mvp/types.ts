@@ -21,4 +21,5 @@ export type ImportPreviewSummary = ImportPreview["summary"];
 export type ImportConfirmResult = NonNullable<Schemas["ImportConfirmEnvelope"]["data"]>;
 export type MonthlySummaryReport = Schemas["MonthlySummaryReport"];
 export type PortfolioPerformanceReport = Schemas["PortfolioPerformanceReport"];
+export type PersonalInsightsReport = Schemas["PersonalInsightsReport"];
 export type ReportWarning = Schemas["ReportWarning"];

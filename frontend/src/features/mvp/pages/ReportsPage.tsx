@@ -9,12 +9,13 @@ import { queryKeys } from "../../../lib/query-keys";
 import { mvpApi } from "../api";
 import { Card } from "../components/Card";
 import { PageHeader } from "../components/PageHeader";
-import type { MonthlySummaryReport, PortfolioPerformanceReport, ReportWarning } from "../types";
+import type { MonthlySummaryReport, PersonalInsightsReport, PortfolioPerformanceReport, ReportWarning } from "../types";
 
 export function ReportsPage() {
   const [month, setMonth] = useState(defaultMonth());
   const [fromDate, setFromDate] = useState(defaultRange().from);
   const [toDate, setToDate] = useState(defaultRange().to);
+  const [trendMonths, setTrendMonths] = useState(6);
   const [exportMessage, setExportMessage] = useState("");
 
   const monthly = useQuery({
@@ -24,6 +25,10 @@ export function ReportsPage() {
   const performance = useQuery({
     queryKey: queryKeys.reports.performance(fromDate, toDate),
     queryFn: () => mvpApi.portfolioPerformance(fromDate, toDate),
+  });
+  const insights = useQuery({
+    queryKey: queryKeys.reports.personalInsights(month, trendMonths),
+    queryFn: () => mvpApi.personalInsights(month, trendMonths),
   });
   const exportCsv = useMutation({
     mutationFn: mvpApi.exportReportsCsv,
@@ -43,15 +48,15 @@ export function ReportsPage() {
     },
   });
 
-  const isLoading = monthly.isLoading || performance.isLoading;
-  const isError = monthly.isError || performance.isError;
+  const isLoading = monthly.isLoading || performance.isLoading || insights.isLoading;
+  const isError = monthly.isError || performance.isError || insights.isError;
 
   return (
     <div>
       <PageHeader description="Ringkasan portfolio berbasis data manual/mock" title="Laporan" />
 
       <Card className="mb-5">
-        <div className="grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+        <div className="grid gap-4 lg:grid-cols-[1fr_1fr_10rem_auto] lg:items-end">
           <label className="text-sm text-zinc-300">
             <span className="mb-2 block font-medium">Bulan laporan</span>
             <input
@@ -81,6 +86,18 @@ export function ReportsPage() {
               />
             </label>
           </div>
+          <label className="text-sm text-zinc-300">
+            <span className="mb-2 block font-medium">Tren</span>
+            <select
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+              onChange={(event) => setTrendMonths(Number(event.target.value))}
+              value={trendMonths}
+            >
+              <option value={3}>3 bulan</option>
+              <option value={6}>6 bulan</option>
+              <option value={12}>12 bulan</option>
+            </select>
+          </label>
           <button
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={exportCsv.isPending}
@@ -103,8 +120,51 @@ export function ReportsPage() {
       ) : null}
 
       {!isLoading && !isError && monthly.data ? <MonthlySummary data={monthly.data} /> : null}
+      {!isLoading && !isError && insights.data ? <PersonalInsights data={insights.data} /> : null}
       {!isLoading && !isError && performance.data ? <PerformanceSummary data={performance.data} /> : null}
     </div>
+  );
+}
+
+function PersonalInsights({ data }: { data: PersonalInsightsReport }) {
+  return (
+    <section className="mb-5">
+      <div className="mb-3 flex items-center gap-2">
+        <FileText className="h-4 w-4 text-emerald-300" />
+        <h3 className="text-lg font-semibold text-white">Insight Personal {data.month}</h3>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Metric label="Pemasukan" value={formatCurrency(data.income_total)} />
+        <Metric label="Pengeluaran" value={formatCurrency(data.expense_total)} />
+        <Metric label="Cashflow Bersih" value={formatCurrency(data.net_cashflow)} />
+      </div>
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <Card>
+          <h4 className="font-semibold text-white">Breakdown Kategori</h4>
+          <SimpleTable
+            emptyLabel="Belum ada pemasukan atau pengeluaran pada bulan ini."
+            rows={data.category_breakdown.map((row) => ({
+              key: `${row.type}-${row.category_id ?? row.category_name}`,
+              left: `${row.category_name} / ${row.type === "income" ? "Pemasukan" : "Pengeluaran"}`,
+              right: formatCurrency(row.total_idr),
+              detail: `${row.transaction_count} transaksi / ${formatPercent(row.percent)}`,
+            }))}
+          />
+        </Card>
+        <Card>
+          <h4 className="font-semibold text-white">Tren Cashflow</h4>
+          <SimpleTable
+            emptyLabel="Tren cashflow belum tersedia."
+            rows={data.cashflow_trend.map((row) => ({
+              key: row.month,
+              left: row.month,
+              right: formatCurrency(row.net_cashflow),
+              detail: `Masuk ${formatCurrency(row.income)} / Keluar ${formatCurrency(row.expense)}`,
+            }))}
+          />
+        </Card>
+      </div>
+    </section>
   );
 }
 

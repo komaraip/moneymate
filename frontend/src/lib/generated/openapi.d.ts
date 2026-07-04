@@ -1943,6 +1943,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/personal-insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personal finance income, expense, and cashflow insights
+         * @description Read-only personal finance report in IDR for income vs expense, category breakdown, and monthly cashflow trend. Transfers are excluded from income and expense totals.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Report month in `YYYY-MM`. */
+                    month?: string;
+                    /** @description Number of months to include in the cashflow trend. */
+                    months?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Personal finance insights. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonalInsightsReportEnvelope"];
+                    };
+                };
+                400: components["responses"]["ValidationError"];
+                401: components["responses"]["UnauthorizedError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/export.csv": {
         parameters: {
             query?: never;
@@ -2575,6 +2621,39 @@ export interface components {
             type: "deposit" | "withdrawal" | "correction" | "transfer_in" | "transfer_out";
             adjustment_count: number;
             total_idr: number;
+        };
+        CategoryBreakdown: {
+            /** Format: uuid */
+            category_id?: string | null;
+            category_name: string;
+            /** @enum {string} */
+            type: "income" | "expense";
+            transaction_count: number;
+            total_idr: number;
+            percent: number;
+        };
+        CashflowTrend: {
+            month: string;
+            income: number;
+            expense: number;
+            net_cashflow: number;
+        };
+        PersonalInsightsReport: {
+            month: string;
+            /** @example IDR */
+            base_currency: string;
+            income_total: number;
+            expense_total: number;
+            net_cashflow: number;
+            category_breakdown: components["schemas"]["CategoryBreakdown"][];
+            cashflow_trend: components["schemas"]["CashflowTrend"][];
+            data_not_realtime: string;
+            disclaimer: string;
+            /** Format: date-time */
+            generated_at: string;
+        };
+        PersonalInsightsReportEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["PersonalInsightsReport"];
         };
         InstrumentReportTotal: {
             /** Format: uuid */

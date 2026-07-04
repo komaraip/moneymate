@@ -40,6 +40,7 @@ func (h Handler) Routes() chi.Router {
 
 	router.Get("/monthly-summary", h.monthlySummary)
 	router.Get("/portfolio-performance", h.portfolioPerformance)
+	router.Get("/personal-insights", h.personalInsights)
 	router.Get("/export.csv", h.exportCSV)
 
 	return router
@@ -98,11 +99,40 @@ type PortfolioPerformanceReport struct {
 	GeneratedAt          time.Time            `json:"generated_at"`
 }
 
+type PersonalInsightsReport struct {
+	Month             string              `json:"month"`
+	BaseCurrency      string              `json:"base_currency"`
+	IncomeTotal       float64             `json:"income_total"`
+	ExpenseTotal      float64             `json:"expense_total"`
+	NetCashflow       float64             `json:"net_cashflow"`
+	CategoryBreakdown []CategoryBreakdown `json:"category_breakdown"`
+	CashflowTrend     []CashflowTrend     `json:"cashflow_trend"`
+	DataNotRealtime   string              `json:"data_not_realtime"`
+	Disclaimer        string              `json:"disclaimer"`
+	GeneratedAt       time.Time           `json:"generated_at"`
+}
+
 type TransactionTotal struct {
 	AssetType        string  `json:"asset_type"`
 	TransactionType  string  `json:"transaction_type"`
 	TransactionCount int     `json:"transaction_count"`
 	TotalIDR         float64 `json:"total_idr"`
+}
+
+type CategoryBreakdown struct {
+	CategoryID       *string `json:"category_id"`
+	CategoryName     string  `json:"category_name"`
+	Type             string  `json:"type"`
+	TransactionCount int     `json:"transaction_count"`
+	TotalIDR         float64 `json:"total_idr"`
+	Percent          float64 `json:"percent"`
+}
+
+type CashflowTrend struct {
+	Month       string  `json:"month"`
+	Income      float64 `json:"income"`
+	Expense     float64 `json:"expense"`
+	NetCashflow float64 `json:"net_cashflow"`
 }
 
 type CashMovementTotal struct {
@@ -379,6 +409,53 @@ func (h Handler) portfolioPerformance(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, r, http.StatusOK, report, nil)
 }
 
+func (h Handler) personalInsights(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
+	monthStart, err := h.parseMonth(r.Context(), user.ID, strings.TrimSpace(r.URL.Query().Get("month")))
+	if err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	months, err := parseMonths(r.URL.Query().Get("months"))
+	if err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	nextMonth := monthStart.AddDate(0, 1, 0)
+	trendStart := monthStart.AddDate(0, -(months - 1), 0)
+
+	incomeTotal, expenseTotal, err := h.personalCashflowTotals(r.Context(), user.ID, monthStart, nextMonth)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat cashflow personal"))
+		return
+	}
+	categoryBreakdown, err := h.categoryBreakdown(r.Context(), user.ID, monthStart, nextMonth)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat breakdown kategori"))
+		return
+	}
+	cashflowTrend, err := h.cashflowTrend(r.Context(), user.ID, trendStart, nextMonth)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memuat tren cashflow"))
+		return
+	}
+
+	report := PersonalInsightsReport{
+		Month:             monthStart.Format("2006-01"),
+		BaseCurrency:      h.baseCurrency(),
+		IncomeTotal:       incomeTotal,
+		ExpenseTotal:      expenseTotal,
+		NetCashflow:       round2(incomeTotal - expenseTotal),
+		CategoryBreakdown: categoryBreakdown,
+		CashflowTrend:     cashflowTrend,
+		DataNotRealtime:   dataNotRealtimeNote,
+		Disclaimer:        reportDisclaimer,
+		GeneratedAt:       time.Now(),
+	}
+
+	response.JSON(w, r, http.StatusOK, report, nil)
+}
+
 func (h Handler) exportCSV(w http.ResponseWriter, r *http.Request) {
 	user, _ := auth.UserFromContext(r.Context())
 	var buffer bytes.Buffer
@@ -389,7 +466,8 @@ func (h Handler) exportCSV(w http.ResponseWriter, r *http.Request) {
 		"price", "average_price_idr", "current_price_idr", "gross_value", "fees", "tax",
 		"net_value", "balance", "total_cost_idr", "current_value_idr", "profit_loss_idr",
 		"profit_loss_percent", "currency", "original_currency", "fx_rate_to_idr", "source",
-		"is_realtime", "warnings", "note",
+		"is_realtime", "warnings", "note", "category_name", "cash_account_name",
+		"transfer_cash_account_name", "amount",
 	}
 	if err := writer.Write(header); err != nil {
 		response.Error(w, r, internalErr(err, "Gagal menulis header CSV"))
@@ -481,6 +559,17 @@ func (h Handler) parseDateRange(ctx context.Context, userID string, rawFrom stri
 	return from, to, nil
 }
 
+func parseMonths(raw string) (int, error) {
+	if strings.TrimSpace(raw) == "" {
+		return 6, nil
+	}
+	months, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || months < 1 || months > 24 {
+		return 0, validation("Jumlah bulan tren harus angka 1 sampai 24")
+	}
+	return months, nil
+}
+
 func (h Handler) latestSnapshotDate(ctx context.Context, userID string) (*time.Time, error) {
 	var date *time.Time
 	if err := h.db.QueryRow(ctx, `SELECT MAX(snapshot_date) FROM holdings_snapshot WHERE user_id = $1`, userID).Scan(&date); err != nil {
@@ -565,6 +654,91 @@ func (h Handler) personalCashflowTotals(ctx context.Context, userID string, from
 		  AND transaction_date >= $2::date AND transaction_date < $3::date
 	`, userID, from.Format("2006-01-02"), toExclusive.Format("2006-01-02")).Scan(&incomeTotal, &expenseTotal)
 	return round2(incomeTotal), round2(expenseTotal), err
+}
+
+func (h Handler) categoryBreakdown(ctx context.Context, userID string, from time.Time, toExclusive time.Time) ([]CategoryBreakdown, error) {
+	rows, err := h.db.Query(ctx, `
+		WITH grouped AS (
+			SELECT t.category_id::text AS category_id,
+			       COALESCE(tc.name, t.type) AS category_name,
+			       t.type,
+			       COUNT(*)::int AS transaction_count,
+			       COALESCE(SUM(t.amount), 0)::float8 AS total_idr
+			FROM transactions t
+			LEFT JOIN transaction_categories tc ON tc.id = t.category_id AND tc.user_id = t.user_id
+			WHERE t.user_id = $1
+			  AND t.type IN ('income', 'expense')
+			  AND t.transaction_date >= $2::date AND t.transaction_date < $3::date
+			GROUP BY t.category_id, COALESCE(tc.name, t.type), t.type
+		),
+		type_totals AS (
+			SELECT type, COALESCE(SUM(total_idr), 0)::float8 AS total_idr
+			FROM grouped
+			GROUP BY type
+		)
+		SELECT grouped.category_id, grouped.category_name, grouped.type,
+		       grouped.transaction_count, grouped.total_idr,
+		       CASE WHEN type_totals.total_idr > 0 THEN grouped.total_idr / type_totals.total_idr ELSE 0 END::float8 AS percent
+		FROM grouped
+		JOIN type_totals ON type_totals.type = grouped.type
+		ORDER BY grouped.type, grouped.total_idr DESC, grouped.category_name
+	`, userID, from.Format("2006-01-02"), toExclusive.Format("2006-01-02"))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := []CategoryBreakdown{}
+	for rows.Next() {
+		var item CategoryBreakdown
+		if err := rows.Scan(&item.CategoryID, &item.CategoryName, &item.Type, &item.TransactionCount, &item.TotalIDR, &item.Percent); err != nil {
+			return nil, err
+		}
+		item.TotalIDR = round2(item.TotalIDR)
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (h Handler) cashflowTrend(ctx context.Context, userID string, from time.Time, toExclusive time.Time) ([]CashflowTrend, error) {
+	rows, err := h.db.Query(ctx, `
+		WITH months AS (
+			SELECT generate_series($2::date, ($3::date - INTERVAL '1 month')::date, INTERVAL '1 month')::date AS month_start
+		),
+		totals AS (
+			SELECT date_trunc('month', transaction_date)::date AS month_start,
+			       COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0)::float8 AS income,
+			       COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0)::float8 AS expense
+			FROM transactions
+			WHERE user_id = $1
+			  AND type IN ('income', 'expense')
+			  AND transaction_date >= $2::date AND transaction_date < $3::date
+			GROUP BY date_trunc('month', transaction_date)::date
+		)
+		SELECT to_char(months.month_start, 'YYYY-MM'),
+		       COALESCE(totals.income, 0)::float8,
+		       COALESCE(totals.expense, 0)::float8
+		FROM months
+		LEFT JOIN totals ON totals.month_start = months.month_start
+		ORDER BY months.month_start
+	`, userID, from.Format("2006-01-02"), toExclusive.Format("2006-01-02"))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := []CashflowTrend{}
+	for rows.Next() {
+		var item CashflowTrend
+		if err := rows.Scan(&item.Month, &item.Income, &item.Expense); err != nil {
+			return nil, err
+		}
+		item.Income = round2(item.Income)
+		item.Expense = round2(item.Expense)
+		item.NetCashflow = round2(item.Income - item.Expense)
+		items = append(items, item)
+	}
+	return items, rows.Err()
 }
 
 func (h Handler) budgetProgress(ctx context.Context, userID string, month time.Time) ([]BudgetProgress, error) {
@@ -985,10 +1159,14 @@ func (h Handler) writeHoldingsCSV(ctx context.Context, userID string, writer *cs
 func (h Handler) writeTransactionsCSV(ctx context.Context, userID string, writer *csv.Writer, header []string, generatedAt string) error {
 	rows, err := h.db.Query(ctx, `
 		SELECT t.id::text, t.transaction_date, i.type, i.ticker, i.name, t.type,
-		       t.units::float8, t.price::float8, t.gross_value::float8, t.fees::float8,
-		       t.tax::float8, t.net_value::float8, t.currency, t.fx_rate_to_idr::float8, t.source
+		       COALESCE(t.amount, 0)::float8, t.units::float8, t.price::float8, t.gross_value::float8, t.fees::float8,
+		       t.tax::float8, t.net_value::float8, t.currency, t.fx_rate_to_idr::float8, t.source,
+		       tc.name, ca.account_name, transfer_ca.account_name
 		FROM transactions t
 		LEFT JOIN instruments i ON i.id = t.instrument_id
+		LEFT JOIN transaction_categories tc ON tc.id = t.category_id AND tc.user_id = t.user_id
+		LEFT JOIN cash_accounts ca ON ca.id = t.cash_account_id AND ca.user_id = t.user_id
+		LEFT JOIN cash_accounts transfer_ca ON transfer_ca.id = t.transfer_cash_account_id AND transfer_ca.user_id = t.user_id
 		WHERE t.user_id = $1
 		ORDER BY t.transaction_date DESC, t.created_at DESC
 	`, userID)
@@ -1000,10 +1178,11 @@ func (h Handler) writeTransactionsCSV(ctx context.Context, userID string, writer
 		var id, txType, currency, source string
 		var instrumentType, name *string
 		var ticker *string
+		var categoryName, cashAccountName, transferCashAccountName *string
 		var txDate time.Time
-		var units, price, grossValue, fees, tax, netValue float64
+		var amount, units, price, grossValue, fees, tax, netValue float64
 		var fxRate *float64
-		if err := rows.Scan(&id, &txDate, &instrumentType, &ticker, &name, &txType, &units, &price, &grossValue, &fees, &tax, &netValue, &currency, &fxRate, &source); err != nil {
+		if err := rows.Scan(&id, &txDate, &instrumentType, &ticker, &name, &txType, &amount, &units, &price, &grossValue, &fees, &tax, &netValue, &currency, &fxRate, &source, &categoryName, &cashAccountName, &transferCashAccountName); err != nil {
 			return err
 		}
 		note := dataNotRealtimeNote
@@ -1011,25 +1190,29 @@ func (h Handler) writeTransactionsCSV(ctx context.Context, userID string, writer
 			note = note + " FX rate ke IDR belum diisi."
 		}
 		if err := writer.Write(csvRow(header, map[string]string{
-			"section":           "transactions",
-			"generated_at":      generatedAt,
-			"record_id":         id,
-			"transaction_date":  txDate.Format("2006-01-02"),
-			"instrument_type":   ptrString(instrumentType),
-			"ticker":            ptrString(ticker),
-			"name":              ptrString(name),
-			"transaction_type":  txType,
-			"units":             floatString(units),
-			"price":             floatString(price),
-			"gross_value":       floatString(grossValue),
-			"fees":              floatString(fees),
-			"tax":               floatString(tax),
-			"net_value":         floatString(netValue),
-			"currency":          currency,
-			"original_currency": currency,
-			"fx_rate_to_idr":    floatPtrString(fxRate),
-			"source":            source,
-			"note":              note,
+			"section":                    "transactions",
+			"generated_at":               generatedAt,
+			"record_id":                  id,
+			"transaction_date":           txDate.Format("2006-01-02"),
+			"instrument_type":            ptrString(instrumentType),
+			"ticker":                     ptrString(ticker),
+			"name":                       ptrString(name),
+			"transaction_type":           txType,
+			"units":                      floatString(units),
+			"price":                      floatString(price),
+			"gross_value":                floatString(grossValue),
+			"fees":                       floatString(fees),
+			"tax":                        floatString(tax),
+			"net_value":                  floatString(netValue),
+			"currency":                   currency,
+			"original_currency":          currency,
+			"fx_rate_to_idr":             floatPtrString(fxRate),
+			"source":                     source,
+			"note":                       note,
+			"category_name":              ptrString(categoryName),
+			"cash_account_name":          ptrString(cashAccountName),
+			"transfer_cash_account_name": ptrString(transferCashAccountName),
+			"amount":                     floatString(amount),
 		})); err != nil {
 			return err
 		}

@@ -9,6 +9,7 @@ export const queryKeys = {
     all: ["reports"] as const,
     monthly: (month: string) => ["reports", "monthly", month] as const,
     performance: (from: string, to: string) => ["reports", "performance", from, to] as const,
+    personalInsights: (month: string, months: number) => ["reports", "personal-insights", month, months] as const,
   },
   holdings: {
     all: ["holdings"] as const,
