@@ -82,6 +82,9 @@ func mountUserRoutes(
 }
 
 func mountAdminRoutes(router chi.Router, masterHandler masterdata.Handler) {
-	router.Mount("/audit-logs", masterHandler.AuditRoutes())
-	router.Mount("/admin/audit-logs", masterHandler.AuditRoutes())
+	router.Group(func(admin chi.Router) {
+		admin.Use(auth.RequireAdmin())
+		admin.Mount("/audit-logs", masterHandler.AuditRoutes())
+		admin.Mount("/admin/audit-logs", masterHandler.AuditRoutes())
+	})
 }

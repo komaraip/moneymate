@@ -107,3 +107,16 @@ Compatibility routes from the earlier MVP can redirect to the primary routes whi
 ## Demo Safety
 
 Demo data, seed credentials, and local backup scripts are local-only. No production secrets should be committed. Database backup/export workflows remain recovery and local demo tooling; they are not personal finance report exports.
+
+## Current Privacy Boundary
+
+The active MVP financial records are user-scoped:
+
+- Investment transactions.
+- Cash accounts and cash adjustment ledger rows.
+- Manual price snapshots.
+- Holdings snapshots.
+- Import jobs and import confirmations.
+- Dashboard and report aggregates.
+
+Instrument and asset-category metadata remain shared reference data during the assets-module transition. They should not contain private financial amounts. User-specific instrument metadata can be introduced later when the Assets & Net Worth module is split from the legacy portfolio MVP.

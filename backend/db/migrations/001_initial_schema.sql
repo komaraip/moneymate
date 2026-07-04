@@ -55,6 +55,7 @@ CREATE TABLE instrument_categories (
 
 CREATE TABLE transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
   instrument_id UUID REFERENCES instruments(id),
   transaction_date DATE NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('buy', 'sell', 'dividend', 'fee', 'adjustment')),
@@ -68,13 +69,14 @@ CREATE TABLE transactions (
   fx_rate_to_idr NUMERIC(22, 8),
   notes TEXT,
   source TEXT NOT NULL DEFAULT 'manual',
-  created_by UUID REFERENCES users(id),
+  created_by UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE cash_accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
   account_name TEXT NOT NULL,
   account_type TEXT NOT NULL DEFAULT 'bank',
   currency TEXT NOT NULL DEFAULT 'IDR',
@@ -87,17 +89,19 @@ CREATE TABLE cash_accounts (
 
 CREATE TABLE cash_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
   cash_account_id UUID NOT NULL REFERENCES cash_accounts(id) ON DELETE CASCADE,
   amount NUMERIC(22, 2) NOT NULL,
   balance_after NUMERIC(22, 2) NOT NULL,
   currency TEXT NOT NULL DEFAULT 'IDR',
   notes TEXT,
-  created_by UUID REFERENCES users(id),
+  created_by UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE price_snapshots (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
   instrument_id UUID NOT NULL REFERENCES instruments(id) ON DELETE CASCADE,
   price_date DATE NOT NULL,
   price NUMERIC(22, 8) NOT NULL,
@@ -105,11 +109,12 @@ CREATE TABLE price_snapshots (
   source TEXT NOT NULL DEFAULT 'manual',
   is_realtime BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(instrument_id, price_date, source)
+  UNIQUE(user_id, instrument_id, price_date, source)
 );
 
 CREATE TABLE holdings_snapshot (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
   snapshot_date DATE NOT NULL,
   instrument_id UUID NOT NULL REFERENCES instruments(id) ON DELETE CASCADE,
   average_price NUMERIC(22, 8) NOT NULL DEFAULT 0,
@@ -124,7 +129,7 @@ CREATE TABLE holdings_snapshot (
   price_updated_at TIMESTAMPTZ,
   warnings JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(snapshot_date, instrument_id)
+  UNIQUE(user_id, snapshot_date, instrument_id)
 );
 
 CREATE TABLE import_jobs (
@@ -136,7 +141,7 @@ CREATE TABLE import_jobs (
   success_rows INT NOT NULL DEFAULT 0,
   failed_rows INT NOT NULL DEFAULT 0,
   error_summary TEXT,
-  created_by UUID REFERENCES users(id),
+  created_by UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at TIMESTAMPTZ
 );
@@ -171,11 +176,17 @@ CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 CREATE INDEX idx_instruments_ticker ON instruments(ticker);
 CREATE INDEX idx_instruments_name ON instruments(name);
 CREATE INDEX idx_transactions_date ON transactions(transaction_date DESC);
+CREATE INDEX idx_transactions_user_date ON transactions(user_id, transaction_date DESC, created_at DESC);
 CREATE INDEX idx_transactions_instrument ON transactions(instrument_id);
 CREATE INDEX idx_transactions_created_by ON transactions(created_by);
+CREATE INDEX idx_cash_accounts_user_active ON cash_accounts(user_id, is_active, account_name);
 CREATE INDEX idx_cash_adjustments_account ON cash_adjustments(cash_account_id, created_at DESC);
+CREATE INDEX idx_cash_adjustments_user_account_date ON cash_adjustments(user_id, cash_account_id, created_at DESC);
 CREATE INDEX idx_holdings_snapshot_date ON holdings_snapshot(snapshot_date DESC);
+CREATE INDEX idx_holdings_snapshot_user_date ON holdings_snapshot(user_id, snapshot_date DESC);
 CREATE INDEX idx_price_snapshots_instrument_date ON price_snapshots(instrument_id, price_date DESC);
+CREATE INDEX idx_price_snapshots_user_instrument_date ON price_snapshots(user_id, instrument_id, price_date DESC);
 CREATE INDEX idx_import_jobs_created_at ON import_jobs(created_at DESC);
+CREATE INDEX idx_import_jobs_created_by_created_at ON import_jobs(created_by, created_at DESC);
 CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at DESC);
 CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);

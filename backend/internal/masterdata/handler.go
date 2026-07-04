@@ -56,12 +56,12 @@ func (h Handler) CashRoutes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", h.listCashAccounts)
-	router.Post("/", auth.RequireAdmin()(http.HandlerFunc(h.createCashAccount)).ServeHTTP)
+	router.Post("/", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.createCashAccount)).ServeHTTP)
 	router.Get("/{id}/adjustments", h.listCashAdjustments)
-	router.Post("/{id}/adjust", auth.RequireAdmin()(http.HandlerFunc(h.adjustCashAccount)).ServeHTTP)
+	router.Post("/{id}/adjust", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.adjustCashAccount)).ServeHTTP)
 	router.Get("/{id}", h.getCashAccount)
-	router.Put("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.updateCashAccount)).ServeHTTP)
-	router.Delete("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.deleteCashAccount)).ServeHTTP)
+	router.Put("/{id}", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.updateCashAccount)).ServeHTTP)
+	router.Delete("/{id}", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.deleteCashAccount)).ServeHTTP)
 
 	return router
 }
@@ -399,11 +399,13 @@ func (h Handler) deleteCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) listCashAccounts(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
 	rows, err := h.db.Query(r.Context(), `
 		SELECT id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
 		FROM cash_accounts
+		WHERE user_id = $1
 		ORDER BY is_active DESC, account_name
-	`)
+	`, user.ID)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat akun cash"))
 		return
@@ -428,7 +430,8 @@ func (h Handler) getCashAccount(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	item, err := h.getCashByID(r.Context(), id)
+	user, _ := auth.UserFromContext(r.Context())
+	item, err := h.getCashByID(r.Context(), id, user.ID)
 	if err != nil {
 		response.Error(w, r, mapGetErr(err, "Akun cash tidak ditemukan"))
 		return
@@ -453,11 +456,12 @@ func (h Handler) createCashAccount(w http.ResponseWriter, r *http.Request) {
 	if input.IsActive != nil {
 		isActive = *input.IsActive
 	}
+	user, _ := auth.UserFromContext(r.Context())
 	err := h.db.QueryRow(r.Context(), `
-		INSERT INTO cash_accounts (account_name, account_type, currency, balance, notes, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO cash_accounts (user_id, account_name, account_type, currency, balance, notes, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
-	`, strings.TrimSpace(input.AccountName), defaultString(input.AccountType, "bank"), strings.ToUpper(input.Currency), input.Balance, cleanPtr(input.Notes), isActive).Scan(
+	`, user.ID, strings.TrimSpace(input.AccountName), defaultString(input.AccountType, "bank"), strings.ToUpper(input.Currency), input.Balance, cleanPtr(input.Notes), isActive).Scan(
 		&item.ID, &item.AccountName, &item.AccountType, &item.Currency, &item.Balance, &item.Notes, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
 	)
 	if err != nil {
@@ -474,7 +478,8 @@ func (h Handler) updateCashAccount(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	before, err := h.getCashByID(r.Context(), id)
+	user, _ := auth.UserFromContext(r.Context())
+	before, err := h.getCashByID(r.Context(), id, user.ID)
 	if err != nil {
 		response.Error(w, r, mapGetErr(err, "Akun cash tidak ditemukan"))
 		return
@@ -499,9 +504,9 @@ func (h Handler) updateCashAccount(w http.ResponseWriter, r *http.Request) {
 		UPDATE cash_accounts
 		SET account_name = $2, account_type = $3, currency = $4, balance = $5,
 		    notes = $6, is_active = $7, updated_at = now()
-		WHERE id = $1
+		WHERE id = $1 AND user_id = $8
 		RETURNING id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
-	`, id, strings.TrimSpace(input.AccountName), defaultString(input.AccountType, "bank"), strings.ToUpper(input.Currency), input.Balance, cleanPtr(input.Notes), isActive).Scan(
+	`, id, strings.TrimSpace(input.AccountName), defaultString(input.AccountType, "bank"), strings.ToUpper(input.Currency), input.Balance, cleanPtr(input.Notes), isActive, user.ID).Scan(
 		&item.ID, &item.AccountName, &item.AccountType, &item.Currency, &item.Balance, &item.Notes, &item.IsActive, &item.CreatedAt, &item.UpdatedAt,
 	)
 	if err != nil {
@@ -518,13 +523,14 @@ func (h Handler) deleteCashAccount(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	before, err := h.getCashByID(r.Context(), id)
+	user, _ := auth.UserFromContext(r.Context())
+	before, err := h.getCashByID(r.Context(), id, user.ID)
 	if err != nil {
 		response.Error(w, r, mapGetErr(err, "Akun cash tidak ditemukan"))
 		return
 	}
 
-	if _, err := h.db.Exec(r.Context(), `UPDATE cash_accounts SET is_active = FALSE, updated_at = now() WHERE id = $1`, id); err != nil {
+	if _, err := h.db.Exec(r.Context(), `UPDATE cash_accounts SET is_active = FALSE, updated_at = now() WHERE id = $1 AND user_id = $2`, id, user.ID); err != nil {
 		response.Error(w, r, internalErr(err, "Gagal menonaktifkan akun cash"))
 		return
 	}
@@ -538,7 +544,8 @@ func (h Handler) listCashAdjustments(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if _, err := h.getCashByID(r.Context(), id); err != nil {
+	user, _ := auth.UserFromContext(r.Context())
+	if _, err := h.getCashByID(r.Context(), id, user.ID); err != nil {
 		response.Error(w, r, mapGetErr(err, "Akun cash tidak ditemukan"))
 		return
 	}
@@ -547,10 +554,10 @@ func (h Handler) listCashAdjustments(w http.ResponseWriter, r *http.Request) {
 		SELECT id::text, cash_account_id::text, adjustment_date, type, amount::float8,
 		       balance_before::float8, balance_after::float8, currency, notes, created_by::text, created_at
 		FROM cash_adjustments
-		WHERE cash_account_id = $1
+		WHERE user_id = $1 AND cash_account_id = $2
 		ORDER BY adjustment_date DESC, created_at DESC
 		LIMIT 200
-	`, id)
+	`, user.ID, id)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat histori adjustment cash"))
 		return
@@ -594,13 +601,14 @@ func (h Handler) adjustCashAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 
+	user, _ := auth.UserFromContext(r.Context())
 	var account domain.CashAccount
 	if err := tx.QueryRow(r.Context(), `
 		SELECT id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
 		FROM cash_accounts
-		WHERE id = $1
+		WHERE id = $1 AND user_id = $2
 		FOR UPDATE
-	`, id).Scan(&account.ID, &account.AccountName, &account.AccountType, &account.Currency, &account.Balance, &account.Notes, &account.IsActive, &account.CreatedAt, &account.UpdatedAt); err != nil {
+	`, id, user.ID).Scan(&account.ID, &account.AccountName, &account.AccountType, &account.Currency, &account.Balance, &account.Notes, &account.IsActive, &account.CreatedAt, &account.UpdatedAt); err != nil {
 		response.Error(w, r, mapGetErr(err, "Akun cash tidak ditemukan"))
 		return
 	}
@@ -616,17 +624,16 @@ func (h Handler) adjustCashAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, _ := auth.UserFromContext(r.Context())
 	var item domain.CashAdjustment
 	err = tx.QueryRow(r.Context(), `
 		INSERT INTO cash_adjustments (
-			cash_account_id, adjustment_date, type, amount, balance_before,
+			user_id, cash_account_id, adjustment_date, type, amount, balance_before,
 			balance_after, currency, notes, created_by
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $1)
 		RETURNING id::text, cash_account_id::text, adjustment_date, type, amount::float8,
 		          balance_before::float8, balance_after::float8, currency, notes, created_by::text, created_at
-	`, id, adjustmentDate, normalizedType, delta, balanceBefore, balanceAfter, account.Currency, cleanPtr(input.Note), user.ID).Scan(
+	`, user.ID, id, adjustmentDate, normalizedType, delta, balanceBefore, balanceAfter, account.Currency, cleanPtr(input.Note)).Scan(
 		&item.ID, &item.CashAccountID, &item.AdjustmentDate, &item.Type, &item.Amount,
 		&item.BalanceBefore, &item.BalanceAfter, &item.Currency, &item.Note, &item.CreatedBy, &item.CreatedAt,
 	)
@@ -635,7 +642,7 @@ func (h Handler) adjustCashAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := tx.Exec(r.Context(), `UPDATE cash_accounts SET balance = $2, updated_at = now() WHERE id = $1`, id, balanceAfter); err != nil {
+	if _, err := tx.Exec(r.Context(), `UPDATE cash_accounts SET balance = $2, updated_at = now() WHERE id = $1 AND user_id = $3`, id, balanceAfter, user.ID); err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memperbarui saldo cash"))
 		return
 	}
@@ -713,12 +720,12 @@ func (h Handler) getCategoryByID(ctx context.Context, id string) (domain.AssetCa
 	return item, err
 }
 
-func (h Handler) getCashByID(ctx context.Context, id string) (domain.CashAccount, error) {
+func (h Handler) getCashByID(ctx context.Context, id string, userID string) (domain.CashAccount, error) {
 	return scanCash(h.db.QueryRow(ctx, `
 		SELECT id::text, account_name, account_type, currency, balance::float8, notes, is_active, created_at, updated_at
 		FROM cash_accounts
-		WHERE id = $1
-	`, id))
+		WHERE id = $1 AND user_id = $2
+	`, id, userID))
 }
 
 type scanner interface {

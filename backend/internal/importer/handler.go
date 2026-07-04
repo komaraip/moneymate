@@ -32,10 +32,10 @@ func NewHandler(db *pgxpool.Pool) Handler {
 func (h Handler) Routes() chi.Router {
 	router := chi.NewRouter()
 
-	router.Post("/upload", auth.RequireAdmin()(http.HandlerFunc(h.upload)).ServeHTTP)
+	router.Post("/upload", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.upload)).ServeHTTP)
 	router.Get("/jobs", h.listJobs)
 	router.Get("/jobs/{id}", h.getJob)
-	router.Post("/jobs/{id}/confirm", auth.RequireAdmin()(http.HandlerFunc(h.confirm)).ServeHTTP)
+	router.Post("/jobs/{id}/confirm", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.confirm)).ServeHTTP)
 
 	return router
 }
@@ -107,13 +107,15 @@ func (h Handler) upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) listJobs(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
 	rows, err := h.db.Query(r.Context(), `
 		SELECT id::text, source_type, original_filename, status, total_rows, success_rows,
 		       failed_rows, error_summary, created_by::text, created_at, completed_at
 		FROM import_jobs
+		WHERE created_by = $1
 		ORDER BY created_at DESC
 		LIMIT 50
-	`)
+	`, user.ID)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat riwayat import"))
 		return
@@ -139,7 +141,8 @@ func (h Handler) getJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	job, err := h.loadJob(r.Context(), id)
+	user, _ := auth.UserFromContext(r.Context())
+	job, err := h.loadJob(r.Context(), id, user.ID)
 	if err != nil {
 		response.Error(w, r, mapGetErr(err, "Import job tidak ditemukan"))
 		return
@@ -260,9 +263,9 @@ func (h Handler) confirmJob(ctx context.Context, jobID string, userID string, sn
 	if err := tx.QueryRow(ctx, `
 		SELECT status
 		FROM import_jobs
-		WHERE id = $1
+		WHERE id = $1 AND created_by = $2
 		FOR UPDATE
-	`, jobID).Scan(&currentStatus); err != nil {
+	`, jobID, userID).Scan(&currentStatus); err != nil {
 		return ConfirmResult{}, mapGetErr(err, "Import job tidak ditemukan")
 	}
 	if currentStatus == "completed" {
@@ -346,7 +349,7 @@ func (h Handler) confirmJob(ctx context.Context, jobID string, userID string, sn
 		return ConfirmResult{}, internalErr(err, "Gagal menyelesaikan import job")
 	}
 
-	holdings, err := portfolio.NewService(tx).Recalculate(ctx, snapshotDate)
+	holdings, err := portfolio.NewService(tx).Recalculate(ctx, userID, snapshotDate)
 	if err != nil {
 		return ConfirmResult{}, internalErr(err, "Gagal menghitung ulang holdings setelah import")
 	}
@@ -372,11 +375,11 @@ func (h Handler) confirmJob(ctx context.Context, jobID string, userID string, sn
 func (h Handler) applyPreviewRow(ctx context.Context, tx pgx.Tx, row PreviewRow, userID string, snapshotDate time.Time) (string, error) {
 	switch row.Section {
 	case SectionHoldings:
-		return h.applyHoldingRow(ctx, tx, row, snapshotDate)
+		return h.applyHoldingRow(ctx, tx, row, userID, snapshotDate)
 	case SectionOrders:
 		return h.applyOrderRow(ctx, tx, row, userID)
 	case SectionCash:
-		return h.applyCashRow(ctx, tx, row)
+		return h.applyCashRow(ctx, tx, row, userID)
 	case SectionAssetSummary:
 		return "skipped", nil
 	default:
@@ -384,7 +387,7 @@ func (h Handler) applyPreviewRow(ctx context.Context, tx pgx.Tx, row PreviewRow,
 	}
 }
 
-func (h Handler) applyHoldingRow(ctx context.Context, tx pgx.Tx, row PreviewRow, snapshotDate time.Time) (string, error) {
+func (h Handler) applyHoldingRow(ctx context.Context, tx pgx.Tx, row PreviewRow, userID string, snapshotDate time.Time) (string, error) {
 	instrumentID, err := h.upsertInstrument(ctx, tx, row.Normalized)
 	if err != nil {
 		return "", err
@@ -404,15 +407,15 @@ func (h Handler) applyHoldingRow(ctx context.Context, tx pgx.Tx, row PreviewRow,
 	}
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO price_snapshots (instrument_id, price_date, price, currency, fx_rate_to_idr, source, is_realtime)
-		VALUES ($1, $2, $3, $4, $5, 'manual', FALSE)
-		ON CONFLICT (instrument_id, price_date, source) DO UPDATE
+		INSERT INTO price_snapshots (user_id, instrument_id, price_date, price, currency, fx_rate_to_idr, source, is_realtime)
+		VALUES ($1, $2, $3, $4, $5, $6, 'manual', FALSE)
+		ON CONFLICT (user_id, instrument_id, price_date, source) DO UPDATE
 		SET price = EXCLUDED.price,
 		    currency = EXCLUDED.currency,
 		    fx_rate_to_idr = EXCLUDED.fx_rate_to_idr,
 		    is_realtime = FALSE,
 		    created_at = now()
-	`, instrumentID, priceDate, currentPrice, currency, fxRatePtr); err != nil {
+	`, userID, instrumentID, priceDate, currentPrice, currency, fxRatePtr); err != nil {
 		return "", internalErr(err, "Gagal menyimpan harga dari import")
 	}
 
@@ -448,14 +451,15 @@ func (h Handler) applyOrderRow(ctx context.Context, tx pgx.Tx, row PreviewRow, u
 	var transactionID string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO transactions (
-			instrument_id, transaction_date, type, price, units, gross_value,
+			user_id, instrument_id, transaction_date, type, price, units, gross_value,
 			fees, tax, net_value, currency, fx_rate_to_idr, notes, source, created_by
 		)
-		SELECT $1, $2::date, $3, $4, $5, $6, 0, 0, $7, $8, $9, $10, 'import', $11
+		SELECT $11, $1, $2::date, $3, $4, $5, $6, 0, 0, $7, $8, $9, $10, 'import', $11
 		WHERE NOT EXISTS (
 			SELECT 1
 			FROM transactions
-			WHERE instrument_id = $1
+			WHERE user_id = $11
+			  AND instrument_id = $1
 			  AND transaction_date = $2::date
 			  AND type = $3
 			  AND price = $4
@@ -474,7 +478,7 @@ func (h Handler) applyOrderRow(ctx context.Context, tx pgx.Tx, row PreviewRow, u
 	return "imported", nil
 }
 
-func (h Handler) applyCashRow(ctx context.Context, tx pgx.Tx, row PreviewRow) (string, error) {
+func (h Handler) applyCashRow(ctx context.Context, tx pgx.Tx, row PreviewRow, userID string) (string, error) {
 	account := stringValueOrDefault(row.Normalized, "account", "")
 	currency := stringValueOrDefault(row.Normalized, "currency", "IDR")
 	balance, _ := floatValue(row.Normalized, "balance")
@@ -483,11 +487,12 @@ func (h Handler) applyCashRow(ctx context.Context, tx pgx.Tx, row PreviewRow) (s
 	err := tx.QueryRow(ctx, `
 		SELECT id::text
 		FROM cash_accounts
-		WHERE lower(account_name) = lower($1)
-		  AND currency = $2
+		WHERE user_id = $1
+		  AND lower(account_name) = lower($2)
+		  AND currency = $3
 		ORDER BY created_at ASC
 		LIMIT 1
-	`, account, currency).Scan(&existingID)
+	`, userID, account, currency).Scan(&existingID)
 	if err == nil {
 		if _, err := tx.Exec(ctx, `
 			UPDATE cash_accounts
@@ -505,9 +510,9 @@ func (h Handler) applyCashRow(ctx context.Context, tx pgx.Tx, row PreviewRow) (s
 	}
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO cash_accounts (account_name, account_type, currency, balance, notes)
-		VALUES ($1, 'bank', $2, $3, 'Import spreadsheet')
-	`, account, currency, balance); err != nil {
+		INSERT INTO cash_accounts (user_id, account_name, account_type, currency, balance, notes)
+		VALUES ($1, $2, 'bank', $3, $4, 'Import spreadsheet')
+	`, userID, account, currency, balance); err != nil {
 		return "", internalErr(err, "Gagal membuat akun cash dari import")
 	}
 
@@ -560,13 +565,13 @@ func (h Handler) upsertInstrument(ctx context.Context, tx pgx.Tx, normalized map
 	return id, nil
 }
 
-func (h Handler) loadJob(ctx context.Context, id string) (ImportJob, error) {
+func (h Handler) loadJob(ctx context.Context, id string, userID string) (ImportJob, error) {
 	return scanJob(h.db.QueryRow(ctx, `
 		SELECT id::text, source_type, original_filename, status, total_rows, success_rows,
 		       failed_rows, error_summary, created_by::text, created_at, completed_at
 		FROM import_jobs
-		WHERE id = $1
-	`, id))
+		WHERE id = $1 AND created_by = $2
+	`, id, userID))
 }
 
 func (h Handler) loadJobRows(ctx context.Context, jobID string) ([]PreviewRow, error) {

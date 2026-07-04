@@ -320,7 +320,7 @@ paths:
       summary: Recalculate holdings snapshots from transactions and manual prices
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition.
+      description: Requires admin or user role. Recalculation is scoped to the authenticated user's transactions and manual prices.
       parameters:
         - name: date
           in: query
@@ -375,7 +375,7 @@ paths:
       summary: Create or update a manual price snapshot
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition. Prices are manual/mock and not real-time.
+      description: Requires admin or user role. Prices are scoped to the authenticated user and are manual/mock, not real-time.
       requestBody:
         required: true
         content:
@@ -404,7 +404,7 @@ paths:
       summary: Create or update multiple manual price snapshots
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition.
+      description: Requires admin or user role. Prices are scoped to the authenticated user.
       requestBody:
         required: true
         content:
@@ -636,7 +636,7 @@ paths:
       summary: Create transaction
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition. Non-IDR transactions require `fx_rate_to_idr`.
+      description: Requires admin or user role. Transactions are scoped to the authenticated user. Non-IDR transactions require `fx_rate_to_idr`.
       requestBody:
         required: true
         content:
@@ -671,7 +671,7 @@ paths:
       summary: Update transaction
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition.
+      description: Requires admin or user role. Transactions are scoped to the authenticated user.
       requestBody:
         required: true
         content:
@@ -690,7 +690,7 @@ paths:
       summary: Delete transaction
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition.
+      description: Requires admin or user role. Transactions are scoped to the authenticated user.
       responses:
         "200":
           description: Transaction deleted.
@@ -717,7 +717,7 @@ paths:
       summary: Create cash account
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition. Balances are manual in the MVP.
+      description: Requires admin or user role. Cash accounts are scoped to the authenticated user. Balances are manual in the MVP.
       requestBody:
         required: true
         content:
@@ -760,7 +760,7 @@ paths:
       summary: Update cash account
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition.
+      description: Requires admin or user role. Cash accounts are scoped to the authenticated user.
       requestBody:
         required: true
         content:
@@ -779,7 +779,7 @@ paths:
       summary: Soft-delete cash account
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition. Current implementation sets `is_active=false`.
+      description: Requires admin or user role. Cash accounts are scoped to the authenticated user. Current implementation sets `is_active=false`.
       responses:
         "200":
           description: Cash account deactivated.
@@ -817,7 +817,7 @@ paths:
       summary: Create cash adjustment
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition. Amount in the request must be positive; withdrawal and transfer_out are stored as negative ledger movements. Cash balances cannot become negative.
+      description: Requires admin or user role. Adjustments are scoped to the authenticated user's cash account. Amount in the request must be positive; withdrawal and transfer_out are stored as negative ledger movements. Cash balances cannot become negative.
       requestBody:
         required: true
         content:
@@ -853,7 +853,7 @@ paths:
       summary: Upload CSV/XLSX and create import preview
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition. Stores import job rows but does not write portfolio data until confirm.
+      description: Requires admin or user role. Import jobs are scoped to the authenticated user. Stores import job rows but does not write portfolio data until confirm.
       requestBody:
         required: true
         content:
@@ -942,7 +942,7 @@ paths:
       summary: Confirm import job and write valid rows
       security:
         - bearerAuth: []
-      description: Requires admin role during the role transition. Writes instruments, transactions, cash accounts, manual prices, import row statuses, recalculates holdings in the same database transaction, and records the import audit log where applicable.
+      description: Requires admin or user role. Writes user-scoped transactions, cash accounts, manual prices, import row statuses, recalculates holdings in the same database transaction, and records the import audit log where applicable. Instrument metadata remains shared during the assets-module transition.
       responses:
         "200":
           description: Import confirm result.

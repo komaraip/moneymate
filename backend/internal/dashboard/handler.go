@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"moneymate/backend/internal/apperror"
+	"moneymate/backend/internal/auth"
 	"moneymate/backend/internal/config"
 	"moneymate/backend/internal/httpapi/response"
 )
@@ -40,6 +41,7 @@ type performer struct {
 }
 
 func (h Handler) overview(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
 	var portfolioValue, totalCost, totalCash float64
 	var lastUpdatedAt *time.Time
 	if err := h.db.QueryRow(r.Context(), `
@@ -47,13 +49,14 @@ func (h Handler) overview(w http.ResponseWriter, r *http.Request) {
 		       COALESCE(SUM(total_cost), 0)::float8,
 		       MAX(created_at)
 		FROM holdings_snapshot
-		WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_snapshot)
-	`).Scan(&portfolioValue, &totalCost, &lastUpdatedAt); err != nil {
+		WHERE user_id = $1
+		  AND snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_snapshot WHERE user_id = $1)
+	`, user.ID).Scan(&portfolioValue, &totalCost, &lastUpdatedAt); err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat ringkasan portfolio"))
 		return
 	}
 
-	if err := h.db.QueryRow(r.Context(), `SELECT COALESCE(SUM(balance), 0)::float8 FROM cash_accounts WHERE is_active = TRUE`).Scan(&totalCash); err != nil {
+	if err := h.db.QueryRow(r.Context(), `SELECT COALESCE(SUM(balance), 0)::float8 FROM cash_accounts WHERE user_id = $1 AND is_active = TRUE`, user.ID).Scan(&totalCash); err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat ringkasan cash"))
 		return
 	}
@@ -83,11 +86,13 @@ func (h Handler) overview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) assetAllocation(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
 	rows, err := h.db.Query(r.Context(), `
 		WITH latest AS (
 			SELECT *
 			FROM holdings_snapshot
-			WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_snapshot)
+			WHERE user_id = $1
+			  AND snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_snapshot WHERE user_id = $1)
 		),
 		portfolio_alloc AS (
 			SELECT COALESCE(ac.name, i.type) AS asset, COALESCE(SUM(latest.current_value), 0)::float8 AS value
@@ -100,7 +105,7 @@ func (h Handler) assetAllocation(w http.ResponseWriter, r *http.Request) {
 		cash_alloc AS (
 			SELECT 'Cash' AS asset, COALESCE(SUM(balance), 0)::float8 AS value
 			FROM cash_accounts
-			WHERE is_active = TRUE
+			WHERE user_id = $1 AND is_active = TRUE
 		),
 		combined AS (
 			SELECT * FROM portfolio_alloc
@@ -114,7 +119,7 @@ func (h Handler) assetAllocation(w http.ResponseWriter, r *http.Request) {
 		FROM combined, total
 		WHERE combined.value > 0
 		ORDER BY combined.value DESC
-	`)
+	`, user.ID)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat alokasi aset"))
 		return
@@ -136,14 +141,16 @@ func (h Handler) assetAllocation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) performance(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
 	rows, err := h.db.Query(r.Context(), `
 		SELECT i.ticker, i.name, hs.total_cost::float8, hs.current_value::float8,
 		       hs.profit_loss_value::float8, hs.profit_loss_percent::float8
 		FROM holdings_snapshot hs
 		JOIN instruments i ON i.id = hs.instrument_id
-		WHERE hs.snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_snapshot)
+		WHERE hs.user_id = $1
+		  AND hs.snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_snapshot WHERE user_id = $1)
 		ORDER BY hs.profit_loss_value DESC
-	`)
+	`, user.ID)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat performa portfolio"))
 		return
@@ -173,13 +180,15 @@ func (h Handler) performance(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) alerts(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
 	alerts := []map[string]any{}
 	rows, err := h.db.Query(r.Context(), `
 		SELECT i.ticker, i.name, hs.current_value::float8, hs.profit_loss_percent::float8, hs.warnings
 		FROM holdings_snapshot hs
 		JOIN instruments i ON i.id = hs.instrument_id
-		WHERE hs.snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_snapshot)
-	`)
+		WHERE hs.user_id = $1
+		  AND hs.snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_snapshot WHERE user_id = $1)
+	`, user.ID)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat alert"))
 		return
@@ -220,7 +229,7 @@ func (h Handler) alerts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var totalCash, netWorth float64
-	_ = h.db.QueryRow(r.Context(), `SELECT COALESCE(SUM(balance), 0)::float8 FROM cash_accounts WHERE is_active = TRUE`).Scan(&totalCash)
+	_ = h.db.QueryRow(r.Context(), `SELECT COALESCE(SUM(balance), 0)::float8 FROM cash_accounts WHERE user_id = $1 AND is_active = TRUE`, user.ID).Scan(&totalCash)
 	netWorth = totalCash + totalPortfolio
 	if netWorth > 0 && totalCash/netWorth < 0.05 {
 		alerts = append(alerts, alert("low_cash", "Saldo Cash Rendah", "Cash kurang dari 5% total kekayaan bersih.", "warning"))
@@ -230,17 +239,19 @@ func (h Handler) alerts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) loadPerformer(r *http.Request, direction string) (*performer, error) {
+	user, _ := auth.UserFromContext(r.Context())
 	query := `
 		SELECT i.ticker, i.name, hs.profit_loss_percent::float8
 		FROM holdings_snapshot hs
 		JOIN instruments i ON i.id = hs.instrument_id
-		WHERE hs.snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_snapshot)
+		WHERE hs.user_id = $1
+		  AND hs.snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_snapshot WHERE user_id = $1)
 		ORDER BY hs.profit_loss_percent ` + direction + `
 		LIMIT 1
 	`
 
 	var item performer
-	if err := h.db.QueryRow(r.Context(), query).Scan(&item.Ticker, &item.Name, &item.ProfitLossPercent); err != nil {
+	if err := h.db.QueryRow(r.Context(), query, user.ID).Scan(&item.Ticker, &item.Name, &item.ProfitLossPercent); err != nil {
 		return nil, err
 	}
 	return &item, nil

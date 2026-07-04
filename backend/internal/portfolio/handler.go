@@ -28,12 +28,13 @@ func (h Handler) Routes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", h.listHoldings)
-	router.Post("/recalculate", auth.RequireAdmin()(http.HandlerFunc(h.recalculate)).ServeHTTP)
+	router.Post("/recalculate", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.recalculate)).ServeHTTP)
 
 	return router
 }
 
 func (h Handler) listHoldings(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
 	rows, err := h.db.Query(r.Context(), `
 		SELECT hs.id::text, hs.snapshot_date, hs.instrument_id::text, i.type, i.ticker, i.name,
 		       hs.average_price::float8, hs.current_price::float8, hs.units::float8,
@@ -42,9 +43,10 @@ func (h Handler) listHoldings(w http.ResponseWriter, r *http.Request) {
 		       hs.warnings, hs.created_at
 		FROM holdings_snapshot hs
 		JOIN instruments i ON i.id = hs.instrument_id
-		WHERE hs.snapshot_date = COALESCE(NULLIF($1, '')::date, (SELECT MAX(snapshot_date) FROM holdings_snapshot))
+		WHERE hs.user_id = $1
+		  AND hs.snapshot_date = COALESCE(NULLIF($2, '')::date, (SELECT MAX(snapshot_date) FROM holdings_snapshot WHERE user_id = $1))
 		ORDER BY hs.current_value DESC
-	`, strings.TrimSpace(r.URL.Query().Get("date")))
+	`, user.ID, strings.TrimSpace(r.URL.Query().Get("date")))
 	if err != nil {
 		response.Error(w, r, apperror.Wrap(err, apperror.CodeInternal, "Gagal memuat holdings", http.StatusInternalServerError))
 		return
@@ -82,7 +84,8 @@ func (h Handler) recalculate(w http.ResponseWriter, r *http.Request) {
 		snapshotDate = parsed
 	}
 
-	holdings, err := h.service.Recalculate(r.Context(), snapshotDate)
+	user, _ := auth.UserFromContext(r.Context())
+	holdings, err := h.service.Recalculate(r.Context(), user.ID, snapshotDate)
 	if err != nil {
 		response.Error(w, r, apperror.Wrap(err, apperror.CodeInternal, "Gagal menghitung holdings", http.StatusInternalServerError))
 		return

@@ -397,7 +397,7 @@ export interface paths {
         put?: never;
         /**
          * Recalculate holdings snapshots from transactions and manual prices
-         * @description Requires admin role during the role transition.
+         * @description Requires admin or user role. Recalculation is scoped to the authenticated user's transactions and manual prices.
          */
         post: {
             parameters: {
@@ -478,7 +478,7 @@ export interface paths {
         put?: never;
         /**
          * Create or update a manual price snapshot
-         * @description Requires admin role during the role transition. Prices are manual/mock and not real-time.
+         * @description Requires admin or user role. Prices are scoped to the authenticated user and are manual/mock, not real-time.
          */
         post: {
             parameters: {
@@ -521,7 +521,7 @@ export interface paths {
         put?: never;
         /**
          * Create or update multiple manual price snapshots
-         * @description Requires admin role during the role transition.
+         * @description Requires admin or user role. Prices are scoped to the authenticated user.
          */
         post: {
             parameters: {
@@ -884,7 +884,7 @@ export interface paths {
         put?: never;
         /**
          * Create transaction
-         * @description Requires admin role during the role transition. Non-IDR transactions require `fx_rate_to_idr`.
+         * @description Requires admin or user role. Transactions are scoped to the authenticated user. Non-IDR transactions require `fx_rate_to_idr`.
          */
         post: {
             parameters: {
@@ -950,7 +950,7 @@ export interface paths {
         };
         /**
          * Update transaction
-         * @description Requires admin role during the role transition.
+         * @description Requires admin or user role. Transactions are scoped to the authenticated user.
          */
         put: {
             parameters: {
@@ -981,7 +981,7 @@ export interface paths {
         post?: never;
         /**
          * Delete transaction
-         * @description Requires admin role during the role transition.
+         * @description Requires admin or user role. Transactions are scoped to the authenticated user.
          */
         delete: {
             parameters: {
@@ -1041,7 +1041,7 @@ export interface paths {
         put?: never;
         /**
          * Create cash account
-         * @description Requires admin role during the role transition. Balances are manual in the MVP.
+         * @description Requires admin or user role. Cash accounts are scoped to the authenticated user. Balances are manual in the MVP.
          */
         post: {
             parameters: {
@@ -1107,7 +1107,7 @@ export interface paths {
         };
         /**
          * Update cash account
-         * @description Requires admin role during the role transition.
+         * @description Requires admin or user role. Cash accounts are scoped to the authenticated user.
          */
         put: {
             parameters: {
@@ -1138,7 +1138,7 @@ export interface paths {
         post?: never;
         /**
          * Soft-delete cash account
-         * @description Requires admin role during the role transition. Current implementation sets `is_active=false`.
+         * @description Requires admin or user role. Cash accounts are scoped to the authenticated user. Current implementation sets `is_active=false`.
          */
         delete: {
             parameters: {
@@ -1225,7 +1225,7 @@ export interface paths {
         put?: never;
         /**
          * Create cash adjustment
-         * @description Requires admin role during the role transition. Amount in the request must be positive; withdrawal and transfer_out are stored as negative ledger movements. Cash balances cannot become negative.
+         * @description Requires admin or user role. Adjustments are scoped to the authenticated user's cash account. Amount in the request must be positive; withdrawal and transfer_out are stored as negative ledger movements. Cash balances cannot become negative.
          */
         post: {
             parameters: {
@@ -1274,7 +1274,7 @@ export interface paths {
         put?: never;
         /**
          * Upload CSV/XLSX and create import preview
-         * @description Requires admin role during the role transition. Stores import job rows but does not write portfolio data until confirm.
+         * @description Requires admin or user role. Import jobs are scoped to the authenticated user. Stores import job rows but does not write portfolio data until confirm.
          */
         post: {
             parameters: {
@@ -1401,7 +1401,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm import job and write valid rows
-         * @description Requires admin role during the role transition. Writes instruments, transactions, cash accounts, manual prices, import row statuses, recalculates holdings in the same database transaction, and records the import audit log where applicable.
+         * @description Requires admin or user role. Writes user-scoped transactions, cash accounts, manual prices, import row statuses, recalculates holdings in the same database transaction, and records the import audit log where applicable. Instrument metadata remains shared during the assets-module transition.
          */
         post: {
             parameters: {

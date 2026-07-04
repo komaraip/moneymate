@@ -31,10 +31,10 @@ func (h Handler) TransactionRoutes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", h.listTransactions)
-	router.Post("/", auth.RequireAdmin()(http.HandlerFunc(h.createTransaction)).ServeHTTP)
+	router.Post("/", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.createTransaction)).ServeHTTP)
 	router.Get("/{id}", h.getTransaction)
-	router.Put("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.updateTransaction)).ServeHTTP)
-	router.Delete("/{id}", auth.RequireAdmin()(http.HandlerFunc(h.deleteTransaction)).ServeHTTP)
+	router.Put("/{id}", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.updateTransaction)).ServeHTTP)
+	router.Delete("/{id}", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.deleteTransaction)).ServeHTTP)
 
 	return router
 }
@@ -43,8 +43,8 @@ func (h Handler) PriceRoutes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", h.listPrices)
-	router.Post("/manual", auth.RequireAdmin()(http.HandlerFunc(h.createManualPrice)).ServeHTTP)
-	router.Post("/bulk-manual", auth.RequireAdmin()(http.HandlerFunc(h.createBulkManualPrices)).ServeHTTP)
+	router.Post("/manual", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.createManualPrice)).ServeHTTP)
+	router.Post("/bulk-manual", auth.RequireRoles("admin", "user")(http.HandlerFunc(h.createBulkManualPrices)).ServeHTTP)
 
 	return router
 }
@@ -77,6 +77,7 @@ type bulkManualPriceInput struct {
 }
 
 func (h Handler) listTransactions(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
 	rows, err := h.db.Query(r.Context(), `
 		SELECT t.id::text, t.instrument_id::text, i.name, i.ticker, t.transaction_date, t.type,
 		       t.price::float8, t.units::float8, t.gross_value::float8, t.fees::float8,
@@ -84,11 +85,12 @@ func (h Handler) listTransactions(w http.ResponseWriter, r *http.Request) {
 		       t.notes, t.source, t.created_by::text, t.created_at, t.updated_at
 		FROM transactions t
 		LEFT JOIN instruments i ON i.id = t.instrument_id
-		WHERE ($1 = '' OR t.type = $1)
-		  AND ($2 = '' OR t.instrument_id::text = $2)
+		WHERE t.user_id = $1
+		  AND ($2 = '' OR t.type = $2)
+		  AND ($3 = '' OR t.instrument_id::text = $3)
 		ORDER BY t.transaction_date DESC, t.created_at DESC
 		LIMIT 200
-	`, strings.TrimSpace(r.URL.Query().Get("type")), strings.TrimSpace(r.URL.Query().Get("instrument_id")))
+	`, user.ID, strings.TrimSpace(r.URL.Query().Get("type")), strings.TrimSpace(r.URL.Query().Get("instrument_id")))
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat transaksi"))
 		return
@@ -114,7 +116,8 @@ func (h Handler) getTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := h.getTransactionByID(r.Context(), id)
+	user, _ := auth.UserFromContext(r.Context())
+	item, err := h.getTransactionByID(r.Context(), id, user.ID)
 	if err != nil {
 		response.Error(w, r, mapGetErr(err, "Transaksi tidak ditemukan"))
 		return
@@ -138,11 +141,11 @@ func (h Handler) createTransaction(w http.ResponseWriter, r *http.Request) {
 	user, _ := auth.UserFromContext(r.Context())
 	var item domain.Transaction
 	err = h.db.QueryRow(r.Context(), `
-		INSERT INTO transactions (instrument_id, transaction_date, type, price, units, gross_value, fees, tax, net_value, currency, fx_rate_to_idr, notes, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		INSERT INTO transactions (user_id, instrument_id, transaction_date, type, price, units, gross_value, fees, tax, net_value, currency, fx_rate_to_idr, notes, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $1)
 		RETURNING id::text, instrument_id::text, NULL::text, NULL::text, transaction_date, type, price::float8, units::float8, gross_value::float8,
 		          fees::float8, tax::float8, net_value::float8, currency, fx_rate_to_idr::float8, notes, source, created_by::text, created_at, updated_at
-	`, normalized.InstrumentID, normalized.TransactionDate, normalized.Type, normalized.Price, normalized.Units, normalized.GrossValue, normalized.Fees, normalized.Tax, normalized.NetValue, normalized.Currency, normalized.FXRateToIDR, cleanPtr(normalized.Notes), user.ID).Scan(
+	`, user.ID, normalized.InstrumentID, normalized.TransactionDate, normalized.Type, normalized.Price, normalized.Units, normalized.GrossValue, normalized.Fees, normalized.Tax, normalized.NetValue, normalized.Currency, normalized.FXRateToIDR, cleanPtr(normalized.Notes)).Scan(
 		&item.ID, &item.InstrumentID, &item.InstrumentName, &item.InstrumentTicker, &item.TransactionDate, &item.Type, &item.Price, &item.Units, &item.GrossValue, &item.Fees, &item.Tax, &item.NetValue, &item.Currency, &item.FXRateToIDR, &item.Notes, &item.Source, &item.CreatedBy, &item.CreatedAt, &item.UpdatedAt,
 	)
 	if err != nil {
@@ -159,7 +162,8 @@ func (h Handler) updateTransaction(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	before, err := h.getTransactionByID(r.Context(), id)
+	user, _ := auth.UserFromContext(r.Context())
+	before, err := h.getTransactionByID(r.Context(), id, user.ID)
 	if err != nil {
 		response.Error(w, r, mapGetErr(err, "Transaksi tidak ditemukan"))
 		return
@@ -182,10 +186,10 @@ func (h Handler) updateTransaction(w http.ResponseWriter, r *http.Request) {
 		SET instrument_id = $2, transaction_date = $3, type = $4, price = $5, units = $6,
 		    gross_value = $7, fees = $8, tax = $9, net_value = $10, currency = $11,
 		    fx_rate_to_idr = $12, notes = $13, updated_at = now()
-		WHERE id = $1
+		WHERE id = $1 AND user_id = $14
 		RETURNING id::text, instrument_id::text, NULL::text, NULL::text, transaction_date, type, price::float8, units::float8, gross_value::float8,
 		          fees::float8, tax::float8, net_value::float8, currency, fx_rate_to_idr::float8, notes, source, created_by::text, created_at, updated_at
-	`, id, normalized.InstrumentID, normalized.TransactionDate, normalized.Type, normalized.Price, normalized.Units, normalized.GrossValue, normalized.Fees, normalized.Tax, normalized.NetValue, normalized.Currency, normalized.FXRateToIDR, cleanPtr(normalized.Notes)).Scan(
+	`, id, normalized.InstrumentID, normalized.TransactionDate, normalized.Type, normalized.Price, normalized.Units, normalized.GrossValue, normalized.Fees, normalized.Tax, normalized.NetValue, normalized.Currency, normalized.FXRateToIDR, cleanPtr(normalized.Notes), user.ID).Scan(
 		&item.ID, &item.InstrumentID, &item.InstrumentName, &item.InstrumentTicker, &item.TransactionDate, &item.Type, &item.Price, &item.Units, &item.GrossValue, &item.Fees, &item.Tax, &item.NetValue, &item.Currency, &item.FXRateToIDR, &item.Notes, &item.Source, &item.CreatedBy, &item.CreatedAt, &item.UpdatedAt,
 	)
 	if err != nil {
@@ -202,13 +206,14 @@ func (h Handler) deleteTransaction(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	before, err := h.getTransactionByID(r.Context(), id)
+	user, _ := auth.UserFromContext(r.Context())
+	before, err := h.getTransactionByID(r.Context(), id, user.ID)
 	if err != nil {
 		response.Error(w, r, mapGetErr(err, "Transaksi tidak ditemukan"))
 		return
 	}
 
-	if _, err := h.db.Exec(r.Context(), `DELETE FROM transactions WHERE id = $1`, id); err != nil {
+	if _, err := h.db.Exec(r.Context(), `DELETE FROM transactions WHERE id = $1 AND user_id = $2`, id, user.ID); err != nil {
 		response.Error(w, r, internalErr(err, "Gagal menghapus transaksi"))
 		return
 	}
@@ -218,14 +223,16 @@ func (h Handler) deleteTransaction(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) listPrices(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
 	instrumentID := strings.TrimSpace(r.URL.Query().Get("instrument_id"))
 	rows, err := h.db.Query(r.Context(), `
 		SELECT id::text, instrument_id::text, price_date, price::float8, currency, fx_rate_to_idr::float8, source, is_realtime, created_at
 		FROM price_snapshots
-		WHERE ($1 = '' OR instrument_id::text = $1)
+		WHERE user_id = $1
+		  AND ($2 = '' OR instrument_id::text = $2)
 		ORDER BY price_date DESC, created_at DESC
 		LIMIT 200
-	`, instrumentID)
+	`, user.ID, instrumentID)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat harga"))
 		return
@@ -255,7 +262,8 @@ func (h Handler) createManualPrice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := h.insertManualPrice(r.Context(), input)
+	user, _ := auth.UserFromContext(r.Context())
+	item, err := h.insertManualPrice(r.Context(), user.ID, input)
 	if err != nil {
 		response.Error(w, r, err)
 		return
@@ -281,7 +289,8 @@ func (h Handler) createBulkManualPrices(w http.ResponseWriter, r *http.Request) 
 
 	items := []domain.PriceSnapshot{}
 	for _, priceInput := range input.Prices {
-		item, err := h.insertManualPrice(r.Context(), priceInput)
+		user, _ := auth.UserFromContext(r.Context())
+		item, err := h.insertManualPrice(r.Context(), user.ID, priceInput)
 		if err != nil {
 			response.Error(w, r, err)
 			return
@@ -296,7 +305,7 @@ func (h Handler) createBulkManualPrices(w http.ResponseWriter, r *http.Request) 
 	}, nil)
 }
 
-func (h Handler) insertManualPrice(ctx context.Context, input manualPriceInput) (domain.PriceSnapshot, error) {
+func (h Handler) insertManualPrice(ctx context.Context, userID string, input manualPriceInput) (domain.PriceSnapshot, error) {
 	if _, err := uuid.Parse(strings.TrimSpace(input.InstrumentID)); err != nil {
 		return domain.PriceSnapshot{}, validation("Instrument ID tidak valid")
 	}
@@ -318,16 +327,16 @@ func (h Handler) insertManualPrice(ctx context.Context, input manualPriceInput) 
 
 	var item domain.PriceSnapshot
 	err := h.db.QueryRow(ctx, `
-		INSERT INTO price_snapshots (instrument_id, price_date, price, currency, fx_rate_to_idr, source, is_realtime)
-		VALUES ($1, $2, $3, $4, $5, 'manual', FALSE)
-		ON CONFLICT (instrument_id, price_date, source) DO UPDATE
+		INSERT INTO price_snapshots (user_id, instrument_id, price_date, price, currency, fx_rate_to_idr, source, is_realtime)
+		VALUES ($1, $2, $3, $4, $5, $6, 'manual', FALSE)
+		ON CONFLICT (user_id, instrument_id, price_date, source) DO UPDATE
 		SET price = EXCLUDED.price,
 		    currency = EXCLUDED.currency,
 		    fx_rate_to_idr = EXCLUDED.fx_rate_to_idr,
 		    is_realtime = FALSE,
 		    created_at = now()
 		RETURNING id::text, instrument_id::text, price_date, price::float8, currency, fx_rate_to_idr::float8, source, is_realtime, created_at
-	`, input.InstrumentID, priceDate.Format("2006-01-02"), input.Price, strings.ToUpper(input.Currency), input.FXRateToIDR).Scan(
+	`, userID, input.InstrumentID, priceDate.Format("2006-01-02"), input.Price, strings.ToUpper(input.Currency), input.FXRateToIDR).Scan(
 		&item.ID, &item.InstrumentID, &item.PriceDate, &item.Price, &item.Currency, &item.FXRateToIDR, &item.Source, &item.IsRealtime, &item.CreatedAt,
 	)
 	if err != nil {
@@ -411,7 +420,7 @@ func normalizeTransaction(input transactionInput) (normalizedTransaction, error)
 	}, nil
 }
 
-func (h Handler) getTransactionByID(ctx context.Context, id string) (domain.Transaction, error) {
+func (h Handler) getTransactionByID(ctx context.Context, id string, userID string) (domain.Transaction, error) {
 	return scanTransaction(h.db.QueryRow(ctx, `
 		SELECT t.id::text, t.instrument_id::text, i.name, i.ticker, t.transaction_date, t.type,
 		       t.price::float8, t.units::float8, t.gross_value::float8, t.fees::float8,
@@ -419,8 +428,8 @@ func (h Handler) getTransactionByID(ctx context.Context, id string) (domain.Tran
 		       t.notes, t.source, t.created_by::text, t.created_at, t.updated_at
 		FROM transactions t
 		LEFT JOIN instruments i ON i.id = t.instrument_id
-		WHERE t.id = $1
-	`, id))
+		WHERE t.id = $1 AND t.user_id = $2
+	`, id, userID))
 }
 
 type scanner interface {

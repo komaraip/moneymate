@@ -38,7 +38,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = db.Exec(ctx, `
+	var adminID string
+	err = db.QueryRow(ctx, `
 		INSERT INTO users (email, full_name, password_hash, role)
 		VALUES ($1, $2, $3, 'admin')
 		ON CONFLICT (email) DO UPDATE
@@ -47,17 +48,18 @@ func main() {
 		    role = 'admin',
 		    is_active = TRUE,
 		    updated_at = now()
-	`, email, fullName, passwordHash)
+		RETURNING id::text
+	`, email, fullName, passwordHash).Scan(&adminID)
 	if err != nil {
 		logger.Error("seed admin failed", "error", err)
 		os.Exit(1)
 	}
 
-	if err := seedMasterData(ctx, db); err != nil {
+	if err := seedMasterData(ctx, db, adminID); err != nil {
 		logger.Error("seed master data failed", "error", err)
 		os.Exit(1)
 	}
-	if err := seedTransactionsAndPrices(ctx, db); err != nil {
+	if err := seedTransactionsAndPrices(ctx, db, adminID); err != nil {
 		logger.Error("seed transactions and prices failed", "error", err)
 		os.Exit(1)
 	}
@@ -65,7 +67,7 @@ func main() {
 	logger.Info("seed admin complete", "email", email)
 }
 
-func seedMasterData(ctx context.Context, db *pgxpool.Pool) error {
+func seedMasterData(ctx context.Context, db *pgxpool.Pool, userID string) error {
 	categories := []struct {
 		name      string
 		colorKey  string
@@ -145,12 +147,12 @@ func seedMasterData(ctx context.Context, db *pgxpool.Pool) error {
 
 	for _, account := range cashAccounts {
 		if _, err := db.Exec(ctx, `
-			INSERT INTO cash_accounts (account_name, account_type, currency, balance)
-			SELECT $1, 'bank', 'IDR', $2
+			INSERT INTO cash_accounts (user_id, account_name, account_type, currency, balance)
+			SELECT $3, $1, 'bank', 'IDR', $2
 			WHERE NOT EXISTS (
-				SELECT 1 FROM cash_accounts WHERE account_name = $1 AND currency = 'IDR'
+				SELECT 1 FROM cash_accounts WHERE user_id = $3 AND account_name = $1 AND currency = 'IDR'
 			)
-		`, account.name, account.balance); err != nil {
+		`, account.name, account.balance, userID); err != nil {
 			return err
 		}
 	}
@@ -162,7 +164,7 @@ func ptr(value string) *string {
 	return &value
 }
 
-func seedTransactionsAndPrices(ctx context.Context, db *pgxpool.Pool) error {
+func seedTransactionsAndPrices(ctx context.Context, db *pgxpool.Pool, userID string) error {
 	transactions := []struct {
 		date     string
 		kind     string
@@ -190,8 +192,8 @@ func seedTransactionsAndPrices(ctx context.Context, db *pgxpool.Pool) error {
 
 	for _, tx := range transactions {
 		if _, err := db.Exec(ctx, `
-			INSERT INTO transactions (instrument_id, transaction_date, type, price, units, gross_value, net_value, currency, fx_rate_to_idr, source)
-			SELECT i.id, $4::date, $5, $6, $7, $8, $8, $9, $10, 'manual_seed'
+			INSERT INTO transactions (user_id, instrument_id, transaction_date, type, price, units, gross_value, net_value, currency, fx_rate_to_idr, source, created_by)
+			SELECT $11, i.id, $4::date, $5, $6, $7, $8, $8, $9, $10, 'manual_seed', $11
 			FROM instruments i
 			WHERE i.type = $1
 			  AND COALESCE(i.ticker, '') = COALESCE($2, '')
@@ -199,13 +201,14 @@ func seedTransactionsAndPrices(ctx context.Context, db *pgxpool.Pool) error {
 			  AND NOT EXISTS (
 				  SELECT 1
 				  FROM transactions t
-				  WHERE t.instrument_id = i.id
+				  WHERE t.user_id = $11
+				    AND t.instrument_id = i.id
 				    AND t.transaction_date = $4::date
 				    AND t.type = $5
 				    AND t.price = $6
 				    AND t.units = $7
 			  )
-		`, tx.kind, tx.ticker, tx.name, tx.date, tx.txType, tx.price, tx.units, tx.netValue, tx.currency, tx.fxRate); err != nil {
+		`, tx.kind, tx.ticker, tx.name, tx.date, tx.txType, tx.price, tx.units, tx.netValue, tx.currency, tx.fxRate, userID); err != nil {
 			return err
 		}
 	}
@@ -226,18 +229,18 @@ func seedTransactionsAndPrices(ctx context.Context, db *pgxpool.Pool) error {
 
 	for _, price := range prices {
 		if _, err := db.Exec(ctx, `
-			INSERT INTO price_snapshots (instrument_id, price_date, price, currency, fx_rate_to_idr, source, is_realtime)
-			SELECT i.id, DATE '2026-06-30', $4, $5, $6, 'manual', FALSE
+			INSERT INTO price_snapshots (user_id, instrument_id, price_date, price, currency, fx_rate_to_idr, source, is_realtime)
+			SELECT $7, i.id, DATE '2026-06-30', $4, $5, $6, 'manual', FALSE
 			FROM instruments i
 			WHERE i.type = $1
 			  AND COALESCE(i.ticker, '') = COALESCE($2, '')
 			  AND i.name = $3
-			ON CONFLICT (instrument_id, price_date, source) DO UPDATE
+			ON CONFLICT (user_id, instrument_id, price_date, source) DO UPDATE
 			SET price = EXCLUDED.price,
 			    currency = EXCLUDED.currency,
 			    fx_rate_to_idr = EXCLUDED.fx_rate_to_idr,
 			    is_realtime = FALSE
-		`, price.kind, price.ticker, price.name, price.price, price.currency, price.fxRate); err != nil {
+		`, price.kind, price.ticker, price.name, price.price, price.currency, price.fxRate, userID); err != nil {
 			return err
 		}
 	}

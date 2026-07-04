@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"moneymate/backend/internal/apperror"
+	"moneymate/backend/internal/auth"
 	"moneymate/backend/internal/config"
 	"moneymate/backend/internal/httpapi/response"
 )
@@ -174,7 +175,8 @@ type snapshotSummary struct {
 }
 
 func (h Handler) monthlySummary(w http.ResponseWriter, r *http.Request) {
-	monthStart, err := h.parseMonth(r.Context(), strings.TrimSpace(r.URL.Query().Get("month")))
+	user, _ := auth.UserFromContext(r.Context())
+	monthStart, err := h.parseMonth(r.Context(), user.ID, strings.TrimSpace(r.URL.Query().Get("month")))
 	if err != nil {
 		response.Error(w, r, err)
 		return
@@ -182,43 +184,43 @@ func (h Handler) monthlySummary(w http.ResponseWriter, r *http.Request) {
 	nextMonth := monthStart.AddDate(0, 1, 0)
 	monthEnd := nextMonth.AddDate(0, 0, -1)
 
-	ending, err := h.latestSnapshotSummary(r.Context(), monthEnd)
+	ending, err := h.latestSnapshotSummary(r.Context(), user.ID, monthEnd)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat snapshot portfolio"))
 		return
 	}
-	cash, err := h.cashSummary(r.Context())
+	cash, err := h.cashSummary(r.Context(), user.ID)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat ringkasan cash"))
 		return
 	}
-	cashMovements, cashNetMovement, err := h.cashMovementTotals(r.Context(), monthStart, nextMonth)
+	cashMovements, cashNetMovement, err := h.cashMovementTotals(r.Context(), user.ID, monthStart, nextMonth)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat pergerakan cash"))
 		return
 	}
-	assetTotals, err := h.transactionTotalsByAssetType(r.Context(), monthStart, nextMonth)
+	assetTotals, err := h.transactionTotalsByAssetType(r.Context(), user.ID, monthStart, nextMonth)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat total transaksi per aset"))
 		return
 	}
-	instrumentTotals, err := h.transactionTotalsByInstrument(r.Context(), monthStart, nextMonth)
+	instrumentTotals, err := h.transactionTotalsByInstrument(r.Context(), user.ID, monthStart, nextMonth)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat total transaksi per instrumen"))
 		return
 	}
-	contributors, err := h.holdingContributions(r.Context(), ending.Date, "DESC")
+	contributors, err := h.holdingContributions(r.Context(), user.ID, ending.Date, "DESC")
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat kontributor portfolio"))
 		return
 	}
-	detractors, err := h.holdingContributions(r.Context(), ending.Date, "ASC")
+	detractors, err := h.holdingContributions(r.Context(), user.ID, ending.Date, "ASC")
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat detraktor portfolio"))
 		return
 	}
 
-	warnings, err := h.reportWarnings(r.Context(), ending.Date, monthStart, nextMonth)
+	warnings, err := h.reportWarnings(r.Context(), user.ID, ending.Date, monthStart, nextMonth)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat catatan kualitas data"))
 		return
@@ -255,7 +257,8 @@ func (h Handler) monthlySummary(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) portfolioPerformance(w http.ResponseWriter, r *http.Request) {
-	fromDate, toDate, err := h.parseDateRange(r.Context(), r.URL.Query().Get("from"), r.URL.Query().Get("to"))
+	user, _ := auth.UserFromContext(r.Context())
+	fromDate, toDate, err := h.parseDateRange(r.Context(), user.ID, r.URL.Query().Get("from"), r.URL.Query().Get("to"))
 	if err != nil {
 		response.Error(w, r, err)
 		return
@@ -265,38 +268,38 @@ func (h Handler) portfolioPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	starting, err := h.latestSnapshotSummary(r.Context(), fromDate)
+	starting, err := h.latestSnapshotSummary(r.Context(), user.ID, fromDate)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat snapshot awal"))
 		return
 	}
-	ending, err := h.latestSnapshotSummary(r.Context(), toDate)
+	ending, err := h.latestSnapshotSummary(r.Context(), user.ID, toDate)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat snapshot akhir"))
 		return
 	}
-	cash, err := h.cashSummary(r.Context())
+	cash, err := h.cashSummary(r.Context(), user.ID)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat ringkasan cash"))
 		return
 	}
-	_, cashPeriodMovement, err := h.cashMovementTotals(r.Context(), fromDate, toDate.AddDate(0, 0, 1))
+	_, cashPeriodMovement, err := h.cashMovementTotals(r.Context(), user.ID, fromDate, toDate.AddDate(0, 0, 1))
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat pergerakan cash"))
 		return
 	}
 	cash.PeriodMovement = cashPeriodMovement
-	allocation, err := h.allocationBreakdown(r.Context(), ending.Date, cash.TotalCash)
+	allocation, err := h.allocationBreakdown(r.Context(), user.ID, ending.Date, cash.TotalCash)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat alokasi portfolio"))
 		return
 	}
-	holdings, err := h.holdingsPerformance(r.Context(), ending.Date)
+	holdings, err := h.holdingsPerformance(r.Context(), user.ID, ending.Date)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat performa holdings"))
 		return
 	}
-	warnings, err := h.reportWarnings(r.Context(), ending.Date, fromDate, toDate.AddDate(0, 0, 1))
+	warnings, err := h.reportWarnings(r.Context(), user.ID, ending.Date, fromDate, toDate.AddDate(0, 0, 1))
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat catatan kualitas data"))
 		return
@@ -342,6 +345,7 @@ func (h Handler) portfolioPerformance(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) exportCSV(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
 	var buffer bytes.Buffer
 	writer := csv.NewWriter(&buffer)
 	header := []string{
@@ -364,19 +368,19 @@ func (h Handler) exportCSV(w http.ResponseWriter, r *http.Request) {
 		"note":         dataNotRealtimeNote,
 	}))
 
-	if err := h.writeHoldingsCSV(r.Context(), writer, header, generatedAt); err != nil {
+	if err := h.writeHoldingsCSV(r.Context(), user.ID, writer, header, generatedAt); err != nil {
 		response.Error(w, r, internalErr(err, "Gagal export holdings"))
 		return
 	}
-	if err := h.writeTransactionsCSV(r.Context(), writer, header, generatedAt); err != nil {
+	if err := h.writeTransactionsCSV(r.Context(), user.ID, writer, header, generatedAt); err != nil {
 		response.Error(w, r, internalErr(err, "Gagal export transaksi"))
 		return
 	}
-	if err := h.writeCashCSV(r.Context(), writer, header, generatedAt); err != nil {
+	if err := h.writeCashCSV(r.Context(), user.ID, writer, header, generatedAt); err != nil {
 		response.Error(w, r, internalErr(err, "Gagal export akun cash"))
 		return
 	}
-	if err := h.writePricesCSV(r.Context(), writer, header, generatedAt); err != nil {
+	if err := h.writePricesCSV(r.Context(), user.ID, writer, header, generatedAt); err != nil {
 		response.Error(w, r, internalErr(err, "Gagal export harga manual"))
 		return
 	}
@@ -393,9 +397,9 @@ func (h Handler) exportCSV(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(buffer.Bytes())
 }
 
-func (h Handler) parseMonth(ctx context.Context, raw string) (time.Time, error) {
+func (h Handler) parseMonth(ctx context.Context, userID string, raw string) (time.Time, error) {
 	if raw == "" {
-		latest, err := h.latestSnapshotDate(ctx)
+		latest, err := h.latestSnapshotDate(ctx, userID)
 		if err != nil {
 			return time.Time{}, internalErr(err, "Gagal memuat bulan laporan default")
 		}
@@ -412,8 +416,8 @@ func (h Handler) parseMonth(ctx context.Context, raw string) (time.Time, error) 
 	return parsed, nil
 }
 
-func (h Handler) parseDateRange(ctx context.Context, rawFrom string, rawTo string) (time.Time, time.Time, error) {
-	latest, err := h.latestSnapshotDate(ctx)
+func (h Handler) parseDateRange(ctx context.Context, userID string, rawFrom string, rawTo string) (time.Time, time.Time, error) {
+	latest, err := h.latestSnapshotDate(ctx, userID)
 	if err != nil {
 		return time.Time{}, time.Time{}, internalErr(err, "Gagal memuat tanggal laporan default")
 	}
@@ -442,40 +446,41 @@ func (h Handler) parseDateRange(ctx context.Context, rawFrom string, rawTo strin
 	return from, to, nil
 }
 
-func (h Handler) latestSnapshotDate(ctx context.Context) (*time.Time, error) {
+func (h Handler) latestSnapshotDate(ctx context.Context, userID string) (*time.Time, error) {
 	var date *time.Time
-	if err := h.db.QueryRow(ctx, `SELECT MAX(snapshot_date) FROM holdings_snapshot`).Scan(&date); err != nil {
+	if err := h.db.QueryRow(ctx, `SELECT MAX(snapshot_date) FROM holdings_snapshot WHERE user_id = $1`, userID).Scan(&date); err != nil {
 		return nil, err
 	}
 	return date, nil
 }
 
-func (h Handler) latestSnapshotSummary(ctx context.Context, onOrBefore time.Time) (snapshotSummary, error) {
+func (h Handler) latestSnapshotSummary(ctx context.Context, userID string, onOrBefore time.Time) (snapshotSummary, error) {
 	var summary snapshotSummary
 	err := h.db.QueryRow(ctx, `
 		WITH latest_date AS (
 			SELECT MAX(snapshot_date) AS snapshot_date
 			FROM holdings_snapshot
-			WHERE snapshot_date <= $1::date
+			WHERE user_id = $1
+			  AND snapshot_date <= $2::date
 		)
 		SELECT latest_date.snapshot_date,
 		       COALESCE(SUM(hs.current_value), 0)::float8,
 		       COALESCE(SUM(hs.total_cost), 0)::float8,
 		       COALESCE(SUM(hs.profit_loss_value), 0)::float8
 		FROM latest_date
-		LEFT JOIN holdings_snapshot hs ON hs.snapshot_date = latest_date.snapshot_date
+		LEFT JOIN holdings_snapshot hs ON hs.user_id = $1 AND hs.snapshot_date = latest_date.snapshot_date
 		GROUP BY latest_date.snapshot_date
-	`, onOrBefore.Format("2006-01-02")).Scan(&summary.Date, &summary.PortfolioValue, &summary.TotalCost, &summary.UnrealizedPL)
+	`, userID, onOrBefore.Format("2006-01-02")).Scan(&summary.Date, &summary.PortfolioValue, &summary.TotalCost, &summary.UnrealizedPL)
 	return summary, err
 }
 
-func (h Handler) cashSummary(ctx context.Context) (CashSummary, error) {
+func (h Handler) cashSummary(ctx context.Context, userID string) (CashSummary, error) {
 	var summary CashSummary
 	err := h.db.QueryRow(ctx, `
 		SELECT COALESCE(SUM(balance), 0)::float8, COUNT(*)::int
 		FROM cash_accounts
-		WHERE is_active = TRUE
-	`).Scan(&summary.TotalCash, &summary.ActiveAccounts)
+		WHERE user_id = $1 AND is_active = TRUE
+	`, userID).Scan(&summary.TotalCash, &summary.ActiveAccounts)
 	if err != nil {
 		return CashSummary{}, err
 	}
@@ -486,14 +491,15 @@ func (h Handler) cashSummary(ctx context.Context) (CashSummary, error) {
 	return summary, nil
 }
 
-func (h Handler) cashMovementTotals(ctx context.Context, from time.Time, toExclusive time.Time) ([]CashMovementTotal, float64, error) {
+func (h Handler) cashMovementTotals(ctx context.Context, userID string, from time.Time, toExclusive time.Time) ([]CashMovementTotal, float64, error) {
 	rows, err := h.db.Query(ctx, `
 		SELECT type, COUNT(*)::int, COALESCE(SUM(amount), 0)::float8
 		FROM cash_adjustments
-		WHERE adjustment_date >= $1::date AND adjustment_date < $2::date
+		WHERE user_id = $1
+		  AND adjustment_date >= $2::date AND adjustment_date < $3::date
 		GROUP BY type
 		ORDER BY type
-	`, from.Format("2006-01-02"), toExclusive.Format("2006-01-02"))
+	`, userID, from.Format("2006-01-02"), toExclusive.Format("2006-01-02"))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -513,7 +519,7 @@ func (h Handler) cashMovementTotals(ctx context.Context, from time.Time, toExclu
 	return items, round2(total), rows.Err()
 }
 
-func (h Handler) transactionTotalsByAssetType(ctx context.Context, from time.Time, toExclusive time.Time) ([]TransactionTotal, error) {
+func (h Handler) transactionTotalsByAssetType(ctx context.Context, userID string, from time.Time, toExclusive time.Time) ([]TransactionTotal, error) {
 	rows, err := h.db.Query(ctx, `
 		SELECT COALESCE(i.type, 'other') AS asset_type,
 		       t.type,
@@ -521,10 +527,11 @@ func (h Handler) transactionTotalsByAssetType(ctx context.Context, from time.Tim
 		       COALESCE(SUM(CASE WHEN t.currency = 'IDR' OR t.fx_rate_to_idr IS NULL THEN t.net_value ELSE t.net_value * t.fx_rate_to_idr END), 0)::float8
 		FROM transactions t
 		LEFT JOIN instruments i ON i.id = t.instrument_id
-		WHERE t.transaction_date >= $1::date AND t.transaction_date < $2::date
+		WHERE t.user_id = $1
+		  AND t.transaction_date >= $2::date AND t.transaction_date < $3::date
 		GROUP BY COALESCE(i.type, 'other'), t.type
 		ORDER BY asset_type, t.type
-	`, from.Format("2006-01-02"), toExclusive.Format("2006-01-02"))
+	`, userID, from.Format("2006-01-02"), toExclusive.Format("2006-01-02"))
 	if err != nil {
 		return nil, err
 	}
@@ -542,7 +549,7 @@ func (h Handler) transactionTotalsByAssetType(ctx context.Context, from time.Tim
 	return items, rows.Err()
 }
 
-func (h Handler) transactionTotalsByInstrument(ctx context.Context, from time.Time, toExclusive time.Time) ([]InstrumentTotal, error) {
+func (h Handler) transactionTotalsByInstrument(ctx context.Context, userID string, from time.Time, toExclusive time.Time) ([]InstrumentTotal, error) {
 	rows, err := h.db.Query(ctx, `
 		SELECT t.instrument_id::text,
 		       i.ticker,
@@ -554,10 +561,11 @@ func (h Handler) transactionTotalsByInstrument(ctx context.Context, from time.Ti
 		       COALESCE(SUM(CASE WHEN t.currency = 'IDR' OR t.fx_rate_to_idr IS NULL THEN t.net_value ELSE t.net_value * t.fx_rate_to_idr END), 0)::float8
 		FROM transactions t
 		LEFT JOIN instruments i ON i.id = t.instrument_id
-		WHERE t.transaction_date >= $1::date AND t.transaction_date < $2::date
+		WHERE t.user_id = $1
+		  AND t.transaction_date >= $2::date AND t.transaction_date < $3::date
 		GROUP BY t.instrument_id, i.ticker, COALESCE(i.name, 'Tanpa Instrumen'), COALESCE(i.type, 'other'), t.currency, t.type
 		ORDER BY name, t.type
-	`, from.Format("2006-01-02"), toExclusive.Format("2006-01-02"))
+	`, userID, from.Format("2006-01-02"), toExclusive.Format("2006-01-02"))
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +583,7 @@ func (h Handler) transactionTotalsByInstrument(ctx context.Context, from time.Ti
 	return items, rows.Err()
 }
 
-func (h Handler) holdingContributions(ctx context.Context, snapshotDate *time.Time, direction string) ([]HoldingContribution, error) {
+func (h Handler) holdingContributions(ctx context.Context, userID string, snapshotDate *time.Time, direction string) ([]HoldingContribution, error) {
 	if snapshotDate == nil {
 		return []HoldingContribution{}, nil
 	}
@@ -589,10 +597,11 @@ func (h Handler) holdingContributions(ctx context.Context, snapshotDate *time.Ti
 		       hs.price_source, hs.warnings
 		FROM holdings_snapshot hs
 		JOIN instruments i ON i.id = hs.instrument_id
-		WHERE hs.snapshot_date = $1::date
+		WHERE hs.user_id = $1
+		  AND hs.snapshot_date = $2::date
 		ORDER BY hs.profit_loss_value %s
 		LIMIT 3
-	`, orderDirection), snapshotDate.Format("2006-01-02"))
+	`, orderDirection), userID, snapshotDate.Format("2006-01-02"))
 	if err != nil {
 		return nil, err
 	}
@@ -613,7 +622,7 @@ func (h Handler) holdingContributions(ctx context.Context, snapshotDate *time.Ti
 	return items, rows.Err()
 }
 
-func (h Handler) allocationBreakdown(ctx context.Context, snapshotDate *time.Time, totalCash float64) ([]AllocationRow, error) {
+func (h Handler) allocationBreakdown(ctx context.Context, userID string, snapshotDate *time.Time, totalCash float64) ([]AllocationRow, error) {
 	items := []AllocationRow{}
 	if snapshotDate != nil {
 		rows, err := h.db.Query(ctx, `
@@ -622,10 +631,11 @@ func (h Handler) allocationBreakdown(ctx context.Context, snapshotDate *time.Tim
 			JOIN instruments i ON i.id = hs.instrument_id
 			LEFT JOIN instrument_categories ic ON ic.instrument_id = i.id
 			LEFT JOIN asset_categories ac ON ac.id = ic.category_id
-			WHERE hs.snapshot_date = $1::date
+			WHERE hs.user_id = $1
+			  AND hs.snapshot_date = $2::date
 			GROUP BY COALESCE(ac.name, i.type)
 			ORDER BY value DESC
-		`, snapshotDate.Format("2006-01-02"))
+		`, userID, snapshotDate.Format("2006-01-02"))
 		if err != nil {
 			return nil, err
 		}
@@ -658,7 +668,7 @@ func (h Handler) allocationBreakdown(ctx context.Context, snapshotDate *time.Tim
 	return items, nil
 }
 
-func (h Handler) holdingsPerformance(ctx context.Context, snapshotDate *time.Time) ([]HoldingPerformance, error) {
+func (h Handler) holdingsPerformance(ctx context.Context, userID string, snapshotDate *time.Time) ([]HoldingPerformance, error) {
 	if snapshotDate == nil {
 		return []HoldingPerformance{}, nil
 	}
@@ -673,13 +683,15 @@ func (h Handler) holdingsPerformance(ctx context.Context, snapshotDate *time.Tim
 		LEFT JOIN LATERAL (
 			SELECT price, currency, fx_rate_to_idr
 			FROM price_snapshots ps
-			WHERE ps.instrument_id = i.id
+			WHERE ps.user_id = $1
+			  AND ps.instrument_id = i.id
 			ORDER BY ps.price_date DESC, ps.created_at DESC
 			LIMIT 1
 		) lp ON TRUE
-		WHERE hs.snapshot_date = $1::date
+		WHERE hs.user_id = $1
+		  AND hs.snapshot_date = $2::date
 		ORDER BY hs.current_value DESC
-	`, snapshotDate.Format("2006-01-02"))
+	`, userID, snapshotDate.Format("2006-01-02"))
 	if err != nil {
 		return nil, err
 	}
@@ -709,7 +721,7 @@ func (h Handler) holdingsPerformance(ctx context.Context, snapshotDate *time.Tim
 	return items, rows.Err()
 }
 
-func (h Handler) reportWarnings(ctx context.Context, snapshotDate *time.Time, from time.Time, toExclusive time.Time) ([]ReportWarning, error) {
+func (h Handler) reportWarnings(ctx context.Context, userID string, snapshotDate *time.Time, from time.Time, toExclusive time.Time) ([]ReportWarning, error) {
 	warnings := []ReportWarning{
 		warning("DATA_NOT_REALTIME", "Semua harga MVP berasal dari input manual/mock dan bukan real-time.", "info"),
 		warning("NO_RECOMMENDATION", "Laporan tidak berisi rekomendasi beli/jual.", "info"),
@@ -720,11 +732,12 @@ func (h Handler) reportWarnings(ctx context.Context, snapshotDate *time.Time, fr
 	if err := h.db.QueryRow(ctx, `
 		SELECT COUNT(*)::int
 		FROM transactions
-		WHERE transaction_date >= $1::date
-		  AND transaction_date < $2::date
+		WHERE user_id = $1
+		  AND transaction_date >= $2::date
+		  AND transaction_date < $3::date
 		  AND currency <> 'IDR'
 		  AND fx_rate_to_idr IS NULL
-	`, from.Format("2006-01-02"), toExclusive.Format("2006-01-02")).Scan(&missingFXTransactions); err != nil {
+	`, userID, from.Format("2006-01-02"), toExclusive.Format("2006-01-02")).Scan(&missingFXTransactions); err != nil {
 		return nil, err
 	}
 	if missingFXTransactions > 0 {
@@ -735,9 +748,10 @@ func (h Handler) reportWarnings(ctx context.Context, snapshotDate *time.Time, fr
 	if err := h.db.QueryRow(ctx, `
 		SELECT COUNT(*)::int
 		FROM price_snapshots
-		WHERE currency <> 'IDR'
+		WHERE user_id = $1
+		  AND currency <> 'IDR'
 		  AND fx_rate_to_idr IS NULL
-	`).Scan(&missingFXPrices); err != nil {
+	`, userID).Scan(&missingFXPrices); err != nil {
 		return nil, err
 	}
 	if missingFXPrices > 0 {
@@ -753,10 +767,11 @@ func (h Handler) reportWarnings(ctx context.Context, snapshotDate *time.Time, fr
 	if err := h.db.QueryRow(ctx, `
 		SELECT COUNT(*)::int
 		FROM holdings_snapshot
-		WHERE snapshot_date = $1::date
+		WHERE user_id = $1
+		  AND snapshot_date = $2::date
 		  AND price_updated_at IS NOT NULL
 		  AND price_updated_at < now() - INTERVAL '7 days'
-	`, snapshotDate.Format("2006-01-02")).Scan(&stalePrices); err != nil {
+	`, userID, snapshotDate.Format("2006-01-02")).Scan(&stalePrices); err != nil {
 		return nil, err
 	}
 	if stalePrices > 0 {
@@ -767,9 +782,10 @@ func (h Handler) reportWarnings(ctx context.Context, snapshotDate *time.Time, fr
 		SELECT i.name, hs.warnings
 		FROM holdings_snapshot hs
 		JOIN instruments i ON i.id = hs.instrument_id
-		WHERE hs.snapshot_date = $1::date
+		WHERE hs.user_id = $1
+		  AND hs.snapshot_date = $2::date
 		  AND jsonb_array_length(hs.warnings) > 0
-	`, snapshotDate.Format("2006-01-02"))
+	`, userID, snapshotDate.Format("2006-01-02"))
 	if err != nil {
 		return nil, err
 	}
@@ -787,8 +803,8 @@ func (h Handler) reportWarnings(ctx context.Context, snapshotDate *time.Time, fr
 	return warnings, rows.Err()
 }
 
-func (h Handler) writeHoldingsCSV(ctx context.Context, writer *csv.Writer, header []string, generatedAt string) error {
-	latest, err := h.latestSnapshotDate(ctx)
+func (h Handler) writeHoldingsCSV(ctx context.Context, userID string, writer *csv.Writer, header []string, generatedAt string) error {
+	latest, err := h.latestSnapshotDate(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -802,9 +818,10 @@ func (h Handler) writeHoldingsCSV(ctx context.Context, writer *csv.Writer, heade
 		       hs.currency, i.currency, hs.price_source, hs.warnings
 		FROM holdings_snapshot hs
 		JOIN instruments i ON i.id = hs.instrument_id
-		WHERE hs.snapshot_date = $1::date
+		WHERE hs.user_id = $1
+		  AND hs.snapshot_date = $2::date
 		ORDER BY hs.current_value DESC
-	`, latest.Format("2006-01-02"))
+	`, userID, latest.Format("2006-01-02"))
 	if err != nil {
 		return err
 	}
@@ -845,15 +862,16 @@ func (h Handler) writeHoldingsCSV(ctx context.Context, writer *csv.Writer, heade
 	return rows.Err()
 }
 
-func (h Handler) writeTransactionsCSV(ctx context.Context, writer *csv.Writer, header []string, generatedAt string) error {
+func (h Handler) writeTransactionsCSV(ctx context.Context, userID string, writer *csv.Writer, header []string, generatedAt string) error {
 	rows, err := h.db.Query(ctx, `
 		SELECT t.id::text, t.transaction_date, i.type, i.ticker, i.name, t.type,
 		       t.units::float8, t.price::float8, t.gross_value::float8, t.fees::float8,
 		       t.tax::float8, t.net_value::float8, t.currency, t.fx_rate_to_idr::float8, t.source
 		FROM transactions t
 		LEFT JOIN instruments i ON i.id = t.instrument_id
+		WHERE t.user_id = $1
 		ORDER BY t.transaction_date DESC, t.created_at DESC
-	`)
+	`, userID)
 	if err != nil {
 		return err
 	}
@@ -899,12 +917,13 @@ func (h Handler) writeTransactionsCSV(ctx context.Context, writer *csv.Writer, h
 	return rows.Err()
 }
 
-func (h Handler) writeCashCSV(ctx context.Context, writer *csv.Writer, header []string, generatedAt string) error {
+func (h Handler) writeCashCSV(ctx context.Context, userID string, writer *csv.Writer, header []string, generatedAt string) error {
 	rows, err := h.db.Query(ctx, `
 		SELECT id::text, account_name, account_type, currency, balance::float8, is_active
 		FROM cash_accounts
+		WHERE user_id = $1
 		ORDER BY account_name
-	`)
+	`, userID)
 	if err != nil {
 		return err
 	}
@@ -933,14 +952,15 @@ func (h Handler) writeCashCSV(ctx context.Context, writer *csv.Writer, header []
 	return rows.Err()
 }
 
-func (h Handler) writePricesCSV(ctx context.Context, writer *csv.Writer, header []string, generatedAt string) error {
+func (h Handler) writePricesCSV(ctx context.Context, userID string, writer *csv.Writer, header []string, generatedAt string) error {
 	rows, err := h.db.Query(ctx, `
 		SELECT ps.id::text, ps.price_date, i.type, i.ticker, i.name, ps.price::float8,
 		       ps.currency, ps.fx_rate_to_idr::float8, ps.source, ps.is_realtime
 		FROM price_snapshots ps
 		JOIN instruments i ON i.id = ps.instrument_id
+		WHERE ps.user_id = $1
 		ORDER BY ps.price_date DESC, ps.created_at DESC
-	`)
+	`, userID)
 	if err != nil {
 		return err
 	}

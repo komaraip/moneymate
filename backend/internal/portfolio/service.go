@@ -60,12 +60,12 @@ func NewService(db store) Service {
 	return Service{db: db}
 }
 
-func (s Service) Recalculate(ctx context.Context, snapshotDate time.Time) ([]CalculatedHolding, error) {
-	transactions, err := s.loadTransactions(ctx)
+func (s Service) Recalculate(ctx context.Context, userID string, snapshotDate time.Time) ([]CalculatedHolding, error) {
+	transactions, err := s.loadTransactions(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	prices, err := s.loadLatestPrices(ctx)
+	prices, err := s.loadLatestPrices(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -80,12 +80,12 @@ func (s Service) Recalculate(ctx context.Context, snapshotDate time.Time) ([]Cal
 
 		if _, err := s.db.Exec(ctx, `
 			INSERT INTO holdings_snapshot (
-				snapshot_date, instrument_id, average_price, current_price, units,
+				user_id, snapshot_date, instrument_id, average_price, current_price, units,
 				total_cost, current_value, profit_loss_value, profit_loss_percent,
 				currency, price_source, price_updated_at, warnings
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'IDR', $10, $11, $12::jsonb)
-			ON CONFLICT (snapshot_date, instrument_id) DO UPDATE
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'IDR', $11, $12, $13::jsonb)
+			ON CONFLICT (user_id, snapshot_date, instrument_id) DO UPDATE
 			SET average_price = EXCLUDED.average_price,
 			    current_price = EXCLUDED.current_price,
 			    units = EXCLUDED.units,
@@ -97,7 +97,7 @@ func (s Service) Recalculate(ctx context.Context, snapshotDate time.Time) ([]Cal
 			    price_source = EXCLUDED.price_source,
 			    price_updated_at = EXCLUDED.price_updated_at,
 			    warnings = EXCLUDED.warnings
-		`, snapshotDate.Format("2006-01-02"), holding.InstrumentID, holding.AveragePrice, holding.CurrentPrice, holding.Units,
+		`, userID, snapshotDate.Format("2006-01-02"), holding.InstrumentID, holding.AveragePrice, holding.CurrentPrice, holding.Units,
 			holding.TotalCost, holding.CurrentValue, holding.ProfitLossValue, holding.ProfitLossPercent,
 			holding.PriceSource, holding.PriceUpdatedAt, string(warningsJSON)); err != nil {
 			return nil, fmt.Errorf("persist holding %s: %w", holding.InstrumentID, err)
@@ -218,14 +218,15 @@ func CalculateHoldings(transactions []CalculatorTransaction, prices map[string]C
 	return result
 }
 
-func (s Service) loadTransactions(ctx context.Context) ([]CalculatorTransaction, error) {
+func (s Service) loadTransactions(ctx context.Context, userID string) ([]CalculatorTransaction, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT instrument_id::text, transaction_date, type, price::float8, units::float8,
 		       net_value::float8, currency, fx_rate_to_idr::float8
 		FROM transactions
-		WHERE instrument_id IS NOT NULL
+		WHERE user_id = $1
+		  AND instrument_id IS NOT NULL
 		ORDER BY transaction_date ASC, created_at ASC
-	`)
+	`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("load transactions: %w", err)
 	}
@@ -243,13 +244,14 @@ func (s Service) loadTransactions(ctx context.Context) ([]CalculatorTransaction,
 	return items, rows.Err()
 }
 
-func (s Service) loadLatestPrices(ctx context.Context) (map[string]CalculatorPrice, error) {
+func (s Service) loadLatestPrices(ctx context.Context, userID string) (map[string]CalculatorPrice, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT DISTINCT ON (instrument_id)
 		       instrument_id::text, price::float8, currency, fx_rate_to_idr::float8, source, created_at
 		FROM price_snapshots
+		WHERE user_id = $1
 		ORDER BY instrument_id, price_date DESC, created_at DESC
-	`)
+	`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("load latest prices: %w", err)
 	}

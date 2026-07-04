@@ -116,6 +116,62 @@ func TestRoleRestrictionsForWriteEndpoints(t *testing.T) {
 	assertStatus(t, adminWrite, http.StatusCreated)
 }
 
+func TestUserOwnedFinancialDataIsIsolated(t *testing.T) {
+	app := newAPIIntegrationTest(t)
+	app.seedUser(t, "user-a-it@moneymate.local", "user")
+	app.seedUser(t, "user-b-it@moneymate.local", "user")
+	userA := app.login(t, "user-a-it@moneymate.local", integrationPassword)
+	userB := app.login(t, "user-b-it@moneymate.local", integrationPassword)
+	instrumentID := app.seedInstrument(t, "BBA", "Bank A", "stock", "IDR")
+
+	createCash := app.requestJSON(t, http.MethodPost, "/api/v1/cash-accounts", userA.AccessToken, cashPayload("Wallet A", 100000))
+	assertStatus(t, createCash, http.StatusCreated)
+	cash := decodeData[cashAccountResponse](t, createCash.envelope)
+
+	userBCashList := app.requestJSON(t, http.MethodGet, "/api/v1/cash-accounts", userB.AccessToken, nil)
+	assertStatus(t, userBCashList, http.StatusOK)
+	if rows := decodeData[[]cashAccountResponse](t, userBCashList.envelope); len(rows) != 0 {
+		t.Fatalf("expected user B cash list to be isolated, got %+v", rows)
+	}
+	userBGetCash := app.requestJSON(t, http.MethodGet, "/api/v1/cash-accounts/"+cash.ID, userB.AccessToken, nil)
+	assertStatus(t, userBGetCash, http.StatusNotFound)
+
+	createTx := app.requestJSON(t, http.MethodPost, "/api/v1/transactions", userA.AccessToken, transactionPayload(instrumentID, "2026-06-30", "buy", 3000, 10, "IDR", nil))
+	assertStatus(t, createTx, http.StatusCreated)
+	tx := decodeData[transactionResponse](t, createTx.envelope)
+
+	userBTxList := app.requestJSON(t, http.MethodGet, "/api/v1/transactions", userB.AccessToken, nil)
+	assertStatus(t, userBTxList, http.StatusOK)
+	if rows := decodeData[[]transactionResponse](t, userBTxList.envelope); len(rows) != 0 {
+		t.Fatalf("expected user B transaction list to be isolated, got %+v", rows)
+	}
+	userBGetTx := app.requestJSON(t, http.MethodGet, "/api/v1/transactions/"+tx.ID, userB.AccessToken, nil)
+	assertStatus(t, userBGetTx, http.StatusNotFound)
+
+	createPrice := app.requestJSON(t, http.MethodPost, "/api/v1/prices/manual", userA.AccessToken, map[string]any{
+		"instrument_id": instrumentID,
+		"price_date":    "2026-06-30",
+		"price":         3500,
+		"currency":      "IDR",
+	})
+	assertStatus(t, createPrice, http.StatusCreated)
+	recalculate := app.requestJSON(t, http.MethodPost, "/api/v1/holdings/recalculate?date=2026-06-30", userA.AccessToken, nil)
+	assertStatus(t, recalculate, http.StatusOK)
+
+	userBHoldings := app.requestJSON(t, http.MethodGet, "/api/v1/holdings?date=2026-06-30", userB.AccessToken, nil)
+	assertStatus(t, userBHoldings, http.StatusOK)
+	if rows := decodeData[[]holdingResponse](t, userBHoldings.envelope); len(rows) != 0 {
+		t.Fatalf("expected user B holdings to be isolated, got %+v", rows)
+	}
+
+	userBOverview := app.requestJSON(t, http.MethodGet, "/api/v1/dashboard/overview", userB.AccessToken, nil)
+	assertStatus(t, userBOverview, http.StatusOK)
+	overview := decodeData[dashboardOverviewResponse](t, userBOverview.envelope)
+	if overview.TotalNetWorth != 0 || overview.TotalPortfolioValue != 0 || overview.TotalCash != 0 {
+		t.Fatalf("expected user B dashboard totals to be isolated, got %+v", overview)
+	}
+}
+
 func TestInstrumentWriteFlowCreatesAuditLogs(t *testing.T) {
 	app := newAPIIntegrationTest(t)
 	token := app.seedAndLogin(t, "admin-it@moneymate.local", "admin")
