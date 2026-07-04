@@ -5,6 +5,7 @@
 node_modules/
 playwright-report/
 test-results/
+backups/
 
 # Frontend
 frontend/node_modules/

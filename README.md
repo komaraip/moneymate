@@ -124,6 +124,52 @@ CSV export columns are stable for the MVP:
 section,generated_at,record_id,snapshot_date,transaction_date,price_date,account_name,instrument_type,ticker,name,transaction_type,units,price,average_price_idr,current_price_idr,gross_value,fees,tax,net_value,balance,total_cost_idr,current_value_idr,profit_loss_idr,profit_loss_percent,currency,original_currency,fx_rate_to_idr,source,is_realtime,warnings,note
 ```
 
+## Database Backup And Restore
+
+The report CSV export is for user analysis in Excel or Google Sheets. It is not a recovery backup and does not contain every database table.
+
+The database backup workflow uses PostgreSQL `pg_dump` custom format through Docker Compose. It is intended for local recovery or migration of the full MVP database, including users, sessions, instruments, asset categories, transactions, cash accounts, cash adjustment ledger rows, price snapshots, holdings snapshots, import jobs/import rows, and audit logs.
+
+Backup files are written to `backups/`, which is ignored by Git:
+
+```powershell
+.\scripts\backup-db.ps1
+```
+
+Or with the root npm shortcut:
+
+```powershell
+npm run db:backup
+```
+
+Each backup creates:
+
+```txt
+backups/moneymate-moneymate-YYYYMMDD-HHMMSS.dump
+backups/moneymate-moneymate-YYYYMMDD-HHMMSS.metadata.md
+```
+
+The metadata file records the generated timestamp, local environment name, database name, Docker Compose service, backup file name, and restore command. It intentionally does not store passwords, tokens, cookies, or production secrets.
+
+Restore is intentionally explicit because it can overwrite local development data. Stop app services first so only PostgreSQL is using the database:
+
+```powershell
+docker compose stop backend frontend
+.\scripts\restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -ConfirmRestore RESTORE_LOCAL_DATABASE
+```
+
+Or with the root npm shortcut:
+
+```powershell
+npm run db:restore -- -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -ConfirmRestore RESTORE_LOCAL_DATABASE
+```
+
+To validate restore without overwriting the default local database, restore into a separate local database name:
+
+```powershell
+.\scripts\restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -DatabaseName moneymate_restore_smoke -ConfirmRestore RESTORE_LOCAL_DATABASE
+```
+
 Stop services:
 
 ```powershell
@@ -213,6 +259,13 @@ Compose validation:
 
 ```powershell
 docker compose config
+```
+
+Backup and restore smoke check:
+
+```powershell
+.\scripts\backup-db.ps1
+.\scripts\restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -DatabaseName moneymate_restore_smoke -ConfirmRestore RESTORE_LOCAL_DATABASE
 ```
 
 ## API Documentation
