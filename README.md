@@ -177,6 +177,32 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-status.ps1 -O
 
 The status script never deletes or uploads files. It only matches files named like `moneymate-<database>-YYYYMMDD-HHMMSS.dump` and refuses to inspect paths outside the repository `backups/` folder.
 
+### Local Restore Drill
+
+The restore drill validates a local backup file and, only when explicitly confirmed, restores it into a disposable database named `moneymate_restore_drill_*`. It never restores into the active app database by default.
+
+Validate a backup file without creating a database:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-backup-drill.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump"
+```
+
+Or with npm by setting `BACKUP_FILE` first:
+
+```powershell
+$env:BACKUP_FILE = ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump"
+npm run db:backup:restore-drill
+Remove-Item Env:BACKUP_FILE
+```
+
+Run a disposable restore drill:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-backup-drill.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -RunRestore -ConfirmRestoreDrill RESTORE_LOCAL_BACKUP_DRILL
+```
+
+The drill refuses backup files outside `backups/`, refuses backup names outside `moneymate-<database>-YYYYMMDD-HHMMSS.dump`, rejects dangerous database names such as `moneymate` or `postgres`, and drops the disposable drill database when the drill completes. Use `-KeepDrillDatabase` only when you intentionally want to inspect the restored drill database afterward.
+
 ### Local Backup Retention
 
 Backups are local-only and ignored by Git. The cleanup workflow is dry-run by default and only matches MoneyMate backup files named like `moneymate-<database>-YYYYMMDD-HHMMSS.dump` plus matching `.metadata.md` files inside `backups/`.
@@ -222,19 +248,15 @@ Restore is intentionally explicit because it can overwrite local development dat
 
 ```powershell
 docker compose stop backend frontend
-.\scripts\restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -ConfirmRestore RESTORE_LOCAL_DATABASE
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -ConfirmRestore RESTORE_LOCAL_DATABASE
 ```
 
-Or with the root npm shortcut:
-
-```powershell
-npm run db:restore -- -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -ConfirmRestore RESTORE_LOCAL_DATABASE
-```
+Use the direct PowerShell command for restore operations. On Windows, npm can treat forwarded `-BackupFile` and `-ConfirmRestore` values as npm options instead of PowerShell parameters.
 
 To validate restore without overwriting the default local database, restore into a separate local database name:
 
 ```powershell
-.\scripts\restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -DatabaseName moneymate_restore_smoke -ConfirmRestore RESTORE_LOCAL_DATABASE
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -DatabaseName moneymate_restore_smoke -ConfirmRestore RESTORE_LOCAL_DATABASE
 ```
 
 Stop services:
@@ -331,8 +353,8 @@ docker compose config
 Backup and restore smoke check:
 
 ```powershell
-.\scripts\backup-db.ps1
-.\scripts\restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -DatabaseName moneymate_restore_smoke -ConfirmRestore RESTORE_LOCAL_DATABASE
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-db.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -DatabaseName moneymate_restore_smoke -ConfirmRestore RESTORE_LOCAL_DATABASE
 ```
 
 ## API Documentation

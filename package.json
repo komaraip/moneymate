@@ -10,6 +10,7 @@
     "backend:test:integration": "cd backend && go test -tags=integration ./internal/httpapi",
     "db:backup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-db.ps1",
     "db:backup:cleanup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-backups.ps1",
+    "db:backup:restore-drill": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-backup-drill.ps1",
     "db:backup:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-status.ps1",
     "db:restore": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-db.ps1",
     "frontend:test": "npm --prefix frontend run test:run",

@@ -101,7 +101,7 @@ try {
 Restore command:
 
 ````powershell
-.\scripts\restore-db.ps1 -BackupFile "$backupPath" -ConfirmRestore RESTORE_LOCAL_DATABASE
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-db.ps1 -BackupFile "$backupPath" -ConfirmRestore RESTORE_LOCAL_DATABASE
 ````
 
 This metadata intentionally excludes passwords, tokens, cookies, and production secrets.
