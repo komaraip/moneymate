@@ -93,7 +93,7 @@ export function DashboardLayout() {
                   {user?.full_name ?? "Owner"}
                 </p>
                 <p className="text-xs uppercase text-zinc-500">
-                  {user?.role ?? "owner"}
+                  {roleLabel(user?.role)}
                 </p>
               </div>
               <button
@@ -138,10 +138,19 @@ function Brand() {
         MoneyMate
       </p>
       <h1 className="mt-2 text-xl font-semibold text-white">
-        Admin Dashboard
+        Dashboard Admin
       </h1>
     </div>
   );
+}
+
+function roleLabel(role?: string) {
+  const labels: Record<string, string> = {
+    admin: "Admin",
+    owner: "Pemilik",
+    viewer: "Viewer",
+  };
+  return labels[role ?? "owner"] ?? "Pemilik";
 }
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {

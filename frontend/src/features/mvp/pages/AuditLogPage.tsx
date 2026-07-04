@@ -19,16 +19,16 @@ export function AuditLogPage() {
   });
 
   if (audit.isLoading) return <LoadingState />;
-  if (audit.isError) return <ErrorState message="Audit log belum bisa dimuat." />;
+  if (audit.isError) return <ErrorState message="Log audit belum bisa dimuat." />;
 
   return (
     <div>
-      <PageHeader description="Riwayat perubahan data penting" title="Audit Log" />
+      <PageHeader description="Riwayat perubahan data penting" title="Log Audit" />
 
       <Card className="mb-4">
         <div className="grid gap-3 md:grid-cols-3">
           <select className={inputClass} onChange={(event) => setFilters({ ...filters, entity_type: event.target.value })} value={filters.entity_type}>
-            <option value="">Semua entity</option>
+            <option value="">Semua entitas</option>
             {entityTypes.map((item) => (
               <option key={item} value={item}>
                 {item}
@@ -36,7 +36,7 @@ export function AuditLogPage() {
             ))}
           </select>
           <select className={inputClass} onChange={(event) => setFilters({ ...filters, action: event.target.value })} value={filters.action}>
-            <option value="">Semua action</option>
+            <option value="">Semua aksi</option>
             {actions.map((item) => (
               <option key={item} value={item}>
                 {item}
@@ -53,7 +53,7 @@ export function AuditLogPage() {
         <table className="w-full min-w-[800px] text-sm">
           <thead className="bg-zinc-900 text-zinc-400">
             <tr>
-              {["Waktu", "Action", "Entity", "Entity ID", "IP"].map((header) => (
+              {["Waktu", "Aksi", "Entitas", "ID Entitas", "IP"].map((header) => (
                 <th className="px-4 py-3 text-left" key={header}>
                   {header}
                 </th>

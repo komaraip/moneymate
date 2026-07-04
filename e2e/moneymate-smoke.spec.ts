@@ -21,8 +21,8 @@ test.describe("MoneyMate MVP smoke", () => {
     await loginAndPrepare(page, request);
 
     await page.getByRole("link", { name: "Portofolio" }).click();
-    await expect(page.getByRole("heading", { name: "Portfolio" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Recalculate" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Portofolio" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Hitung Ulang" })).toBeVisible();
     await expect(page.getByRole("cell", { name: /BBRI|Bank Rakyat Indonesia/ }).first()).toBeVisible();
   });
 
@@ -61,21 +61,21 @@ test.describe("MoneyMate MVP smoke", () => {
     await page.getByRole("button", { name: "Batal" }).click();
 
     await page.getByRole("link", { name: "Kas", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Cash" })).toBeVisible();
-    await page.getByRole("button", { name: /Tambah Akun Cash/i }).click();
-    await expect(page.getByRole("heading", { name: "Tambah Akun Cash" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Kas" })).toBeVisible();
+    await page.getByRole("button", { name: /Tambah Akun Kas/i }).click();
+    await expect(page.getByRole("heading", { name: "Tambah Akun Kas" })).toBeVisible();
     await page.getByRole("button", { name: "Batal" }).click();
     await page.getByTitle("Edit akun cash").first().click();
-    await expect(page.getByRole("heading", { name: "Edit Akun Cash" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Edit Akun Kas" })).toBeVisible();
     await page.getByRole("button", { name: "Batal" }).click();
-    await page.getByRole("button", { name: /Adjust Saldo/i }).first().click();
-    await expect(page.getByRole("heading", { name: "Adjust Saldo Cash" })).toBeVisible();
+    await page.getByRole("button", { name: /Sesuaikan Saldo/i }).first().click();
+    await expect(page.getByRole("heading", { name: "Sesuaikan Saldo Kas" })).toBeVisible();
     await page.getByRole("button", { name: "Batal" }).click();
     await page.getByRole("button", { name: "Histori" }).first().click();
-    await expect(page.getByRole("heading", { name: "Histori Adjustment Cash" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Histori Penyesuaian Kas" })).toBeVisible();
     await page.getByTitle("Tutup").click();
     await page.getByTitle("Nonaktifkan akun cash").first().click();
-    await expect(page.getByRole("heading", { name: "Nonaktifkan Akun Cash" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Nonaktifkan Akun Kas" })).toBeVisible();
     await page.getByRole("button", { name: "Batal" }).click();
   });
 
@@ -84,15 +84,15 @@ test.describe("MoneyMate MVP smoke", () => {
 
     await page.getByRole("link", { name: "Impor Data" }).click();
     await expect(page.getByRole("heading", { name: "Impor Spreadsheet" })).toBeVisible();
-    await expect(page.getByText("Belum ada preview import.")).toBeVisible();
+    await expect(page.getByText("Belum ada pratinjau impor.")).toBeVisible();
 
-    await page.getByLabel("File Import").setInputFiles(path.join("e2e", "fixtures", "sample-import.csv"));
+    await page.getByLabel("File Impor").setInputFiles(path.join("e2e", "fixtures", "sample-import.csv"));
     await page.getByRole("button", { name: /Pratinjau/i }).click();
 
     await expect(page.getByText("Total Baris")).toBeVisible();
     await expect(page.getByText("Portofolio", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Transaksi", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Cash", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Kas", { exact: true }).first()).toBeVisible();
   });
 
   test("halaman laporan memuat ringkasan dan export CSV", async ({ page, request }) => {
@@ -104,7 +104,7 @@ test.describe("MoneyMate MVP smoke", () => {
     await expect(page.getByText(/Ringkasan Bulanan/)).toBeVisible();
 
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: /Export CSV/i }).click();
+    await page.getByRole("button", { name: /Ekspor CSV/i }).click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toContain("moneymate");
   });

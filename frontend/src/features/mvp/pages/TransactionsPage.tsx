@@ -100,12 +100,12 @@ export function TransactionsPage() {
         </button>
       </div>
 
-      <Table headers={["Tanggal", "Instrumen", "Tipe", "Harga", "Units", "Net Value", "Aksi"]}>
+      <Table headers={["Tanggal", "Instrumen", "Tipe", "Harga", "Unit", "Nilai Bersih", "Aksi"]}>
         {transactions.data?.map((item) => (
           <tr className="border-t border-zinc-800" key={item.id}>
             <td className="px-4 py-3">{formatDate(item.transaction_date)}</td>
             <td className="px-4 py-3">{item.instrument_ticker ?? item.instrument_name ?? "-"}</td>
-            <td className="px-4 py-3 capitalize">{item.type}</td>
+            <td className="px-4 py-3">{transactionTypeLabel(item.type)}</td>
             <td className="px-4 py-3 text-right">{formatCurrency(item.price, item.currency)}</td>
             <td className="px-4 py-3 text-right">{formatNumber(item.units)}</td>
             <td className="px-4 py-3 text-right">{formatCurrency(item.net_value ?? 0, item.currency)}</td>
@@ -224,14 +224,14 @@ function TransactionModal({
           </Field>
           <Field label="Tipe">
             <select className={inputClass} onChange={(e) => setForm({ ...form, type: e.target.value })} value={form.type}>
-              <option value="buy">Buy</option>
-              <option value="sell">Sell</option>
-              <option value="dividend">Dividend</option>
+              <option value="buy">Beli</option>
+              <option value="sell">Jual</option>
+              <option value="dividend">Dividen</option>
               <option value="fee">Fee</option>
-              <option value="adjustment">Adjustment</option>
+              <option value="adjustment">Penyesuaian</option>
             </select>
           </Field>
-          <Field label="Currency">
+          <Field label="Mata uang">
             <select className={inputClass} onChange={(e) => setForm({ ...form, currency: e.target.value })} value={form.currency}>
               <option value="IDR">IDR</option>
               <option value="USD">USD</option>
@@ -240,17 +240,17 @@ function TransactionModal({
           <Field label="Harga">
             <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, price: e.target.value })} value={form.price} />
           </Field>
-          <Field label="Units">
+          <Field label="Unit">
             <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, units: e.target.value })} value={form.units} />
           </Field>
-          <Field label="Fees">
+          <Field label="Biaya">
             <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, fees: e.target.value })} value={form.fees} />
           </Field>
-          <Field label="Tax">
+          <Field label="Pajak">
             <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, tax: e.target.value })} value={form.tax} />
           </Field>
           {form.currency !== "IDR" ? (
-            <Field label="FX rate ke IDR">
+            <Field label="Kurs ke IDR">
               <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, fx_rate_to_idr: e.target.value })} value={form.fx_rate_to_idr} />
             </Field>
           ) : null}
@@ -347,12 +347,12 @@ function validateTransaction(form: TransactionForm) {
   if (!form.instrument_id) errors.push("Instrumen wajib dipilih.");
   if (!form.transaction_date) errors.push("Tanggal transaksi wajib diisi.");
   if (!["buy", "sell", "dividend", "fee", "adjustment"].includes(form.type)) errors.push("Tipe transaksi tidak valid.");
-	if (!isNumeric(form.price) || numberValue(form.price) < 0) errors.push("Harga wajib diisi dan tidak boleh negatif.");
-	if ((form.type === "buy" || form.type === "sell") && (!isNumeric(form.units) || numberValue(form.units) <= 0)) errors.push("Units wajib lebih dari 0 untuk buy/sell.");
-	if (!form.currency) errors.push("Currency wajib diisi.");
-	if (form.currency !== "IDR" && (!isNumeric(form.fx_rate_to_idr) || numberValue(form.fx_rate_to_idr) <= 0)) errors.push("FX rate ke IDR wajib diisi untuk transaksi non-IDR.");
-	if (!isNumeric(form.fees) || numberValue(form.fees) < 0) errors.push("Fees tidak boleh negatif.");
-	if (!isNumeric(form.tax) || numberValue(form.tax) < 0) errors.push("Tax tidak boleh negatif.");
+  if (!isNumeric(form.price) || numberValue(form.price) < 0) errors.push("Harga wajib diisi dan tidak boleh negatif.");
+  if ((form.type === "buy" || form.type === "sell") && (!isNumeric(form.units) || numberValue(form.units) <= 0)) errors.push("Unit wajib lebih dari 0 untuk beli/jual.");
+  if (!form.currency) errors.push("Mata uang wajib diisi.");
+  if (form.currency !== "IDR" && (!isNumeric(form.fx_rate_to_idr) || numberValue(form.fx_rate_to_idr) <= 0)) errors.push("Kurs ke IDR wajib diisi untuk transaksi non-IDR.");
+  if (!isNumeric(form.fees) || numberValue(form.fees) < 0) errors.push("Biaya tidak boleh negatif.");
+  if (!isNumeric(form.tax) || numberValue(form.tax) < 0) errors.push("Pajak tidak boleh negatif.");
   return errors;
 }
 
@@ -427,14 +427,25 @@ function errorMessage(error: unknown) {
   return "Request gagal diproses.";
 }
 
+function transactionTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    adjustment: "Penyesuaian",
+    buy: "Beli",
+    dividend: "Dividen",
+    fee: "Fee",
+    sell: "Jual",
+  };
+  return labels[type] ?? type;
+}
+
 function numberValue(value: string) {
-	if (value.trim() === "") return 0;
-	const parsed = Number(value);
-	return Number.isFinite(parsed) ? parsed : Number.NaN;
+  if (value.trim() === "") return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
 function isNumeric(value: string) {
-	return value.trim() !== "" && Number.isFinite(Number(value));
+  return value.trim() !== "" && Number.isFinite(Number(value));
 }
 
 const inputClass = "w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-500";

@@ -34,11 +34,11 @@ export function HoldingsPage() {
   });
 
   if (holdings.isLoading) return <LoadingState />;
-  if (holdings.isError) return <ErrorState message="Holdings belum bisa dimuat." />;
+  if (holdings.isError) return <ErrorState message="Portofolio belum bisa dimuat." />;
 
   return (
     <div>
-      <PageHeader description="Portfolio dihitung backend dengan weighted average cost" title="Portfolio" />
+      <PageHeader description="Portofolio dihitung backend dengan metode weighted average cost" title="Portofolio" />
       <Card className="mb-4">
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
           <select className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" onChange={(e) => setInstrumentId(e.target.value)} value={instrumentId}>
@@ -54,17 +54,17 @@ export function HoldingsPage() {
             Update Harga Manual
           </button>
           <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950" disabled={recalc.isPending} onClick={() => recalc.mutate()} type="button">
-            Recalculate
+            Hitung Ulang
           </button>
         </div>
       </Card>
       {!holdings.data?.length ? (
-        <EmptyState description="Klik Recalculate setelah seed data tersedia." title="Portfolio kosong" />
+        <EmptyState description="Klik Hitung Ulang setelah seed data tersedia." title="Portofolio kosong" />
       ) : (
         <div className="overflow-hidden rounded-xl border border-zinc-800">
           <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-zinc-900 text-zinc-400">
-              <tr>{["Instrument", "Units", "Avg Price", "Current", "Value", "P/L", "P/L %", "Warning"].map((h) => <th className="px-4 py-3 text-left" key={h}>{h}</th>)}</tr>
+              <tr>{["Instrumen", "Unit", "Harga Rata-rata", "Harga Terkini", "Nilai", "L/R", "L/R %", "Peringatan"].map((h) => <th className="px-4 py-3 text-left" key={h}>{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
               {holdings.data.map((item) => (

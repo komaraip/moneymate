@@ -97,7 +97,7 @@ export function InstrumentsPage() {
         <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-zinc-900 text-zinc-400">
             <tr>
-              {["Tipe", "Ticker", "Nama", "Kategori", "Currency", "Status", "Aksi"].map((header) => (
+              {["Tipe", "Ticker", "Nama", "Kategori", "Mata uang", "Status", "Aksi"].map((header) => (
                 <th className="px-4 py-3 text-left" key={header}>
                   {header}
                 </th>
@@ -221,8 +221,8 @@ function InstrumentModal({
               <option value="etf">ETF</option>
               <option value="mutual_fund">Reksadana</option>
               <option value="gold">Emas</option>
-              <option value="cash">Cash</option>
-              <option value="other">Other</option>
+              <option value="cash">Kas</option>
+              <option value="other">Lainnya</option>
             </select>
           </Field>
           <Field label="Kategori">
@@ -241,10 +241,10 @@ function InstrumentModal({
           <Field label="Nama">
             <input className={inputClass} onChange={(e) => setForm({ ...form, name: e.target.value })} value={form.name} />
           </Field>
-          <Field label="Provider">
+          <Field label="Penyedia">
             <input className={inputClass} onChange={(e) => setForm({ ...form, provider: e.target.value })} value={form.provider} />
           </Field>
-          <Field label="Currency">
+          <Field label="Mata uang">
             <select className={inputClass} onChange={(e) => setForm({ ...form, currency: e.target.value })} value={form.currency}>
               <option value="IDR">IDR</option>
               <option value="USD">USD</option>
@@ -342,7 +342,7 @@ function validateInstrument(form: InstrumentForm) {
   const errors: string[] = [];
   if (!["stock", "etf", "mutual_fund", "gold", "cash", "other"].includes(form.type)) errors.push("Tipe instrumen tidak valid.");
   if (!form.name.trim()) errors.push("Nama instrumen wajib diisi.");
-  if (!form.currency.trim()) errors.push("Currency wajib diisi.");
+  if (!form.currency.trim()) errors.push("Mata uang wajib diisi.");
   return errors;
 }
 
@@ -372,8 +372,8 @@ function instrumentTypeLabel(type: string) {
     etf: "ETF",
     mutual_fund: "Reksadana",
     gold: "Emas",
-    cash: "Cash",
-    other: "Other",
+    cash: "Kas",
+    other: "Lainnya",
   };
   return labels[type] ?? type;
 }

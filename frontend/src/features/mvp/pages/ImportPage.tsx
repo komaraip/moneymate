@@ -11,7 +11,7 @@ const sectionLabels: Record<ImportPreviewRow["section"], string> = {
   holdings: "Portofolio",
   orders: "Transaksi",
   asset_summary: "Ringkasan Aset",
-  cash: "Cash",
+  cash: "Kas",
 };
 
 export function ImportPage() {
@@ -36,7 +36,7 @@ export function ImportPage() {
   const confirmImport = useMutation({
     mutationFn: () => {
       if (!preview?.job_id) {
-        throw new Error("Preview import belum tersedia.");
+        throw new Error("Pratinjau impor belum tersedia.");
       }
       return mvpApi.confirmImport(preview.job_id);
     },
@@ -75,7 +75,7 @@ export function ImportPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0 flex-1">
             <label className="mb-2 block text-sm font-medium text-zinc-200" htmlFor="import-file">
-              File Import
+              File Impor
             </label>
             <input
               accept=".csv,.xlsx"
@@ -124,7 +124,7 @@ export function ImportPage() {
           <div className="mb-5 grid gap-4 md:grid-cols-4">
             <SummaryCard label="Total Baris" value={preview.summary.total_rows} />
             <SummaryCard label="Valid" value={validRows} />
-            <SummaryCard label="Error" value={invalidRows} />
+            <SummaryCard label="Bermasalah" value={invalidRows} />
             <SummaryCard label="Bagian" value={detectedSections.length} />
           </div>
 
@@ -144,7 +144,7 @@ export function ImportPage() {
         <Card>
           <div className="flex items-center gap-3 text-zinc-400">
             <FileSpreadsheet className="h-5 w-5 text-zinc-500" />
-            <p className="text-sm">Belum ada preview import.</p>
+            <p className="text-sm">Belum ada pratinjau impor.</p>
           </div>
         </Card>
       )}
@@ -158,7 +158,7 @@ function PreviewTable({ rows }: { rows: ImportPreviewRow[] }) {
       <table className="w-full min-w-[980px] text-sm">
         <thead className="bg-zinc-900 text-zinc-400">
           <tr>
-            {["Baris", "Bagian", "Status", "Data Normalisasi", "Error"].map((header) => (
+            {["Baris", "Bagian", "Status", "Data Normalisasi", "Masalah"].map((header) => (
               <th className="px-4 py-3 text-left" key={header}>
                 {header}
               </th>
@@ -204,7 +204,7 @@ function StatusBadge({ status }: { status: ImportPreviewRow["status"] }) {
   };
   const labels: Record<ImportPreviewRow["status"], string> = {
     valid: "Valid",
-    invalid: "Error",
+    invalid: "Bermasalah",
     imported: "Diimpor",
     skipped: "Dilewati",
   };

@@ -36,7 +36,7 @@ export function ReportsPage() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      setExportMessage("Export CSV berhasil diproses.");
+      setExportMessage("Ekspor CSV berhasil diproses.");
     },
     onError: () => {
       setExportMessage("");
@@ -88,12 +88,12 @@ export function ReportsPage() {
             type="button"
           >
             <Download className="h-4 w-4" />
-            {exportCsv.isPending ? "Menyiapkan..." : "Export CSV"}
+            {exportCsv.isPending ? "Menyiapkan..." : "Ekspor CSV"}
           </button>
         </div>
         <p className="mt-3 text-sm text-zinc-500">Data manual/mock, bukan real-time.</p>
         {exportMessage ? <p className="mt-3 text-sm text-emerald-200">{exportMessage}</p> : null}
-        {exportCsv.isError ? <p className="mt-3 text-sm text-red-200">Export CSV gagal diproses.</p> : null}
+        {exportCsv.isError ? <p className="mt-3 text-sm text-red-200">Ekspor CSV gagal diproses.</p> : null}
       </Card>
 
       {isLoading ? <LoadingState /> : null}
@@ -116,11 +116,11 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
         <h3 className="text-lg font-semibold text-white">Ringkasan Bulanan {data.month}</h3>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Ending Net Worth" value={formatMaybeCurrency(data.ending_net_worth)} />
-        <Metric label="Portfolio" value={formatMaybeCurrency(data.portfolio_value)} />
-        <Metric label="Cash" value={formatMaybeCurrency(data.cash_balance)} />
-        <Metric label="Pergerakan Cash" value={formatMaybeCurrency(data.cash_net_movement)} />
-        <Metric label="Unrealized P/L" value={formatMaybeCurrency(data.unrealized_profit_loss)} />
+        <Metric label="Kekayaan Bersih Akhir" value={formatMaybeCurrency(data.ending_net_worth)} />
+        <Metric label="Portofolio" value={formatMaybeCurrency(data.portfolio_value)} />
+        <Metric label="Kas" value={formatMaybeCurrency(data.cash_balance)} />
+        <Metric label="Pergerakan Kas" value={formatMaybeCurrency(data.cash_net_movement)} />
+        <Metric label="Laba/Rugi Belum Terealisasi" value={formatMaybeCurrency(data.unrealized_profit_loss)} />
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card>
@@ -161,12 +161,12 @@ function PerformanceSummary({ data }: { data: PortfolioPerformanceReport }) {
       <div className="mb-3 flex items-center gap-2">
         <FileText className="h-4 w-4 text-emerald-300" />
         <h3 className="text-lg font-semibold text-white">
-          Performa Portfolio {formatDate(data.from_date)} - {formatDate(data.to_date)}
+          Performa Portofolio {formatDate(data.from_date)} - {formatDate(data.to_date)}
         </h3>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Starting Value" value={formatMaybeCurrency(data.starting_value)} />
-        <Metric label="Ending Value" value={formatMaybeCurrency(data.ending_value)} />
+        <Metric label="Nilai Awal" value={formatMaybeCurrency(data.starting_value)} />
+        <Metric label="Nilai Akhir" value={formatMaybeCurrency(data.ending_value)} />
         <Metric label="Perubahan" value={change} />
         <Metric label="Persentase" value={percent} />
       </div>
@@ -184,7 +184,7 @@ function PerformanceSummary({ data }: { data: PortfolioPerformanceReport }) {
           />
         </Card>
         <Card>
-          <h4 className="font-semibold text-white">Holding</h4>
+          <h4 className="font-semibold text-white">Posisi</h4>
           <SimpleTable
             emptyLabel="Holding belum tersedia."
             rows={data.holdings_performance.map((row) => ({
@@ -197,7 +197,7 @@ function PerformanceSummary({ data }: { data: PortfolioPerformanceReport }) {
         </Card>
       </div>
       <Card className="mt-4">
-        <h4 className="font-semibold text-white">Cash</h4>
+        <h4 className="font-semibold text-white">Kas</h4>
         <p className="mt-2 text-sm text-zinc-300">
           {formatCurrency(data.cash_summary.total_cash)} dari {data.cash_summary.active_accounts} akun aktif.
         </p>

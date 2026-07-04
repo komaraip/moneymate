@@ -60,7 +60,7 @@ export function CashPage() {
     enabled: Boolean(historyTarget),
     queryKey: queryKeys.cashAccounts.adjustments(historyTarget?.id ?? ""),
     queryFn: () => {
-      if (!historyTarget) throw new Error("Akun cash belum dipilih.");
+      if (!historyTarget) throw new Error("Akun kas belum dipilih.");
       return mvpApi.cashAdjustments(historyTarget.id);
     },
   });
@@ -75,7 +75,7 @@ export function CashPage() {
 
   const update = useMutation({
     mutationFn: () => {
-      if (!editing) throw new Error("Akun cash belum dipilih.");
+      if (!editing) throw new Error("Akun kas belum dipilih.");
       return mvpApi.updateCashAccount(editing.id, toPayload(form));
     },
     onSuccess: () => {
@@ -94,7 +94,7 @@ export function CashPage() {
 
   const adjust = useMutation({
     mutationFn: () => {
-      if (!adjustTarget) throw new Error("Akun cash belum dipilih.");
+      if (!adjustTarget) throw new Error("Akun kas belum dipilih.");
       return mvpApi.createCashAdjustment(adjustTarget.id, toAdjustmentPayload(adjustmentForm));
     },
     onSuccess: (_data, _variables, _context) => {
@@ -106,7 +106,7 @@ export function CashPage() {
   });
 
   if (cash.isLoading) return <LoadingState />;
-  if (cash.isError) return <ErrorState message="Akun cash belum bisa dimuat." />;
+  if (cash.isError) return <ErrorState message="Akun kas belum bisa dimuat." />;
 
   const submit = () => {
     const errors = validateCash(form);
@@ -129,14 +129,14 @@ export function CashPage() {
   return (
     <div>
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <PageHeader description="Saldo cash dikelola manual pada MVP" title="Cash" />
+        <PageHeader description="Saldo kas dikelola manual pada MVP" title="Kas" />
         <button
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950"
           onClick={() => openCreate(setForm, setEditing, setFormOpen, setFormErrors)}
           type="button"
         >
           <Plus className="h-4 w-4" />
-          Tambah Akun Cash
+          Tambah Akun Kas
         </button>
       </div>
 
@@ -165,7 +165,7 @@ export function CashPage() {
                 type="button"
               >
                 <WalletCards className="h-4 w-4" />
-                Adjust Saldo
+                Sesuaikan Saldo
               </button>
               <button
                 className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:border-emerald-500 hover:text-emerald-200"
@@ -296,7 +296,7 @@ function CashModal({
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-sm text-zinc-400">Saldo manual</p>
-            <h3 className="text-lg font-semibold text-white">{isEditing ? "Edit Akun Cash" : "Tambah Akun Cash"}</h3>
+            <h3 className="text-lg font-semibold text-white">{isEditing ? "Edit Akun Kas" : "Tambah Akun Kas"}</h3>
           </div>
           <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300" onClick={onClose} title="Tutup" type="button">
             <X className="h-4 w-4" />
@@ -311,11 +311,11 @@ function CashModal({
             <select className={inputClass} onChange={(e) => setForm({ ...form, account_type: e.target.value })} value={form.account_type}>
               <option value="bank">Bank</option>
               <option value="wallet">E-wallet</option>
-              <option value="cash">Cash</option>
-              <option value="other">Other</option>
+              <option value="cash">Tunai</option>
+              <option value="other">Lainnya</option>
             </select>
           </Field>
-          <Field label="Currency">
+          <Field label="Mata uang">
             <select className={inputClass} onChange={(e) => setForm({ ...form, currency: e.target.value })} value={form.currency}>
               <option value="IDR">IDR</option>
               <option value="USD">USD</option>
@@ -366,7 +366,7 @@ function ConfirmDelete({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <section className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-xl">
-        <h3 className="text-lg font-semibold text-white">Nonaktifkan Akun Cash</h3>
+        <h3 className="text-lg font-semibold text-white">Nonaktifkan Akun Kas</h3>
         <p className="mt-2 text-sm text-zinc-400">Akun {label} akan dibuat nonaktif. Saldo historis tetap tersimpan.</p>
         {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
         <div className="mt-5 flex justify-end gap-3">
@@ -407,7 +407,7 @@ function AdjustmentModal({
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-sm text-zinc-400">{account.account_name}</p>
-            <h3 className="text-lg font-semibold text-white">Adjust Saldo Cash</h3>
+            <h3 className="text-lg font-semibold text-white">Sesuaikan Saldo Kas</h3>
           </div>
           <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300" onClick={onClose} title="Tutup" type="button">
             <X className="h-4 w-4" />
@@ -415,16 +415,16 @@ function AdjustmentModal({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Tanggal adjustment">
+          <Field label="Tanggal penyesuaian">
             <input className={inputClass} onChange={(e) => setForm({ ...form, adjustment_date: e.target.value })} type="date" value={form.adjustment_date} />
           </Field>
-          <Field label="Tipe adjustment">
+          <Field label="Tipe penyesuaian">
             <select className={inputClass} onChange={(e) => setForm({ ...form, type: e.target.value })} value={form.type}>
               <option value="deposit">Deposit</option>
-              <option value="withdrawal">Withdrawal</option>
-              <option value="correction">Correction</option>
-              <option value="transfer_in">Transfer In</option>
-              <option value="transfer_out">Transfer Out</option>
+              <option value="withdrawal">Penarikan</option>
+              <option value="correction">Koreksi</option>
+              <option value="transfer_in">Transfer Masuk</option>
+              <option value="transfer_out">Transfer Keluar</option>
             </select>
           </Field>
           <Field label="Nominal">
@@ -436,7 +436,7 @@ function AdjustmentModal({
         </div>
 
         <p className="mt-4 text-sm text-zinc-500">
-          Withdrawal dan transfer out akan mengurangi saldo. Saldo cash negatif tidak diizinkan.
+          Penarikan dan transfer keluar akan mengurangi saldo. Saldo kas negatif tidak diizinkan.
         </p>
         <Feedback error={error} errors={errors} />
 
@@ -445,7 +445,7 @@ function AdjustmentModal({
             Batal
           </button>
           <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
-            {isSaving ? "Menyimpan..." : "Simpan Adjustment"}
+            {isSaving ? "Menyimpan..." : "Simpan Penyesuaian"}
           </button>
         </div>
       </section>
@@ -472,7 +472,7 @@ function HistoryModal({
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-sm text-zinc-400">{account.account_name}</p>
-            <h3 className="text-lg font-semibold text-white">Histori Adjustment Cash</h3>
+            <h3 className="text-lg font-semibold text-white">Histori Penyesuaian Kas</h3>
           </div>
           <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300" onClick={onClose} title="Tutup" type="button">
             <X className="h-4 w-4" />
@@ -480,10 +480,10 @@ function HistoryModal({
         </div>
 
         {isLoading ? <LoadingState /> : null}
-        {error ? <ErrorState message="Histori adjustment belum bisa dimuat." /> : null}
+        {error ? <ErrorState message="Histori penyesuaian belum bisa dimuat." /> : null}
         {!isLoading && !error && rows.length === 0 ? (
           <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/40 p-6 text-center text-sm text-zinc-400">
-            Belum ada adjustment cash.
+            Belum ada penyesuaian kas.
           </div>
         ) : null}
         {!isLoading && !error && rows.length > 0 ? <AdjustmentTable rows={rows} /> : null}
@@ -557,17 +557,17 @@ function openEdit(
 function validateCash(form: CashForm) {
   const errors: string[] = [];
   if (!form.account_name.trim()) errors.push("Nama akun cash wajib diisi.");
-  if (!form.currency.trim()) errors.push("Currency wajib diisi.");
+  if (!form.currency.trim()) errors.push("Mata uang wajib diisi.");
   if (form.balance.trim() === "" || !Number.isFinite(Number(form.balance))) errors.push("Saldo wajib berupa angka.");
   return errors;
 }
 
 function validateAdjustment(form: AdjustmentForm) {
   const errors: string[] = [];
-  if (!form.adjustment_date.trim()) errors.push("Tanggal adjustment wajib diisi.");
-  if (!form.type.trim()) errors.push("Tipe adjustment wajib dipilih.");
+  if (!form.adjustment_date.trim()) errors.push("Tanggal penyesuaian wajib diisi.");
+  if (!form.type.trim()) errors.push("Tipe penyesuaian wajib dipilih.");
   if (form.amount.trim() === "" || !Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0) {
-    errors.push("Nominal adjustment wajib lebih dari 0.");
+    errors.push("Nominal penyesuaian wajib lebih dari 0.");
   }
   return errors;
 }
@@ -594,11 +594,11 @@ function toAdjustmentPayload(form: AdjustmentForm) {
 
 function adjustmentTypeLabel(type: string) {
   const labels: Record<string, string> = {
-    correction: "Correction",
+    correction: "Koreksi",
     deposit: "Deposit",
-    transfer_in: "Transfer In",
-    transfer_out: "Transfer Out",
-    withdrawal: "Withdrawal",
+    transfer_in: "Transfer Masuk",
+    transfer_out: "Transfer Keluar",
+    withdrawal: "Penarikan",
   };
   return labels[type] ?? type;
 }

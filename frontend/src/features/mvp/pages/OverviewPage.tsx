@@ -14,20 +14,20 @@ export function OverviewPage() {
   const alerts = useQuery({ queryKey: queryKeys.dashboard.alerts, queryFn: mvpApi.alerts });
 
   if (overview.isLoading) return <LoadingState />;
-  if (overview.isError) return <ErrorState message="Overview belum bisa dimuat." />;
+  if (overview.isError) return <ErrorState message="Ringkasan belum bisa dimuat." />;
 
   const data = overview.data;
   if (!data) {
-    return <EmptyState title="Overview kosong" description="Jalankan seed dan recalculate holdings terlebih dahulu." />;
+    return <EmptyState title="Ringkasan kosong" description="Jalankan seed dan hitung ulang portofolio terlebih dahulu." />;
   }
 
   return (
     <div>
-      <PageHeader description="Ringkasan aset dan risiko berbasis data manual" title="Overview" />
+      <PageHeader description="Ringkasan aset dan risiko berbasis data manual" title="Ringkasan" />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Kpi label="Total Kekayaan Bersih" value={formatCurrency(data.total_net_worth)} />
-        <Kpi label="Nilai Portfolio" value={formatCurrency(data.total_portfolio_value)} />
-        <Kpi label="Total Cash" value={formatCurrency(data.total_cash)} />
+        <Kpi label="Nilai Portofolio" value={formatCurrency(data.total_portfolio_value)} />
+        <Kpi label="Total Kas" value={formatCurrency(data.total_cash)} />
         <Kpi
           label="Laba/Rugi"
           tone={data.profit_loss_value < 0 ? "negative" : "positive"}
@@ -56,7 +56,7 @@ export function OverviewPage() {
           </div>
         </Card>
         <Card>
-          <h3 className="font-semibold text-white">Alert Data</h3>
+          <h3 className="font-semibold text-white">Peringatan Data</h3>
           <div className="mt-4 space-y-3">
             {alerts.data?.length ? (
               alerts.data.map((alert) => (
@@ -66,7 +66,7 @@ export function OverviewPage() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-zinc-400">Tidak ada alert utama.</p>
+              <p className="text-sm text-zinc-400">Tidak ada peringatan utama.</p>
             )}
           </div>
         </Card>

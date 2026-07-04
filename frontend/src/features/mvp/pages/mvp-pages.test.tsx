@@ -204,7 +204,7 @@ describe("OverviewPage", () => {
 
     renderWithProviders(<OverviewPage />);
 
-    expect(await screen.findByText("Overview belum bisa dimuat.")).toBeInTheDocument();
+    expect(await screen.findByText("Ringkasan belum bisa dimuat.")).toBeInTheDocument();
   });
 
   it("menampilkan empty state saat overview kosong", async () => {
@@ -212,8 +212,8 @@ describe("OverviewPage", () => {
 
     renderWithProviders(<OverviewPage />);
 
-    expect(await screen.findByText("Overview kosong")).toBeInTheDocument();
-    expect(screen.getByText("Jalankan seed dan recalculate holdings terlebih dahulu.")).toBeInTheDocument();
+    expect(await screen.findByText("Ringkasan kosong")).toBeInTheDocument();
+    expect(screen.getByText("Jalankan seed dan hitung ulang portofolio terlebih dahulu.")).toBeInTheDocument();
   });
 });
 
@@ -228,7 +228,7 @@ describe("MVP modal validation", () => {
 
     expect(screen.getByText("Instrumen wajib dipilih.")).toBeInTheDocument();
     expect(screen.getByText("Harga wajib diisi dan tidak boleh negatif.")).toBeInTheDocument();
-    expect(screen.getByText("Units wajib lebih dari 0 untuk buy/sell.")).toBeInTheDocument();
+    expect(screen.getByText("Unit wajib lebih dari 0 untuk beli/jual.")).toBeInTheDocument();
   });
 
   it("memvalidasi form tambah instrumen", async () => {
@@ -247,7 +247,7 @@ describe("MVP modal validation", () => {
 
     renderWithProviders(<CashPage />);
 
-    await user.click(await screen.findByRole("button", { name: /Tambah Akun Cash/i }));
+    await user.click(await screen.findByRole("button", { name: /Tambah Akun Kas/i }));
     await user.click(screen.getByRole("button", { name: "Simpan" }));
 
     expect(screen.getByText("Nama akun cash wajib diisi.")).toBeInTheDocument();
@@ -271,10 +271,10 @@ describe("MVP modal validation", () => {
 
     renderWithProviders(<CashPage />);
 
-    await user.click(await screen.findByRole("button", { name: /Adjust Saldo/i }));
-    await user.click(screen.getByRole("button", { name: "Simpan Adjustment" }));
+    await user.click(await screen.findByRole("button", { name: /Sesuaikan Saldo/i }));
+    await user.click(screen.getByRole("button", { name: "Simpan Penyesuaian" }));
 
-    expect(screen.getByText("Nominal adjustment wajib lebih dari 0.")).toBeInTheDocument();
+    expect(screen.getByText("Nominal penyesuaian wajib lebih dari 0.")).toBeInTheDocument();
   });
 });
 
@@ -312,7 +312,7 @@ describe("Cash history", () => {
 
     await user.click(await screen.findByRole("button", { name: "Histori" }));
 
-    expect(await screen.findByText("Histori Adjustment Cash")).toBeInTheDocument();
+    expect(await screen.findByText("Histori Penyesuaian Kas")).toBeInTheDocument();
     expect(screen.getByText("Deposit")).toBeInTheDocument();
     expect(screen.getByText("Top up")).toBeInTheDocument();
   });
@@ -356,14 +356,14 @@ describe("ImportPage", () => {
     renderWithProviders(<ImportPage />);
 
     await user.upload(
-      screen.getByLabelText("File Import"),
+      screen.getByLabelText("File Impor"),
       new File(["INVESMENT\nTicker,Name\nBBRI,Bank Rakyat Indonesia"], "sample.csv", { type: "text/csv" }),
     );
     await user.click(screen.getByRole("button", { name: /Pratinjau/i }));
 
     expect(await screen.findAllByText("Portofolio")).toHaveLength(2);
     expect(screen.getByText("Transaksi")).toBeInTheDocument();
-    expect(screen.getAllByText("Cash")).toHaveLength(2);
+    expect(screen.getAllByText("Kas")).toHaveLength(2);
     expect(screen.getByText("Nama akun cash wajib diisi")).toBeInTheDocument();
 
     const totalCard = screen.getByText("Total Baris").closest("section");
@@ -377,7 +377,7 @@ describe("ReportsPage", () => {
     renderWithProviders(<ReportsPage />);
 
     expect(await screen.findByText("Ringkasan Bulanan 2026-06")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Export CSV/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ekspor CSV/i })).toBeInTheDocument();
     expect(screen.getAllByText("DATA_NOT_REALTIME").length).toBeGreaterThan(0);
   });
 
