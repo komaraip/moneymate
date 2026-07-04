@@ -6,8 +6,8 @@ import { useAuth } from "./useAuth";
 export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [email, setEmail] = useState("owner@moneymate.local");
-  const [password, setPassword] = useState("changeme-local-demo");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,9 +35,6 @@ export function LoginPage() {
           MoneyMate
         </p>
         <h1 className="mt-3 text-2xl font-semibold text-white">Masuk Dashboard</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Gunakan akun owner lokal dari seed data.
-        </p>
 
         <label className="mt-6 block text-sm text-zinc-300">
           Email

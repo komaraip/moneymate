@@ -151,6 +151,51 @@ backups/moneymate-moneymate-YYYYMMDD-HHMMSS.metadata.md
 
 The metadata file records the generated timestamp, local environment name, database name, Docker Compose service, backup file name, and restore command. It intentionally does not store passwords, tokens, cookies, or production secrets.
 
+### Local Backup Retention
+
+Backups are local-only and ignored by Git. The cleanup workflow is dry-run by default and only matches MoneyMate backup files named like `moneymate-<database>-YYYYMMDD-HHMMSS.dump` plus matching `.metadata.md` files inside `backups/`.
+
+Recommended local policy: keep at least the newest 10 backups and delete older backups after 30 days.
+
+Preview cleanup without deleting files:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-backups.ps1 -KeepNewest 10 -OlderThanDays 30
+```
+
+Or with the root npm shortcut:
+
+```powershell
+npm run db:backup:cleanup -- -KeepNewest 10 -OlderThanDays 30
+```
+
+Apply cleanup explicitly:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-backups.ps1 -KeepNewest 10 -OlderThanDays 30 -Apply -ConfirmCleanup DELETE_LOCAL_BACKUPS
+```
+
+Or with npm:
+
+```powershell
+npm run db:backup:cleanup -- -KeepNewest 10 -OlderThanDays 30 -Apply -ConfirmCleanup DELETE_LOCAL_BACKUPS
+```
+
+The cleanup script:
+
+- never deletes outside the repository `backups/` folder
+- keeps the newest `-KeepNewest` matched dumps even if they are older than `-OlderThanDays`
+- deletes matching metadata only when its dump is deleted
+- ignores non-MoneyMate files and unrelated dump names
+- prints the exact files before deleting anything
+
+Orphan metadata files are preserved by default. To include old orphan metadata in a cleanup, pass `-IncludeOrphanMetadata`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-backups.ps1 -KeepNewest 10 -OlderThanDays 30 -IncludeOrphanMetadata
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-backups.ps1 -KeepNewest 10 -OlderThanDays 30 -IncludeOrphanMetadata -Apply -ConfirmCleanup DELETE_LOCAL_BACKUPS
+```
+
 Restore is intentionally explicit because it can overwrite local development data. Stop app services first so only PostgreSQL is using the database:
 
 ```powershell
