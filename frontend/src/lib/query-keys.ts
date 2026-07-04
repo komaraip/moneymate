@@ -15,6 +15,7 @@ export const queryKeys = {
   },
   transactions: {
     all: ["transactions"] as const,
+    filtered: (filters: { type?: string; category_id?: string; cash_account_id?: string; from?: string; to?: string; search?: string }) => ["transactions", filters] as const,
   },
   transactionCategories: {
     all: ["transaction-categories"] as const,

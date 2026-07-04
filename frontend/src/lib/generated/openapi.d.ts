@@ -441,6 +441,11 @@ export interface paths {
             parameters: {
                 query?: {
                     instrument_id?: string;
+                    category_id?: string;
+                    cash_account_id?: string;
+                    from?: string;
+                    to?: string;
+                    search?: string;
                 };
                 header?: never;
                 path?: never;

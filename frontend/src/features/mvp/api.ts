@@ -34,7 +34,17 @@ export const mvpApi = {
   updateInstrument: (id: string, body: unknown) => apiClient.put<Instrument>(`/api/v1/instruments/${id}`, body),
   deleteInstrument: (id: string) => apiClient.delete<{ status: string }>(`/api/v1/instruments/${id}`),
   assetCategories: () => apiClient.get<AssetCategory[]>("/api/v1/asset-categories"),
-  transactions: () => apiClient.get<Transaction[]>("/api/v1/transactions"),
+  transactions: (filters?: { type?: string; category_id?: string; cash_account_id?: string; from?: string; to?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.type) params.set("type", filters.type);
+    if (filters?.category_id) params.set("category_id", filters.category_id);
+    if (filters?.cash_account_id) params.set("cash_account_id", filters.cash_account_id);
+    if (filters?.from) params.set("from", filters.from);
+    if (filters?.to) params.set("to", filters.to);
+    if (filters?.search) params.set("search", filters.search);
+    const query = params.toString();
+    return apiClient.get<Transaction[]>(`/api/v1/transactions${query ? `?${query}` : ""}`);
+  },
   createTransaction: (body: unknown) => apiClient.post<Transaction>("/api/v1/transactions", body),
   updateTransaction: (id: string, body: unknown) => apiClient.put<Transaction>(`/api/v1/transactions/${id}`, body),
   deleteTransaction: (id: string) => apiClient.delete<{ status: string }>(`/api/v1/transactions/${id}`),

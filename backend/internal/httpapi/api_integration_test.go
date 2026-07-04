@@ -415,6 +415,20 @@ func TestPersonalFinanceTransactionFlow(t *testing.T) {
 	if len(list) != 1 || list[0].Type != "income" {
 		t.Fatalf("expected income transaction filter, got %+v", list)
 	}
+	searchList := decodeData[[]transactionResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/transactions?search=Gaji&from=2026-07-01&to=2026-07-31", token, nil).envelope)
+	if len(searchList) != 1 || searchList[0].Type != "income" {
+		t.Fatalf("expected search/date filter to find income transaction, got %+v", searchList)
+	}
+	categoryList := decodeData[[]transactionResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/transactions?category_id="+expenseCategory.ID, token, nil).envelope)
+	if len(categoryList) != 1 || categoryList[0].Type != "expense" {
+		t.Fatalf("expected category filter to find expense transaction, got %+v", categoryList)
+	}
+	accountList := decodeData[[]transactionResponse](t, app.requestJSON(t, http.MethodGet, "/api/v1/transactions?cash_account_id="+savings.ID, token, nil).envelope)
+	if len(accountList) != 1 || accountList[0].Type != "transfer" {
+		t.Fatalf("expected account filter to include transfer destination, got %+v", accountList)
+	}
+	invalidDate := app.requestJSON(t, http.MethodGet, "/api/v1/transactions?from=07-01-2026", token, nil)
+	assertStatus(t, invalidDate, http.StatusBadRequest)
 
 	app.assertAudit(t, "transaction", "create")
 }

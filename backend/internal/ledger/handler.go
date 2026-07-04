@@ -83,6 +83,19 @@ type bulkManualPriceInput struct {
 
 func (h Handler) listTransactions(w http.ResponseWriter, r *http.Request) {
 	user, _ := auth.UserFromContext(r.Context())
+	fromDate, ok := optionalQueryDate(w, r, "from")
+	if !ok {
+		return
+	}
+	toDate, ok := optionalQueryDate(w, r, "to")
+	if !ok {
+		return
+	}
+	txType := strings.TrimSpace(r.URL.Query().Get("type"))
+	instrumentID := strings.TrimSpace(r.URL.Query().Get("instrument_id"))
+	categoryID := strings.TrimSpace(r.URL.Query().Get("category_id"))
+	cashAccountID := strings.TrimSpace(r.URL.Query().Get("cash_account_id"))
+	search := strings.TrimSpace(r.URL.Query().Get("search"))
 	rows, err := h.db.Query(r.Context(), `
 		SELECT t.id::text, t.instrument_id::text, i.name, i.ticker,
 		       t.cash_account_id::text, ca.account_name,
@@ -100,9 +113,22 @@ func (h Handler) listTransactions(w http.ResponseWriter, r *http.Request) {
 		WHERE t.user_id = $1
 		  AND ($2 = '' OR t.type = $2)
 		  AND ($3 = '' OR t.instrument_id::text = $3)
+		  AND ($4 = '' OR t.transaction_date >= $4::date)
+		  AND ($5 = '' OR t.transaction_date <= $5::date)
+		  AND ($6 = '' OR t.category_id::text = $6)
+		  AND ($7 = '' OR t.cash_account_id::text = $7 OR t.transfer_cash_account_id::text = $7)
+		  AND (
+		    $8 = ''
+		    OR t.notes ILIKE '%' || $8 || '%'
+		    OR i.name ILIKE '%' || $8 || '%'
+		    OR i.ticker ILIKE '%' || $8 || '%'
+		    OR ca.account_name ILIKE '%' || $8 || '%'
+		    OR transfer_ca.account_name ILIKE '%' || $8 || '%'
+		    OR tc.name ILIKE '%' || $8 || '%'
+		  )
 		ORDER BY t.transaction_date DESC, t.created_at DESC
 		LIMIT 200
-	`, user.ID, strings.TrimSpace(r.URL.Query().Get("type")), strings.TrimSpace(r.URL.Query().Get("instrument_id")))
+	`, user.ID, txType, instrumentID, fromDate, toDate, categoryID, cashAccountID, search)
 	if err != nil {
 		response.Error(w, r, internalErr(err, "Gagal memuat transaksi"))
 		return
@@ -825,6 +851,19 @@ func pathUUID(w http.ResponseWriter, r *http.Request) (string, bool) {
 		return "", false
 	}
 	return id, true
+}
+
+func optionalQueryDate(w http.ResponseWriter, r *http.Request, key string) (string, bool) {
+	value := strings.TrimSpace(r.URL.Query().Get(key))
+	if value == "" {
+		return "", true
+	}
+	parsed, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		response.Error(w, r, validation("Filter tanggal harus format YYYY-MM-DD"))
+		return "", false
+	}
+	return parsed.Format("2006-01-02"), true
 }
 
 func optionalUUID(value *string, message string) (*string, error) {

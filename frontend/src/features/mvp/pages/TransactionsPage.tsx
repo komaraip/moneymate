@@ -7,6 +7,7 @@ import { LoadingState } from "../../../components/feedback/LoadingState";
 import { formatCurrency, formatDate, formatNumber } from "../../../lib/format";
 import { queryKeys } from "../../../lib/query-keys";
 import { mvpApi } from "../api";
+import { Card } from "../components/Card";
 import { PageHeader } from "../components/PageHeader";
 import type { CashAccount, Instrument, Transaction, TransactionCategory } from "../types";
 
@@ -24,6 +25,24 @@ type TransactionForm = {
   tax: string;
   currency: string;
   fx_rate_to_idr: string;
+  notes: string;
+};
+
+type TransactionFilters = {
+  type: string;
+  category_id: string;
+  cash_account_id: string;
+  from: string;
+  to: string;
+  search: string;
+};
+
+type QuickForm = {
+  type: "expense" | "income";
+  transaction_date: string;
+  cash_account_id: string;
+  category_id: string;
+  amount: string;
   notes: string;
 };
 
@@ -55,22 +74,55 @@ const emptyForm = (): TransactionForm => ({
   notes: "",
 });
 
+const emptyFilters = (): TransactionFilters => ({
+  cash_account_id: "",
+  category_id: "",
+  from: "",
+  search: "",
+  to: "",
+  type: "",
+});
+
+const emptyQuickForm = (): QuickForm => ({
+  amount: "",
+  cash_account_id: "",
+  category_id: "",
+  notes: "",
+  transaction_date: new Date().toISOString().slice(0, 10),
+  type: "expense",
+});
+
 export function TransactionsPage() {
   const queryClient = useQueryClient();
-  const transactions = useQuery({ queryKey: queryKeys.transactions.all, queryFn: mvpApi.transactions });
+  const [filters, setFilters] = useState<TransactionFilters>(emptyFilters);
+  const transactions = useQuery({ queryKey: queryKeys.transactions.filtered(filters), queryFn: () => mvpApi.transactions(cleanFilters(filters)) });
   const instruments = useQuery({ queryKey: queryKeys.instruments.all, queryFn: mvpApi.instruments });
   const cashAccounts = useQuery({ queryKey: queryKeys.cashAccounts.all, queryFn: mvpApi.cashAccounts });
   const categories = useQuery({ queryKey: queryKeys.transactionCategories.all, queryFn: () => mvpApi.transactionCategories() });
+  const [quickForm, setQuickForm] = useState<QuickForm>(emptyQuickForm);
   const [form, setForm] = useState<TransactionForm>(emptyForm);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const [quickErrors, setQuickErrors] = useState<string[]>([]);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const create = useMutation({
     mutationFn: () => mvpApi.createTransaction(toPayload(form)),
     onSuccess: () => {
+      setSuccessMessage("Transaksi berhasil ditambahkan.");
       closeForm();
+      invalidateTransactionWrites(queryClient);
+    },
+  });
+
+  const quickCreate = useMutation({
+    mutationFn: () => mvpApi.createTransaction(quickPayload(quickForm)),
+    onSuccess: () => {
+      setSuccessMessage("Transaksi cepat berhasil disimpan.");
+      setQuickErrors([]);
+      setQuickForm(emptyQuickForm());
       invalidateTransactionWrites(queryClient);
     },
   });
@@ -81,6 +133,7 @@ export function TransactionsPage() {
       return mvpApi.updateTransaction(editing.id, toPayload(form));
     },
     onSuccess: () => {
+      setSuccessMessage("Transaksi berhasil diperbarui.");
       closeForm();
       invalidateTransactionWrites(queryClient);
     },
@@ -89,6 +142,7 @@ export function TransactionsPage() {
   const remove = useMutation({
     mutationFn: (id: string) => mvpApi.deleteTransaction(id),
     onSuccess: () => {
+      setSuccessMessage("Transaksi berhasil dihapus.");
       setDeleteTarget(null);
       invalidateTransactionWrites(queryClient);
     },
@@ -121,6 +175,32 @@ export function TransactionsPage() {
           Tambah Transaksi
         </button>
       </div>
+
+      <QuickAddCard
+        accounts={cashAccounts.data ?? []}
+        categories={categories.data ?? []}
+        error={errorMessage(quickCreate.error)}
+        errors={quickErrors}
+        form={quickForm}
+        isSaving={quickCreate.isPending}
+        onSubmit={() => {
+          const errors = validateQuickForm(quickForm);
+          setQuickErrors(errors);
+          if (errors.length > 0) return;
+          quickCreate.mutate();
+        }}
+        setForm={setQuickForm}
+      />
+
+      <TransactionFiltersCard
+        accounts={cashAccounts.data ?? []}
+        categories={categories.data ?? []}
+        filters={filters}
+        onReset={() => setFilters(emptyFilters())}
+        setFilters={setFilters}
+      />
+
+      {successMessage ? <p className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</p> : null}
 
       <Table headers={["Tanggal", "Tipe", "Kategori/Instrumen", "Akun", "Nominal", "Aksi"]}>
         {transactions.data?.map((item) => (
@@ -199,6 +279,144 @@ export function TransactionsPage() {
     setForm(emptyForm());
     setFormErrors([]);
   }
+}
+
+function QuickAddCard({
+  accounts,
+  categories,
+  error,
+  errors,
+  form,
+  isSaving,
+  onSubmit,
+  setForm,
+}: {
+  accounts: CashAccount[];
+  categories: TransactionCategory[];
+  error: string;
+  errors: string[];
+  form: QuickForm;
+  isSaving: boolean;
+  onSubmit: () => void;
+  setForm: (form: QuickForm) => void;
+}) {
+  const activeAccounts = accounts.filter((item) => item.is_active !== false);
+  const filteredCategories = categories.filter((item) => item.type === form.type && item.is_active !== false);
+
+  return (
+    <Card className="mb-4">
+      <div className="mb-3">
+        <h3 className="font-semibold text-white">Tambah Cepat</h3>
+        <p className="mt-1 text-sm text-zinc-500">Untuk pemasukan dan pengeluaran harian. Transfer dan investasi tetap lewat form lengkap.</p>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-[140px_150px_1fr_1fr_160px_1fr_auto] lg:items-end">
+        <Field label="Tipe">
+          <select className={inputClass} onChange={(event) => setForm({ ...form, category_id: "", type: event.target.value as QuickForm["type"] })} value={form.type}>
+            <option value="expense">Pengeluaran</option>
+            <option value="income">Pemasukan</option>
+          </select>
+        </Field>
+        <Field label="Tanggal">
+          <input className={inputClass} onChange={(event) => setForm({ ...form, transaction_date: event.target.value })} type="date" value={form.transaction_date} />
+        </Field>
+        <Field label="Akun">
+          <select className={inputClass} onChange={(event) => setForm({ ...form, cash_account_id: event.target.value })} value={form.cash_account_id}>
+            <option value="">Pilih akun</option>
+            {activeAccounts.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.account_name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Kategori">
+          <select className={inputClass} onChange={(event) => setForm({ ...form, category_id: event.target.value })} value={form.category_id}>
+            <option value="">Pilih kategori</option>
+            {filteredCategories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Nominal">
+          <input className={inputClass} inputMode="decimal" onChange={(event) => setForm({ ...form, amount: event.target.value })} value={form.amount} />
+        </Field>
+        <Field label="Catatan">
+          <input className={inputClass} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Opsional" value={form.notes} />
+        </Field>
+        <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
+          {isSaving ? "Menyimpan..." : "Simpan Cepat"}
+        </button>
+      </div>
+      <Feedback error={error} errors={errors} />
+    </Card>
+  );
+}
+
+function TransactionFiltersCard({
+  accounts,
+  categories,
+  filters,
+  onReset,
+  setFilters,
+}: {
+  accounts: CashAccount[];
+  categories: TransactionCategory[];
+  filters: TransactionFilters;
+  onReset: () => void;
+  setFilters: (filters: TransactionFilters) => void;
+}) {
+  return (
+    <Card className="mb-4">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6 xl:items-end">
+        <Field label="Cari">
+          <input className={inputClass} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Catatan, akun, kategori" value={filters.search} />
+        </Field>
+        <Field label="Tipe">
+          <select className={inputClass} onChange={(event) => setFilters({ ...filters, type: event.target.value })} value={filters.type}>
+            <option value="">Semua tipe</option>
+            {transactionTypes.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Kategori">
+          <select className={inputClass} onChange={(event) => setFilters({ ...filters, category_id: event.target.value })} value={filters.category_id}>
+            <option value="">Semua kategori</option>
+            {categories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Akun">
+          <select className={inputClass} onChange={(event) => setFilters({ ...filters, cash_account_id: event.target.value })} value={filters.cash_account_id}>
+            <option value="">Semua akun</option>
+            {accounts.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.account_name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Dari">
+          <input className={inputClass} onChange={(event) => setFilters({ ...filters, from: event.target.value })} type="date" value={filters.from} />
+        </Field>
+        <Field label="Sampai">
+          <input className={inputClass} onChange={(event) => setFilters({ ...filters, to: event.target.value })} type="date" value={filters.to} />
+        </Field>
+      </div>
+      <div className="mt-3 flex justify-end">
+        <button className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200" onClick={onReset} type="button">
+          Reset Filter
+        </button>
+      </div>
+    </Card>
+  );
 }
 
 function TransactionModal({
@@ -468,6 +686,32 @@ function validateTransaction(form: TransactionForm) {
   return errors;
 }
 
+function validateQuickForm(form: QuickForm) {
+  const errors: string[] = [];
+  if (!form.transaction_date) errors.push("Tanggal transaksi wajib diisi.");
+  if (!form.cash_account_id) errors.push("Akun wajib dipilih.");
+  if (!form.category_id) errors.push("Kategori wajib dipilih.");
+  if (!isNumeric(form.amount) || numberValue(form.amount) <= 0) errors.push("Nominal wajib lebih dari 0.");
+  return errors;
+}
+
+function quickPayload(form: QuickForm) {
+  const amount = numberValue(form.amount);
+  return {
+    amount,
+    cash_account_id: form.cash_account_id,
+    category_id: form.category_id,
+    currency: "IDR",
+    gross_value: amount,
+    net_value: amount,
+    notes: form.notes || undefined,
+    price: amount,
+    transaction_date: form.transaction_date,
+    type: form.type,
+    units: 1,
+  };
+}
+
 function toPayload(form: TransactionForm) {
   const fxRate = form.currency === "IDR" ? undefined : numberValue(form.fx_rate_to_idr);
   if (isPersonalType(form.type)) {
@@ -501,6 +745,10 @@ function toPayload(form: TransactionForm) {
     type: form.type,
     units: numberValue(form.units),
   };
+}
+
+function cleanFilters(filters: TransactionFilters) {
+  return Object.fromEntries(Object.entries(filters).filter(([, value]) => value.trim() !== ""));
 }
 
 function invalidateTransactionWrites(queryClient: ReturnType<typeof useQueryClient>) {
