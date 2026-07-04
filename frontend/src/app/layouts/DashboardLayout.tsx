@@ -9,21 +9,45 @@ import {
   Landmark,
   LogOut,
   Menu,
+  Settings,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../features/auth/useAuth";
 
-const navItems = [
-  { label: "Ringkasan", href: "/", icon: Gauge },
-  { label: "Portofolio", href: "/portfolio", icon: BarChart3 },
-  { label: "Transaksi", href: "/orders", icon: ClipboardList },
-  { label: "Kas", href: "/cash", icon: Banknote },
-  { label: "Instrumen", href: "/instruments", icon: Landmark },
-  { label: "Laporan", href: "/reports", icon: FileText },
-  { label: "Impor Data", href: "/import-data", icon: Import },
-  { label: "Log Audit", href: "/audit-log", icon: History },
+const navGroups = [
+  {
+    title: "Overview",
+    items: [{ label: "Ringkasan", href: "/", icon: Gauge }],
+  },
+  {
+    title: "Money Management",
+    items: [
+      { label: "Transaksi", href: "/transactions", icon: ClipboardList },
+      { label: "Akun & Wallet", href: "/accounts", icon: Banknote },
+    ],
+  },
+  {
+    title: "Reports",
+    items: [{ label: "Laporan", href: "/reports", icon: FileText }],
+  },
+  {
+    title: "Assets & Net Worth",
+    items: [
+      { label: "Portofolio", href: "/assets/portfolio", icon: BarChart3 },
+      { label: "Instrumen", href: "/assets/instruments", icon: Landmark },
+      { label: "Impor Data", href: "/imports", icon: Import },
+    ],
+  },
+  {
+    title: "Admin",
+    items: [{ label: "Log Audit", href: "/admin/audit-log", icon: History }],
+  },
+  {
+    title: "Settings",
+    items: [{ label: "Pengaturan", href: "/settings", icon: Settings }],
+  },
 ];
 
 export function DashboardLayout() {
@@ -138,7 +162,7 @@ function Brand() {
         MoneyMate
       </p>
       <h1 className="mt-2 text-xl font-semibold text-white">
-        Dashboard Admin
+        Personal Finance
       </h1>
     </div>
   );
@@ -155,28 +179,40 @@ function roleLabel(role?: string) {
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="mt-8 space-y-1">
-      {navItems.map((item) => {
-        const Icon = item.icon;
-        return (
-          <NavLink
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
-                isActive
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
-              }`
-            }
-            end={item.href === "/"}
-            key={item.href}
-            onClick={onNavigate}
-            to={item.href}
+    <nav className="mt-8 space-y-6">
+      {navGroups.map((group) => (
+        <section aria-labelledby={`nav-${group.title}`} key={group.title}>
+          <p
+            className="px-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-zinc-600"
+            id={`nav-${group.title}`}
           >
-            <Icon aria-hidden="true" className="h-4 w-4" />
-            {item.label}
-          </NavLink>
-        );
-      })}
+            {group.title}
+          </p>
+          <div className="mt-2 space-y-1">
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+                      isActive
+                        ? "bg-zinc-800 text-white"
+                        : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
+                    }`
+                  }
+                  end={item.href === "/"}
+                  key={item.href}
+                  onClick={onNavigate}
+                  to={item.href}
+                >
+                  <Icon aria-hidden="true" className="h-4 w-4" />
+                  {item.label}
+                </NavLink>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </nav>
   );
 }

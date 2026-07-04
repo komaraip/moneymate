@@ -54,17 +54,34 @@ func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service
 	reportHandler := reports.NewHandler(db, cfg)
 	protected := chi.NewRouter()
 	protected.Use(auth.RequireAuth(authService))
-	protected.Mount("/dashboard", dashboardHandler.Routes())
-	protected.Mount("/holdings", portfolioHandler.Routes())
-	protected.Mount("/instruments", masterHandler.InstrumentRoutes())
-	protected.Mount("/asset-categories", masterHandler.CategoryRoutes())
-	protected.Mount("/cash-accounts", masterHandler.CashRoutes())
-	protected.Mount("/transactions", ledgerHandler.TransactionRoutes())
-	protected.Mount("/prices", ledgerHandler.PriceRoutes())
-	protected.Mount("/audit-logs", masterHandler.AuditRoutes())
-	protected.Mount("/imports", importHandler.Routes())
-	protected.Mount("/reports", reportHandler.Routes())
+	mountUserRoutes(protected, masterHandler, ledgerHandler, portfolioHandler, dashboardHandler, importHandler, reportHandler)
+	mountAdminRoutes(protected, masterHandler)
 	chiRouter.Mount("/api/v1", protected)
 
 	return chiRouter
+}
+
+func mountUserRoutes(
+	router chi.Router,
+	masterHandler masterdata.Handler,
+	ledgerHandler ledger.Handler,
+	portfolioHandler portfolio.Handler,
+	dashboardHandler dashboard.Handler,
+	importHandler importer.Handler,
+	reportHandler reports.Handler,
+) {
+	router.Mount("/dashboard", dashboardHandler.Routes())
+	router.Mount("/holdings", portfolioHandler.Routes())
+	router.Mount("/instruments", masterHandler.InstrumentRoutes())
+	router.Mount("/asset-categories", masterHandler.CategoryRoutes())
+	router.Mount("/cash-accounts", masterHandler.CashRoutes())
+	router.Mount("/transactions", ledgerHandler.TransactionRoutes())
+	router.Mount("/prices", ledgerHandler.PriceRoutes())
+	router.Mount("/imports", importHandler.Routes())
+	router.Mount("/reports", reportHandler.Routes())
+}
+
+func mountAdminRoutes(router chi.Router, masterHandler masterdata.Handler) {
+	router.Mount("/audit-logs", masterHandler.AuditRoutes())
+	router.Mount("/admin/audit-logs", masterHandler.AuditRoutes())
 }

@@ -72,7 +72,7 @@ Invoke-RestMethod "http://localhost:8080/api/v1/holdings/recalculate?date=2026-0
 Import CSV/XLSX from the UI:
 
 ```txt
-http://localhost:5173/import-data
+http://localhost:5173/imports
 ```
 
 The import parser recognizes spreadsheet-like sections named `INVESTMENT`, `INVESMENT`, `PORTFOLIO`, `HOLDINGS`, `ORDERS`, `TRANSACTIONS`, `ASSET/VALUE`, and `CASH`.
@@ -118,6 +118,22 @@ Invoke-RestMethod "http://localhost:8080/api/v1/cash-accounts/$cashAccountId/adj
 ```
 
 Adjustment request amounts must be positive. `withdrawal` and `transfer_out` are stored as negative ledger movements. Cash balances are not allowed to become negative.
+
+Current primary app routes are grouped by personal finance domain:
+
+```txt
+/                       Ringkasan
+/transactions           Transaksi
+/accounts               Akun & Wallet
+/reports                Laporan
+/assets/portfolio       Portofolio
+/assets/instruments     Instrumen
+/imports                Impor Data
+/admin/audit-log        Log Audit
+/settings               Pengaturan
+```
+
+Older MVP routes such as `/orders`, `/cash`, `/portfolio`, `/instruments`, `/import-data`, and `/audit-log` redirect to the current routes for local compatibility.
 
 CSV export columns are stable for the MVP:
 

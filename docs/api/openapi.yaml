@@ -1155,6 +1155,33 @@ paths:
     get:
       tags: [Audit Logs]
       summary: List audit logs
+      description: Compatibility route for the MVP audit log list. New admin-facing navigation uses `/api/v1/admin/audit-logs`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: entity_type
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Latest audit logs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogListEnvelope"
+
+  /api/v1/admin/audit-logs:
+    get:
+      tags: [Audit Logs]
+      summary: List audit logs from the admin namespace
+      description: Admin namespace route for the audit log list. The current MVP implementation returns the same data as `/api/v1/audit-logs`.
       security:
         - bearerAuth: []
       parameters:

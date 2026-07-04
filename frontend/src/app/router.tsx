@@ -2,27 +2,34 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { LoginPage } from "../features/auth/LoginPage";
 import { ProtectedRoute } from "../features/auth/ProtectedRoute";
-import { AuditLogPage } from "../features/mvp/pages/AuditLogPage";
-import { CashPage } from "../features/mvp/pages/CashPage";
-import { HoldingsPage } from "../features/mvp/pages/HoldingsPage";
-import { ImportPage } from "../features/mvp/pages/ImportPage";
-import { InstrumentsPage } from "../features/mvp/pages/InstrumentsPage";
-import { OverviewPage } from "../features/mvp/pages/OverviewPage";
-import { ReportsPage } from "../features/mvp/pages/ReportsPage";
-import { TransactionsPage } from "../features/mvp/pages/TransactionsPage";
+import { AuditLogPage } from "../features/admin/pages/AuditLogPage";
+import { HoldingsPage } from "../features/assets/pages/HoldingsPage";
+import { InstrumentsPage } from "../features/assets/pages/InstrumentsPage";
+import { ImportPage } from "../features/imports/pages/ImportPage";
+import { AccountsPage } from "../features/money/pages/AccountsPage";
+import { TransactionsPage } from "../features/money/pages/TransactionsPage";
+import { OverviewPage } from "../features/overview/pages/OverviewPage";
+import { ReportsPage } from "../features/reports/pages/ReportsPage";
+import { SettingsPage } from "../features/settings/pages/SettingsPage";
 
 const dashboardChildren = [
   { index: true, element: <OverviewPage /> },
-  { path: "portfolio", element: <HoldingsPage /> },
-  { path: "orders", element: <TransactionsPage /> },
-  { path: "cash", element: <CashPage /> },
-  { path: "instruments", element: <InstrumentsPage /> },
-  { path: "asset-allocation", element: <Navigate to="/" replace /> },
+  { path: "transactions", element: <TransactionsPage /> },
+  { path: "accounts", element: <AccountsPage /> },
   { path: "reports", element: <ReportsPage /> },
-  { path: "import-data", element: <ImportPage /> },
+  { path: "assets/portfolio", element: <HoldingsPage /> },
+  { path: "assets/instruments", element: <InstrumentsPage /> },
+  { path: "imports", element: <ImportPage /> },
+  { path: "admin/audit-log", element: <AuditLogPage /> },
+  { path: "settings", element: <SettingsPage /> },
+  { path: "portfolio", element: <Navigate to="/assets/portfolio" replace /> },
+  { path: "orders", element: <Navigate to="/transactions" replace /> },
+  { path: "cash", element: <Navigate to="/accounts" replace /> },
+  { path: "instruments", element: <Navigate to="/assets/instruments" replace /> },
+  { path: "import-data", element: <Navigate to="/imports" replace /> },
+  { path: "audit-log", element: <Navigate to="/admin/audit-log" replace /> },
+  { path: "asset-allocation", element: <Navigate to="/" replace /> },
   { path: "insights", element: <Navigate to="/" replace /> },
-  { path: "audit-log", element: <AuditLogPage /> },
-  { path: "settings", element: <Navigate to="/" replace /> },
 ];
 
 export const router = createBrowserRouter([

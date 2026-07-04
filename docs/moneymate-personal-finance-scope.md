@@ -86,6 +86,24 @@ The current roadmap intentionally excludes:
 - Theme preference should use `system` by default, persist locally, and later sync to the user profile.
 - Existing portfolio features should move under Assets & Net Worth and remain clearly labelled as manual/mock, not real-time.
 
+## Route Architecture
+
+Primary frontend routes should follow the personal finance navigation groups:
+
+```txt
+/                       Overview / Ringkasan
+/transactions           Money Management / Transaksi
+/accounts               Money Management / Akun & Wallet
+/reports                Reports / Laporan
+/assets/portfolio       Assets & Net Worth / Portofolio
+/assets/instruments     Assets & Net Worth / Instrumen
+/imports                Assets & Net Worth / Impor Data
+/admin/audit-log        Admin / Log Audit
+/settings               Settings / Pengaturan
+```
+
+Compatibility routes from the earlier MVP can redirect to the primary routes while the migration is in progress.
+
 ## Demo Safety
 
 Demo data, seed credentials, and local backup scripts are local-only. No production secrets should be committed. Database backup/export workflows remain recovery and local demo tooling; they are not personal finance report exports.

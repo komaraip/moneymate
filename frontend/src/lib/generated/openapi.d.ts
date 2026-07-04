@@ -1570,7 +1570,52 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List audit logs */
+        /**
+         * List audit logs
+         * @description Compatibility route for the MVP audit log list. New admin-facing navigation uses `/api/v1/admin/audit-logs`.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    entity_type?: string;
+                    action?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Latest audit logs. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuditLogListEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List audit logs from the admin namespace
+         * @description Admin namespace route for the audit log list. The current MVP implementation returns the same data as `/api/v1/audit-logs`.
+         */
         get: {
             parameters: {
                 query?: {

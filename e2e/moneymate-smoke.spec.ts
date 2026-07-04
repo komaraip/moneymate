@@ -60,7 +60,7 @@ test.describe("MoneyMate MVP smoke", () => {
     await expect(page.getByRole("heading", { name: "Nonaktifkan Instrumen" })).toBeVisible();
     await page.getByRole("button", { name: "Batal" }).click();
 
-    await page.getByRole("link", { name: "Kas", exact: true }).click();
+    await page.getByRole("link", { name: "Akun & Wallet", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Kas" })).toBeVisible();
     await page.getByRole("button", { name: /Tambah Akun Kas/i }).click();
     await expect(page.getByRole("heading", { name: "Tambah Akun Kas" })).toBeVisible();
