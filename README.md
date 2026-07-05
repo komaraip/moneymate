@@ -49,15 +49,14 @@ Frontend:
 
 ```powershell
 cd frontend
-npx tsc --noEmit
-npx vite build
+npm run build
 ```
 
 Backend:
+Because the backend runs in a Docker container using `go run`, you do not need to build it manually. If you wish to test the build inside the container, you can run:
 
 ```powershell
-cd backend
-go build ./...
+docker compose exec backend go build ./...
 ```
 
 ## Main Routes
@@ -89,14 +88,8 @@ Old routes such as `/orders`, `/cash`, `/portfolio`, `/instruments`, `/import-da
 
 ## API
 
-The API contract is located at:
-
-```txt
-docs/api/openapi.yaml
-```
-
 Generated frontend types are currently saved at:
 
 ```txt
-frontend/src/lib/generated/openapi.d.ts
+frontend/src/types/openapi.d.ts
 ```
