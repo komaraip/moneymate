@@ -16,6 +16,7 @@ import { TransactionsPage } from "../pages/money/TransactionsPage";
 import { OverviewPage } from "../pages/overview/OverviewPage";
 import { ReportsPage } from "../pages/reports/ReportsPage";
 import { SettingsPage } from "../pages/settings/SettingsPage";
+import { LandingPage } from "../pages/landing/LandingPage";
 
 const dashboardChildren = [
   { index: true, element: <OverviewPage /> },
@@ -31,21 +32,22 @@ const dashboardChildren = [
   { path: "admin/users", element: <AdminUsersPage /> },
   { path: "admin/audit-log", element: <AuditLogPage /> },
   { path: "settings", element: <SettingsPage /> },
-  { path: "portfolio", element: <Navigate to="/assets/portfolio" replace /> },
-  { path: "orders", element: <Navigate to="/transactions" replace /> },
-  { path: "cash", element: <Navigate to="/accounts" replace /> },
-  { path: "instruments", element: <Navigate to="/assets/instruments" replace /> },
-  { path: "import-data", element: <Navigate to="/imports" replace /> },
-  { path: "audit-log", element: <Navigate to="/admin/audit-log" replace /> },
-  { path: "asset-allocation", element: <Navigate to="/" replace /> },
-  { path: "insights", element: <Navigate to="/" replace /> },
+  { path: "portfolio", element: <Navigate to="/dashboard/assets/portfolio" replace /> },
+  { path: "orders", element: <Navigate to="/dashboard/transactions" replace /> },
+  { path: "cash", element: <Navigate to="/dashboard/accounts" replace /> },
+  { path: "instruments", element: <Navigate to="/dashboard/assets/instruments" replace /> },
+  { path: "import-data", element: <Navigate to="/dashboard/imports" replace /> },
+  { path: "audit-log", element: <Navigate to="/dashboard/admin/audit-log" replace /> },
+  { path: "asset-allocation", element: <Navigate to="/dashboard" replace /> },
+  { path: "insights", element: <Navigate to="/dashboard" replace /> },
 ];
 
 export const router = createBrowserRouter([
+  { path: "/", element: <LandingPage /> },
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <RegisterPage /> },
   {
-    path: "/",
+    path: "/dashboard",
     element: (
       <ProtectedRoute>
         <DashboardLayout />

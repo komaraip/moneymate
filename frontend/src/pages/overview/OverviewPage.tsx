@@ -22,7 +22,7 @@ export function OverviewPage() {
   const savingsGoals = useQuery({ queryKey: queryKeys.savingsGoals.all, queryFn: moneymateApi.savingsGoals });
 
   if (user?.role === "admin") {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to="/dashboard/admin" replace />;
   }
 
   if (overview.isLoading) return <LoadingState />;

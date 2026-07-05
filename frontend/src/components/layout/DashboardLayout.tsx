@@ -23,32 +23,32 @@ import { useAuth } from "../../hooks/useAuth";
 const userNavGroups = [
   {
     title: "Overview",
-    items: [{ label: "Ringkasan", href: "/", icon: Gauge }],
+    items: [{ label: "Ringkasan", href: "/dashboard", icon: Gauge }],
   },
   {
     title: "Money Management",
     items: [
-      { label: "Transaksi", href: "/transactions", icon: ClipboardList },
-      { label: "Akun & Wallet", href: "/accounts", icon: Banknote },
-      { label: "Anggaran", href: "/budgets", icon: PiggyBank },
-      { label: "Tujuan Tabungan", href: "/savings-goals", icon: Target },
+      { label: "Transaksi", href: "/dashboard/transactions", icon: ClipboardList },
+      { label: "Akun & Wallet", href: "/dashboard/accounts", icon: Banknote },
+      { label: "Anggaran", href: "/dashboard/budgets", icon: PiggyBank },
+      { label: "Tujuan Tabungan", href: "/dashboard/savings-goals", icon: Target },
     ],
   },
   {
     title: "Reports",
-    items: [{ label: "Laporan", href: "/reports", icon: FileText }],
+    items: [{ label: "Laporan", href: "/dashboard/reports", icon: FileText }],
   },
   {
     title: "Assets & Net Worth",
     items: [
-      { label: "Portofolio", href: "/assets/portfolio", icon: BarChart3 },
-      { label: "Instrumen", href: "/assets/instruments", icon: Landmark },
-      { label: "Impor Data", href: "/imports", icon: Import },
+      { label: "Portofolio", href: "/dashboard/assets/portfolio", icon: BarChart3 },
+      { label: "Instrumen", href: "/dashboard/assets/instruments", icon: Landmark },
+      { label: "Impor Data", href: "/dashboard/imports", icon: Import },
     ],
   },
   {
     title: "Settings",
-    items: [{ label: "Pengaturan", href: "/settings", icon: Settings }],
+    items: [{ label: "Pengaturan", href: "/dashboard/settings", icon: Settings }],
   },
 ];
 
@@ -56,14 +56,14 @@ const adminNavGroups = [
   {
     title: "Admin",
     items: [
-      { label: "Admin Dashboard", href: "/admin", icon: ShieldCheck },
-      { label: "Pengguna", href: "/admin/users", icon: Users },
-      { label: "Log Audit", href: "/admin/audit-log", icon: History },
+      { label: "Admin Dashboard", href: "/dashboard/admin", icon: ShieldCheck },
+      { label: "Pengguna", href: "/dashboard/admin/users", icon: Users },
+      { label: "Log Audit", href: "/dashboard/admin/audit-log", icon: History },
     ],
   },
   {
     title: "Settings",
-    items: [{ label: "Pengaturan", href: "/settings", icon: Settings }],
+    items: [{ label: "Pengaturan", href: "/dashboard/settings", icon: Settings }],
   },
 ];
 
