@@ -1,16 +1,16 @@
 # MoneyMate Personal Finance
 
-MoneyMate adalah aplikasi web personal finance untuk user individu. Fokus saat ini:
+MoneyMate is a personal finance web application for individual users. Current focus:
 
-- income, expense, transfer, dan cashflow
-- akun/wallet dan saldo kas
-- portofolio/net worth dengan harga manual/mock
-- anggaran bulanan
-- tujuan tabungan
-- laporan personal
-- admin metadata pengguna tanpa membuka data finansial privat user lain
+- income, expense, transfer, and cashflow
+- accounts/wallets and cash balances
+- portfolio/net worth with manual/mock pricing
+- monthly budgets
+- savings goals
+- personal reports
+- user metadata admin without exposing private financial data of other users
 
-Harga dan nilai portofolio di MVP ini bersifat manual/mock, bukan real-time. Aplikasi tidak memberikan rekomendasi beli/jual.
+Portfolio prices and values in this MVP are manual/mock, not real-time. The application does not provide buy/sell recommendations.
 
 ## Stack
 
@@ -20,17 +20,17 @@ Harga dan nilai portofolio di MVP ini bersifat manual/mock, bukan real-time. Apl
 
 ## Environment
 
-Buat file `.env` lokal dari contoh:
+Create a local `.env` file from the example:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-## Menjalankan Lokal
+## Running Locally
 
-Repository ini hanya menyertakan source aplikasi inti. Jalankan service dengan tool lokal.
+This repository only includes the core application source. Run the services using local tools.
 
-Terminal backend:
+Backend terminal:
 
 ```powershell
 cd backend
@@ -39,7 +39,7 @@ go run ./cmd/seed
 go run ./cmd/api
 ```
 
-Terminal frontend:
+Frontend terminal:
 
 ```powershell
 cd frontend
@@ -54,7 +54,7 @@ Frontend: http://localhost:5173
 Backend health: http://localhost:8080/healthz
 ```
 
-## Build Lokal
+## Local Build
 
 Frontend:
 
@@ -71,42 +71,42 @@ cd backend
 go build ./...
 ```
 
-## Routes Utama
+## Main Routes
 
 ```txt
-/                       Ringkasan
-/transactions           Transaksi
-/accounts               Akun & Wallet
-/budgets                Anggaran
-/savings-goals          Tujuan Tabungan
-/reports                Laporan
-/assets/portfolio       Portofolio
-/assets/instruments     Instrumen
-/imports                Impor Data
+/                       Summary
+/transactions           Transactions
+/accounts               Accounts & Wallets
+/budgets                Budgets
+/savings-goals          Savings Goals
+/reports                Reports
+/assets/portfolio       Portfolio
+/assets/instruments     Instruments
+/imports                Data Imports
 /admin                  Admin Dashboard
-/admin/users            Pengguna
-/admin/audit-log        Log Audit
-/settings               Pengaturan
+/admin/users            Users
+/admin/audit-log        Audit Logs
+/settings               Settings
 ```
 
-Route lama seperti `/orders`, `/cash`, `/portfolio`, `/instruments`, `/import-data`, dan `/audit-log` masih redirect ke route baru untuk kompatibilitas lokal.
+Old routes such as `/orders`, `/cash`, `/portfolio`, `/instruments`, `/import-data`, and `/audit-log` still redirect to the new routes for local compatibility.
 
-## Catatan Produk
+## Product Notes
 
-- Role final hanya `admin` dan `user`.
-- Data finansial user-owned harus user-scoped.
-- Admin hanya melihat metadata pengguna dan audit log. Admin tidak membaca transaksi, kas, portofolio, anggaran, atau tujuan tabungan user lain secara default.
-- Realized P/L, FIFO, TWR, MWR, tax-lot accounting, real market data, dan workflow production tidak termasuk scope saat ini.
+- Final roles are only `admin` and `user`.
+- User-owned financial data must be user-scoped.
+- Admins only view user metadata and audit logs. Admins do not read transactions, cash, portfolios, budgets, or savings goals of other users by default.
+- Realized P/L, FIFO, TWR, MWR, tax-lot accounting, real market data, and production workflows are not included in the current scope.
 
 ## API
 
-Kontrak API ada di:
+The API contract is located at:
 
 ```txt
 docs/api/openapi.yaml
 ```
 
-Generated frontend type saat ini tersimpan di:
+Generated frontend types are currently saved at:
 
 ```txt
 frontend/src/lib/generated/openapi.d.ts
