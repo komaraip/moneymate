@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/httprate"
 
 	"moneymate/backend/internal/apperror"
 	"moneymate/backend/internal/config"
@@ -35,8 +36,15 @@ func NewHandler(service *Service, cfg config.Config) Handler {
 func (h Handler) Routes() chi.Router {
 	router := chi.NewRouter()
 
-	router.Post("/login", h.login)
-	router.Post("/register", h.register)
+	// Rate limiter: 5 requests per minute per IP for authentication endpoints
+	limiter := httprate.Limit(
+		5,
+		1*time.Minute,
+		httprate.WithKeyFuncs(httprate.KeyByIP),
+	)
+
+	router.With(limiter).Post("/login", h.login)
+	router.With(limiter).Post("/register", h.register)
 	router.Post("/refresh", h.refresh)
 	router.Post("/logout", h.logout)
 	router.With(RequireAuth(h.service)).Get("/me", h.me)

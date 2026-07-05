@@ -31,6 +31,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service
 	chiRouter.Use(chimiddleware.RealIP)
 	chiRouter.Use(httpmw.Recoverer(logger))
 	chiRouter.Use(httpmw.RequestLogger(logger))
+	chiRouter.Use(httpmw.SecurityHeaders)
+	chiRouter.Use(httpmw.MaxBytes(1048576)) // Batas maksimum payload 1 MB
 	chiRouter.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   cfg.CORSAllowedOrigins,
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
