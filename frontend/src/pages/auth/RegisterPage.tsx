@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ApiError } from "../../helpers/api-client";
-import { useAuth } from "../../hooks/useAuth";
+import { moneymateApi } from "../../helpers/moneymate-api";
 
-export function LoginPage() {
+export function RegisterPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,10 +16,10 @@ export function LoginPage() {
     setError("");
     setIsSubmitting(true);
     try {
-      await login({ email, password });
-      navigate("/", { replace: true });
+      await moneymateApi.register({ email, full_name: fullName, password });
+      navigate("/login", { replace: true, state: { message: "Pendaftaran berhasil, silakan masuk." } });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Login gagal");
+      setError(err instanceof ApiError ? err.message : "Pendaftaran gagal");
     } finally {
       setIsSubmitting(false);
     }
@@ -34,15 +34,26 @@ export function LoginPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">
           MoneyMate
         </p>
-        <h1 className="mt-3 text-2xl font-semibold text-main">Masuk Dashboard</h1>
+        <h1 className="mt-3 text-2xl font-semibold text-main">Daftar Akun Baru</h1>
 
         <label className="mt-6 block text-sm text-muted">
+          Nama Lengkap
+          <input
+            className="mt-2 w-full rounded-lg border border-subtle bg-app px-3 py-2 text-main outline-none focus:border-emerald-400"
+            onChange={(event) => setFullName(event.target.value)}
+            type="text"
+            value={fullName}
+            required
+          />
+        </label>
+        <label className="mt-4 block text-sm text-muted">
           Email
           <input
             className="mt-2 w-full rounded-lg border border-subtle bg-app px-3 py-2 text-main outline-none focus:border-emerald-400"
             onChange={(event) => setEmail(event.target.value)}
             type="email"
             value={email}
+            required
           />
         </label>
         <label className="mt-4 block text-sm text-muted">
@@ -52,13 +63,14 @@ export function LoginPage() {
             onChange={(event) => setPassword(event.target.value)}
             type="password"
             value={password}
+            required
           />
         </label>
 
         {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
 
         <p className="mt-6 text-center text-sm text-muted">
-          Belum punya akun? <Link to="/register" className="text-emerald-400 hover:underline">Daftar sekarang</Link>
+          Sudah punya akun? <Link to="/login" className="text-emerald-400 hover:underline">Masuk di sini</Link>
         </p>
 
         <button
@@ -66,7 +78,7 @@ export function LoginPage() {
           disabled={isSubmitting}
           type="submit"
         >
-          {isSubmitting ? "Memproses..." : "Masuk"}
+          {isSubmitting ? "Memproses..." : "Daftar"}
         </button>
       </form>
     </main>

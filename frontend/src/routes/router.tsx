@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { LoginPage } from "../pages/auth/LoginPage";
+import { RegisterPage } from "../pages/auth/RegisterPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { AdminDashboardPage } from "../pages/admin/AdminDashboardPage";
 import { AuditLogPage } from "../pages/admin/AuditLogPage";
@@ -42,6 +43,7 @@ const dashboardChildren = [
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
+  { path: "/register", element: <RegisterPage /> },
   {
     path: "/",
     element: (

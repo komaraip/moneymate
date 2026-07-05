@@ -21,6 +21,13 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+type registerRequest struct {
+	Email    string `json:"email"`
+	FullName string `json:"full_name"`
+	Password string `json:"password"`
+}
+
+
 func NewHandler(service *Service, cfg config.Config) Handler {
 	return Handler{service: service, cfg: cfg}
 }
@@ -29,6 +36,7 @@ func (h Handler) Routes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Post("/login", h.login)
+	router.Post("/register", h.register)
 	router.Post("/refresh", h.refresh)
 	router.Post("/logout", h.logout)
 	router.With(RequireAuth(h.service)).Get("/me", h.me)
@@ -51,6 +59,21 @@ func (h Handler) login(w http.ResponseWriter, r *http.Request) {
 
 	h.setRefreshCookie(w, result.RefreshToken, result.RefreshExpiresAt)
 	response.JSON(w, r, http.StatusOK, result, nil)
+}
+
+func (h Handler) register(w http.ResponseWriter, r *http.Request) {
+	var input registerRequest
+	if err := response.DecodeJSON(r, &input); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+
+	if err := h.service.Register(r.Context(), input.Email, input.FullName, input.Password); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+
+	response.JSON(w, r, http.StatusCreated, map[string]string{"status": "registered"}, nil)
 }
 
 func (h Handler) refresh(w http.ResponseWriter, r *http.Request) {

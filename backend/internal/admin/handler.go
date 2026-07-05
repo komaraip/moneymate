@@ -29,7 +29,9 @@ func (h Handler) Routes() chi.Router {
 	router := chi.NewRouter()
 	router.Get("/overview", h.overview)
 	router.Get("/users", h.listUsers)
+	router.Post("/users", h.createUser)
 	router.Put("/users/{id}", h.updateUser)
+	router.Delete("/users/{id}", h.deleteUser)
 	return router
 }
 
@@ -184,6 +186,115 @@ func (h Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	h.writeAudit(r, "update", after.ID, before, after)
 	response.JSON(w, r, http.StatusOK, after, nil)
+}
+
+func (h Handler) createUser(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Email    string `json:"email"`
+		FullName string `json:"full_name"`
+		Password string `json:"password"`
+		Role     string `json:"role"`
+	}
+	if err := response.DecodeJSON(r, &in); err != nil {
+		response.Error(w, r, err)
+		return
+	}
+	email := strings.TrimSpace(strings.ToLower(in.Email))
+	role := strings.TrimSpace(strings.ToLower(in.Role))
+	if role == "" {
+		role = "user"
+	}
+	if email == "" || in.FullName == "" || in.Password == "" {
+		response.Error(w, r, validation("Email, nama, dan password wajib diisi"))
+		return
+	}
+	if role != "admin" && role != "user" {
+		response.Error(w, r, validation("Role harus admin atau user"))
+		return
+	}
+
+	passwordHash, err := auth.HashPassword(in.Password)
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memproses password"))
+		return
+	}
+
+	var newID string
+	err = h.db.QueryRow(r.Context(), `
+		INSERT INTO users (email, full_name, password_hash, role, is_active)
+		VALUES ($1, $2, $3, $4, true)
+		RETURNING id::text
+	`, email, in.FullName, passwordHash, role).Scan(&newID)
+	if err != nil {
+		if strings.Contains(err.Error(), "users_email_key") || strings.Contains(err.Error(), "duplicate key") {
+			response.Error(w, r, validation("Email sudah terdaftar"))
+			return
+		}
+		response.Error(w, r, internalErr(err, "Gagal membuat pengguna"))
+		return
+	}
+
+	after, err := h.getUserByID(r, newID)
+	if err == nil {
+		h.writeAudit(r, "create", after.ID, nil, after)
+	}
+
+	response.JSON(w, r, http.StatusCreated, after, nil)
+}
+
+func (h Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+
+	actor, _ := auth.UserFromContext(r.Context())
+	if actor.ID == id {
+		response.Error(w, r, validation("Admin tidak dapat menghapus akun sendiri"))
+		return
+	}
+
+	before, err := h.getUserByID(r, id)
+	if err != nil {
+		response.Error(w, r, mapGetErr(err, "Pengguna tidak ditemukan"))
+		return
+	}
+
+	tx, err := h.db.Begin(r.Context())
+	if err != nil {
+		response.Error(w, r, internalErr(err, "Gagal memulai transaksi"))
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	// Hard delete all related data manually since ON DELETE CASCADE is missing on some tables
+	queries := []string{
+		`DELETE FROM audit_logs WHERE actor_user_id = $1 OR entity_id = $1`,
+		`DELETE FROM sessions WHERE user_id = $1`,
+		`DELETE FROM transactions WHERE user_id = $1`,
+		`DELETE FROM price_snapshots WHERE user_id = $1`,
+		`DELETE FROM cash_adjustments WHERE cash_account_id IN (SELECT id FROM cash_accounts WHERE user_id = $1)`,
+		`DELETE FROM monthly_budgets WHERE user_id = $1`,
+		`DELETE FROM savings_goals WHERE user_id = $1`,
+		`DELETE FROM transaction_categories WHERE user_id = $1`,
+		`DELETE FROM cash_accounts WHERE user_id = $1`,
+		`DELETE FROM users WHERE id = $1`,
+	}
+
+	for _, query := range queries {
+		if _, err := tx.Exec(r.Context(), query, id); err != nil {
+			response.Error(w, r, internalErr(err, "Gagal menghapus data terkait"))
+			return
+		}
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		response.Error(w, r, internalErr(err, "Gagal menerapkan penghapusan"))
+		return
+	}
+
+	h.writeAudit(r, "delete", before.ID, before, nil)
+	response.JSON(w, r, http.StatusOK, map[string]string{"status": "deleted"}, nil)
 }
 
 func (h Handler) getUserByID(r *http.Request, id string) (User, error) {

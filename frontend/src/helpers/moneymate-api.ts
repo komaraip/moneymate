@@ -23,6 +23,7 @@ import type {
 } from "../types/moneymate";
 
 export const moneymateApi = {
+  register: (body: unknown) => apiClient.post<{ status: string }>("/api/v1/auth/register", body),
   overview: () => apiClient.get<Overview>("/api/v1/dashboard/overview"),
   allocation: () => apiClient.get<AllocationItem[]>("/api/v1/dashboard/asset-allocation"),
   alerts: () => apiClient.get<AlertItem[]>("/api/v1/dashboard/alerts"),
@@ -77,7 +78,9 @@ export const moneymateApi = {
     const query = params.toString();
     return apiClient.get<AdminUser[]>(`/api/v1/admin/users${query ? `?${query}` : ""}`);
   },
+  createAdminUser: (body: unknown) => apiClient.post<AdminUser>("/api/v1/admin/users", body),
   updateAdminUser: (id: string, body: unknown) => apiClient.put<AdminUser>(`/api/v1/admin/users/${id}`, body),
+  deleteAdminUser: (id: string) => apiClient.delete<{ status: string }>(`/api/v1/admin/users/${id}`),
   cashAccounts: () => apiClient.get<CashAccount[]>("/api/v1/cash-accounts"),
   createCashAccount: (body: unknown) => apiClient.post<CashAccount>("/api/v1/cash-accounts", body),
   updateCashAccount: (id: string, body: unknown) => apiClient.put<CashAccount>(`/api/v1/cash-accounts/${id}`, body),

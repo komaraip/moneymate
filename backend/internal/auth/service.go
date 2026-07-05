@@ -89,6 +89,33 @@ func (s *Service) Login(ctx context.Context, email string, password string, user
 	}, nil
 }
 
+func (s *Service) Register(ctx context.Context, email string, fullName string, password string) error {
+	email = strings.TrimSpace(strings.ToLower(email))
+	fullName = strings.TrimSpace(fullName)
+
+	if email == "" || password == "" || fullName == "" {
+		return apperror.New(apperror.CodeValidation, "Email, nama, dan password wajib diisi", http.StatusBadRequest)
+	}
+
+	passwordHash, err := HashPassword(password)
+	if err != nil {
+		return apperror.Wrap(err, apperror.CodeInternal, "Gagal memproses pendaftaran", http.StatusInternalServerError)
+	}
+
+	_, err = s.db.Exec(ctx, `
+		INSERT INTO users (email, full_name, password_hash, role, is_active)
+		VALUES ($1, $2, $3, 'user', true)
+	`, email, fullName, passwordHash)
+	if err != nil {
+		if strings.Contains(err.Error(), "users_email_key") || strings.Contains(err.Error(), "duplicate key") {
+			return apperror.New(apperror.CodeValidation, "Email sudah terdaftar", http.StatusConflict)
+		}
+		return apperror.Wrap(err, apperror.CodeInternal, "Gagal membuat akun", http.StatusInternalServerError)
+	}
+
+	return nil
+}
+
 func (s *Service) Refresh(ctx context.Context, refreshToken string) (LoginResult, error) {
 	if refreshToken == "" {
 		return LoginResult{}, apperror.New(apperror.CodeUnauthorized, "Sesi tidak ditemukan", http.StatusUnauthorized)

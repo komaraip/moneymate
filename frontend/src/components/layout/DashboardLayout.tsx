@@ -20,7 +20,7 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
-const navGroups = [
+const userNavGroups = [
   {
     title: "Overview",
     items: [{ label: "Ringkasan", href: "/", icon: Gauge }],
@@ -47,8 +47,14 @@ const navGroups = [
     ],
   },
   {
+    title: "Settings",
+    items: [{ label: "Pengaturan", href: "/settings", icon: Settings }],
+  },
+];
+
+const adminNavGroups = [
+  {
     title: "Admin",
-    adminOnly: true,
     items: [
       { label: "Admin Dashboard", href: "/admin", icon: ShieldCheck },
       { label: "Pengguna", href: "/admin/users", icon: Users },
@@ -189,7 +195,7 @@ function roleLabel(role?: string) {
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
-  const groups = navGroups.filter((group) => !group.adminOnly || user?.role === "admin");
+  const groups = user?.role === "admin" ? adminNavGroups : userNavGroups;
   return (
     <nav className="mt-8 space-y-6">
       {groups.map((group) => (

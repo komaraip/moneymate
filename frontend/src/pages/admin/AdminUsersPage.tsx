@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash } from "lucide-react";
 import { useState } from "react";
 import { ErrorState } from "../../components/feedback/ErrorState";
 import { InlineAlert } from "../../components/feedback/InlineAlert";
@@ -31,6 +31,9 @@ export function AdminUsersPage() {
   const [filters, setFilters] = useState<Filters>({ search: "", role: "", is_active: "" });
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [form, setForm] = useState<UserForm>({ role: "user", is_active: true });
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({ email: "", full_name: "", password: "", role: "user" as "admin" | "user" });
+  const [deleting, setDeleting] = useState<AdminUser | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
 
   const users = useQuery({
@@ -51,6 +54,26 @@ export function AdminUsersPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs.all });
     },
   });
+  const create = useMutation({
+    mutationFn: () => moneymateApi.createAdminUser(createForm),
+    onSuccess: () => {
+      setCreating(false);
+      setSuccessMessage("Pengguna berhasil dibuat.");
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.overview });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.users(cleanFilters(filters)) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs.all });
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => moneymateApi.deleteAdminUser(id),
+    onSuccess: () => {
+      setDeleting(null);
+      setSuccessMessage("Pengguna berhasil dihapus.");
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.overview });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.users(cleanFilters(filters)) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs.all });
+    },
+  });
 
   if (user?.role !== "admin") {
     return <ErrorState message="Halaman admin hanya tersedia untuk admin." />;
@@ -60,7 +83,18 @@ export function AdminUsersPage() {
 
   return (
     <div>
-      <PageHeader description="Kelola metadata akun tanpa membuka data finansial privat" title="Pengguna" />
+      <PageHeader description="Kelola metadata akun tanpa membuka data finansial privat" title="Pengguna">
+        <button
+          className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950"
+          onClick={() => {
+            setCreateForm({ email: "", full_name: "", password: "", role: "user" });
+            setCreating(true);
+          }}
+          type="button"
+        >
+          Tambah Pengguna
+        </button>
+      </PageHeader>
 
       <Card className="mb-5">
         <div className="grid gap-4 lg:grid-cols-[1fr_10rem_10rem]">
@@ -119,9 +153,14 @@ export function AdminUsersPage() {
                   </td>
                   <td className="py-3 pr-4 text-muted">{formatDate(item.created_at)}</td>
                   <td className="py-3 pr-4 text-right">
-                    <button className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200" onClick={() => openEdit(item, setEditing, setForm)} type="button">
-                      <Pencil className="h-4 w-4" />
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200" onClick={() => openEdit(item, setEditing, setForm)} type="button" title="Edit Pengguna">
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button className="rounded-lg border border-subtle p-2 text-muted hover:border-danger hover:text-danger" onClick={() => setDeleting(item)} type="button" disabled={item.id === user?.id} title={item.id === user?.id ? "Tidak dapat menghapus akun sendiri" : "Hapus Pengguna"}>
+                        <Trash className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -158,6 +197,59 @@ export function AdminUsersPage() {
             </button>
             <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={update.isPending} onClick={() => update.mutate()} type="button">
               Simpan
+            </button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {creating ? (
+        <Modal title="Tambah Pengguna" onClose={() => setCreating(false)}>
+          <div className="space-y-4">
+            <Field label="Nama Lengkap">
+              <input className={inputClass} onChange={(event) => setCreateForm((current) => ({ ...current, full_name: event.target.value }))} type="text" value={createForm.full_name} />
+            </Field>
+            <Field label="Email">
+              <input className={inputClass} onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))} type="email" value={createForm.email} />
+            </Field>
+            <Field label="Password">
+              <input className={inputClass} onChange={(event) => setCreateForm((current) => ({ ...current, password: event.target.value }))} type="text" value={createForm.password} />
+            </Field>
+            <Field label="Role">
+              <select className={inputClass} onChange={(event) => setCreateForm((current) => ({ ...current, role: event.target.value as "admin" | "user" }))} value={createForm.role}>
+                <option value="admin">Admin</option>
+                <option value="user">User</option>
+              </select>
+            </Field>
+          </div>
+          <div className="mt-4">
+            <InlineAlert messages={[errorMessage(create.error)]} tone="error" />
+          </div>
+          <div className="mt-5 flex justify-end gap-2">
+            <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-muted" onClick={() => setCreating(false)} type="button">
+              Batal
+            </button>
+            <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={create.isPending} onClick={() => create.mutate()} type="button">
+              Simpan
+            </button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {deleting ? (
+        <Modal title="Hapus Pengguna" onClose={() => setDeleting(null)}>
+          <p className="text-sm text-muted">
+            Apakah Anda yakin ingin menghapus akun <strong>{deleting.email}</strong> secara permanen?
+            Tindakan ini tidak dapat dibatalkan dan akan menghapus seluruh data yang bersangkutan.
+          </p>
+          <div className="mt-4">
+            <InlineAlert messages={[errorMessage(remove.error)]} tone="error" />
+          </div>
+          <div className="mt-5 flex justify-end gap-2">
+            <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-muted" onClick={() => setDeleting(null)} type="button">
+              Batal
+            </button>
+            <button className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-zinc-50 disabled:opacity-60" disabled={remove.isPending} onClick={() => remove.mutate(deleting.id)} type="button">
+              {remove.isPending ? "Menghapus..." : "Hapus Permanen"}
             </button>
           </div>
         </Modal>

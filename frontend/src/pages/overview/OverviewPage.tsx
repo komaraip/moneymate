@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "../../hooks/useAuth";
 import { EmptyState } from "../../components/feedback/EmptyState";
 import { ErrorState } from "../../components/feedback/ErrorState";
 import { LoadingState } from "../../components/feedback/LoadingState";
@@ -9,13 +10,20 @@ import { Card } from "../../components/ui/Card";
 import { PageHeader } from "../../components/ui/PageHeader";
 import type { Budget, SavingsGoal } from "../../types/moneymate";
 
+import { Navigate } from "react-router-dom";
+
 export function OverviewPage() {
+  const { user } = useAuth();
   const month = defaultMonth();
   const overview = useQuery({ queryKey: queryKeys.dashboard.overview, queryFn: moneymateApi.overview });
   const allocation = useQuery({ queryKey: queryKeys.dashboard.allocation, queryFn: moneymateApi.allocation });
   const alerts = useQuery({ queryKey: queryKeys.dashboard.alerts, queryFn: moneymateApi.alerts });
   const budgets = useQuery({ queryKey: queryKeys.budgets.month(month), queryFn: () => moneymateApi.budgets(month) });
   const savingsGoals = useQuery({ queryKey: queryKeys.savingsGoals.all, queryFn: moneymateApi.savingsGoals });
+
+  if (user?.role === "admin") {
+    return <Navigate to="/admin" replace />;
+  }
 
   if (overview.isLoading) return <LoadingState />;
   if (overview.isError) return <ErrorState message="Ringkasan belum bisa dimuat." />;
