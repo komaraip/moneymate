@@ -1,7 +1,7 @@
-import { useAuth } from "../../auth/useAuth";
-import { Card } from "../../mvp/components/Card";
-import { PageHeader } from "../../mvp/components/PageHeader";
-import { useTheme } from "../ThemeProvider";
+import { useAuth } from "../../hooks/useAuth";
+import { Card } from "../../components/ui/Card";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { useTheme } from "../../hooks/useTheme";
 
 const themeOptions = [
   { label: "Sistem", value: "system" },

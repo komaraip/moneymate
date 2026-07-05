@@ -1,15 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Pencil, Plus, Trash2, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { EmptyState } from "../../../components/feedback/EmptyState";
-import { ErrorState } from "../../../components/feedback/ErrorState";
-import { LoadingState } from "../../../components/feedback/LoadingState";
-import { formatCurrency, formatDate, formatPercent } from "../../../lib/format";
-import { queryKeys } from "../../../lib/query-keys";
-import { mvpApi } from "../api";
-import { Card } from "../components/Card";
-import { PageHeader } from "../components/PageHeader";
-import type { SavingsGoal } from "../types";
+import { CalendarDays, Pencil, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { EmptyState } from "../../components/feedback/EmptyState";
+import { ErrorState } from "../../components/feedback/ErrorState";
+import { InlineAlert } from "../../components/feedback/InlineAlert";
+import { LoadingState } from "../../components/feedback/LoadingState";
+import { FormField as Field } from "../../components/forms/FormField";
+import { SummaryMetric as Summary } from "../../components/data-display/SummaryMetric";
+import { formatCurrency, formatDate, formatPercent } from "../../utils/format";
+import { queryKeys } from "../../utils/query-keys";
+import { moneymateApi } from "../../helpers/moneymate-api";
+import { Card } from "../../components/ui/Card";
+import { Modal } from "../../components/ui/Modal";
+import { PageHeader } from "../../components/ui/PageHeader";
+import type { SavingsGoal } from "../../types/moneymate";
 
 type GoalForm = {
   name: string;
@@ -31,7 +35,7 @@ const emptyForm = (): GoalForm => ({
 
 export function SavingsGoalsPage() {
   const queryClient = useQueryClient();
-  const goals = useQuery({ queryKey: queryKeys.savingsGoals.all, queryFn: mvpApi.savingsGoals });
+  const goals = useQuery({ queryKey: queryKeys.savingsGoals.all, queryFn: moneymateApi.savingsGoals });
   const [form, setForm] = useState<GoalForm>(emptyForm);
   const [editing, setEditing] = useState<SavingsGoal | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SavingsGoal | null>(null);
@@ -40,7 +44,7 @@ export function SavingsGoalsPage() {
   const [successMessage, setSuccessMessage] = useState("");
 
   const create = useMutation({
-    mutationFn: () => mvpApi.createSavingsGoal(toPayload(form)),
+    mutationFn: () => moneymateApi.createSavingsGoal(toPayload(form)),
     onSuccess: () => {
       closeForm();
       setSuccessMessage("Tujuan tabungan berhasil ditambahkan.");
@@ -51,7 +55,7 @@ export function SavingsGoalsPage() {
   const update = useMutation({
     mutationFn: () => {
       if (!editing) throw new Error("Tujuan tabungan belum dipilih.");
-      return mvpApi.updateSavingsGoal(editing.id, toPayload(form));
+      return moneymateApi.updateSavingsGoal(editing.id, toPayload(form));
     },
     onSuccess: () => {
       closeForm();
@@ -61,7 +65,7 @@ export function SavingsGoalsPage() {
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => mvpApi.deleteSavingsGoal(id),
+    mutationFn: (id: string) => moneymateApi.deleteSavingsGoal(id),
     onSuccess: () => {
       setDeleteTarget(null);
       setSuccessMessage("Tujuan tabungan berhasil dinonaktifkan.");
@@ -247,15 +251,6 @@ function GoalCard({ item, onDelete, onEdit }: { item: SavingsGoal; onDelete: () 
   );
 }
 
-function Summary({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3">
-      <p className="text-xs text-zinc-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-white">{value}</p>
-    </div>
-  );
-}
-
 function SmallMetric({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -326,41 +321,8 @@ function invalidateSavingsWrites(queryClient: ReturnType<typeof useQueryClient>)
   queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs.all });
 }
 
-function Field({ children, label }: { children: ReactNode; label: string }) {
-  return (
-    <label className="block text-sm">
-      <span className="mb-2 block text-zinc-300">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function Modal({ children, onClose, title }: { children: ReactNode; onClose: () => void; title: string }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
-      <section className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
-          <button className="rounded-lg border border-zinc-800 p-2 text-zinc-300" onClick={onClose} type="button">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="mt-4">{children}</div>
-      </section>
-    </div>
-  );
-}
-
 function Feedback({ error, errors }: { error: string; errors: string[] }) {
-  if (!error && errors.length === 0) return null;
-  return (
-    <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-      {error ? <p>{error}</p> : null}
-      {errors.map((item) => (
-        <p key={item}>{item}</p>
-      ))}
-    </div>
-  );
+  return <div className="mt-4"><InlineAlert messages={[error, ...errors]} /></div>;
 }
 
 function errorMessage(error: unknown) {

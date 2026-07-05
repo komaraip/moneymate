@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ApiError } from "../../lib/api";
-import { useAuth } from "./useAuth";
+import { ApiError } from "../../helpers/api-client";
+import { useAuth } from "../../hooks/useAuth";
 
 export function LoginPage() {
   const navigate = useNavigate();

@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { History, Pencil, Plus, Trash2, WalletCards, X } from "lucide-react";
+import { History, Pencil, Plus, Trash2, WalletCards } from "lucide-react";
 import { useState } from "react";
-import { ErrorState } from "../../../components/feedback/ErrorState";
-import { LoadingState } from "../../../components/feedback/LoadingState";
-import { formatCurrency, formatDate } from "../../../lib/format";
-import { queryKeys } from "../../../lib/query-keys";
-import { mvpApi } from "../api";
-import { Card } from "../components/Card";
-import { PageHeader } from "../components/PageHeader";
-import type { CashAccount, CashAdjustment } from "../types";
+import { ErrorState } from "../../components/feedback/ErrorState";
+import { LoadingState } from "../../components/feedback/LoadingState";
+import { formatCurrency, formatDate } from "../../utils/format";
+import { queryKeys } from "../../utils/query-keys";
+import { moneymateApi } from "../../helpers/moneymate-api";
+import { Card } from "../../components/ui/Card";
+import { Modal } from "../../components/ui/Modal";
+import { PageHeader } from "../../components/ui/PageHeader";
+import type { CashAccount, CashAdjustment } from "../../types/moneymate";
 
 type CashForm = {
   account_name: string;
@@ -42,9 +43,9 @@ const emptyAdjustmentForm = (): AdjustmentForm => ({
   note: "",
 });
 
-export function CashPage() {
+export function AccountsPage() {
   const queryClient = useQueryClient();
-  const cash = useQuery({ queryKey: queryKeys.cashAccounts.all, queryFn: mvpApi.cashAccounts });
+  const cash = useQuery({ queryKey: queryKeys.cashAccounts.all, queryFn: moneymateApi.cashAccounts });
   const [adjustmentForm, setAdjustmentForm] = useState<AdjustmentForm>(emptyAdjustmentForm);
   const [form, setForm] = useState<CashForm>(emptyForm);
   const [editing, setEditing] = useState<CashAccount | null>(null);
@@ -61,12 +62,12 @@ export function CashPage() {
     queryKey: queryKeys.cashAccounts.adjustments(historyTarget?.id ?? ""),
     queryFn: () => {
       if (!historyTarget) throw new Error("Akun kas belum dipilih.");
-      return mvpApi.cashAdjustments(historyTarget.id);
+      return moneymateApi.cashAdjustments(historyTarget.id);
     },
   });
 
   const create = useMutation({
-    mutationFn: () => mvpApi.createCashAccount(toPayload(form)),
+    mutationFn: () => moneymateApi.createCashAccount(toPayload(form)),
     onSuccess: () => {
       closeForm();
       invalidateCashWrites(queryClient);
@@ -76,7 +77,7 @@ export function CashPage() {
   const update = useMutation({
     mutationFn: () => {
       if (!editing) throw new Error("Akun kas belum dipilih.");
-      return mvpApi.updateCashAccount(editing.id, toPayload(form));
+      return moneymateApi.updateCashAccount(editing.id, toPayload(form));
     },
     onSuccess: () => {
       closeForm();
@@ -85,7 +86,7 @@ export function CashPage() {
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => mvpApi.deleteCashAccount(id),
+    mutationFn: (id: string) => moneymateApi.deleteCashAccount(id),
     onSuccess: () => {
       setDeleteTarget(null);
       invalidateCashWrites(queryClient);
@@ -95,7 +96,7 @@ export function CashPage() {
   const adjust = useMutation({
     mutationFn: () => {
       if (!adjustTarget) throw new Error("Akun kas belum dipilih.");
-      return mvpApi.createCashAdjustment(adjustTarget.id, toAdjustmentPayload(adjustmentForm));
+      return moneymateApi.createCashAdjustment(adjustTarget.id, toAdjustmentPayload(adjustmentForm));
     },
     onSuccess: (_data, _variables, _context) => {
       const adjustedID = adjustTarget?.id;
@@ -291,19 +292,10 @@ function CashModal({
   setForm: (form: CashForm) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
-      <section className="w-full max-w-2xl rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-xl">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-zinc-400">Saldo manual</p>
-            <h3 className="text-lg font-semibold text-white">{isEditing ? "Edit Akun Kas" : "Tambah Akun Kas"}</h3>
-          </div>
-          <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300" onClick={onClose} title="Tutup" type="button">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <Modal onClose={onClose} size="lg" title={isEditing ? "Edit Akun Kas" : "Tambah Akun Kas"}>
+      <p className="mb-5 text-sm text-zinc-400">Saldo manual</p>
 
-        <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
           <Field label="Nama akun">
             <input className={inputClass} onChange={(e) => setForm({ ...form, account_name: e.target.value })} value={form.account_name} />
           </Field>
@@ -333,20 +325,19 @@ function CashModal({
           <Field label="Catatan">
             <input className={inputClass} onChange={(e) => setForm({ ...form, notes: e.target.value })} value={form.notes} />
           </Field>
-        </div>
+      </div>
 
-        <Feedback error={error} errors={errors} />
+      <Feedback error={error} errors={errors} />
 
-        <div className="mt-5 flex justify-end gap-3">
+      <div className="mt-5 flex justify-end gap-3">
           <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
             {isSaving ? "Menyimpan..." : "Simpan"}
           </button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -364,21 +355,18 @@ function ConfirmDelete({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <section className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-xl">
-        <h3 className="text-lg font-semibold text-white">Nonaktifkan Akun Kas</h3>
-        <p className="mt-2 text-sm text-zinc-400">Akun {label} akan dibuat nonaktif. Saldo historis tetap tersimpan.</p>
-        {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
-        <div className="mt-5 flex justify-end gap-3">
+    <Modal onClose={onCancel} size="sm" title="Nonaktifkan Akun Kas">
+      <p className="text-sm text-zinc-400">Akun {label} akan dibuat nonaktif. Saldo historis tetap tersimpan.</p>
+      {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
+      <div className="mt-5 flex justify-end gap-3">
           <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isDeleting} onClick={onConfirm} type="button">
             {isDeleting ? "Memproses..." : "Nonaktifkan"}
           </button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -402,19 +390,10 @@ function AdjustmentModal({
   setForm: (form: AdjustmentForm) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
-      <section className="w-full max-w-2xl rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-xl">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-zinc-400">{account.account_name}</p>
-            <h3 className="text-lg font-semibold text-white">Sesuaikan Saldo Kas</h3>
-          </div>
-          <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300" onClick={onClose} title="Tutup" type="button">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <Modal onClose={onClose} size="lg" title="Sesuaikan Saldo Kas">
+      <p className="mb-5 text-sm text-zinc-400">{account.account_name}</p>
 
-        <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
           <Field label="Tanggal penyesuaian">
             <input className={inputClass} onChange={(e) => setForm({ ...form, adjustment_date: e.target.value })} type="date" value={form.adjustment_date} />
           </Field>
@@ -433,23 +412,22 @@ function AdjustmentModal({
           <Field label="Catatan">
             <input className={inputClass} onChange={(e) => setForm({ ...form, note: e.target.value })} value={form.note} />
           </Field>
-        </div>
+      </div>
 
-        <p className="mt-4 text-sm text-zinc-500">
+      <p className="mt-4 text-sm text-zinc-500">
           Penarikan dan transfer keluar akan mengurangi saldo. Saldo kas negatif tidak diizinkan.
-        </p>
-        <Feedback error={error} errors={errors} />
+      </p>
+      <Feedback error={error} errors={errors} />
 
-        <div className="mt-5 flex justify-end gap-3">
+      <div className="mt-5 flex justify-end gap-3">
           <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
             {isSaving ? "Menyimpan..." : "Simpan Penyesuaian"}
           </button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -467,28 +445,18 @@ function HistoryModal({
   rows: CashAdjustment[];
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
-      <section className="max-h-[86vh] w-full max-w-5xl overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-xl">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-zinc-400">{account.account_name}</p>
-            <h3 className="text-lg font-semibold text-white">Histori Penyesuaian Kas</h3>
-          </div>
-          <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300" onClick={onClose} title="Tutup" type="button">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <Modal onClose={onClose} size="xl" title="Histori Penyesuaian Kas">
+      <p className="mb-5 text-sm text-zinc-400">{account.account_name}</p>
 
-        {isLoading ? <LoadingState /> : null}
-        {error ? <ErrorState message="Histori penyesuaian belum bisa dimuat." /> : null}
-        {!isLoading && !error && rows.length === 0 ? (
+      {isLoading ? <LoadingState /> : null}
+      {error ? <ErrorState message="Histori penyesuaian belum bisa dimuat." /> : null}
+      {!isLoading && !error && rows.length === 0 ? (
           <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/40 p-6 text-center text-sm text-zinc-400">
             Belum ada penyesuaian kas.
           </div>
-        ) : null}
-        {!isLoading && !error && rows.length > 0 ? <AdjustmentTable rows={rows} /> : null}
-      </section>
-    </div>
+      ) : null}
+      {!isLoading && !error && rows.length > 0 ? <AdjustmentTable rows={rows} /> : null}
+    </Modal>
   );
 }
 

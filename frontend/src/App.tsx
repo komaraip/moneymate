@@ -1,6 +1,6 @@
 import { RouterProvider } from "react-router-dom";
-import { AppProviders } from "./providers";
-import { router } from "./router";
+import { AppProviders } from "./store/AppProviders";
+import { router } from "./routes/router";
 
 export function App() {
   return (

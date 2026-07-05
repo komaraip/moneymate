@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { useAuth } from "../../features/auth/useAuth";
+import { useAuth } from "../../hooks/useAuth";
 
 const navGroups = [
   {

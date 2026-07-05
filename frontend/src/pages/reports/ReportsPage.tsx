@@ -1,15 +1,15 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Download, FileText } from "lucide-react";
 import { useState } from "react";
-import { EmptyState } from "../../../components/feedback/EmptyState";
-import { ErrorState } from "../../../components/feedback/ErrorState";
-import { LoadingState } from "../../../components/feedback/LoadingState";
-import { formatCurrency, formatDate, formatPercent } from "../../../lib/format";
-import { queryKeys } from "../../../lib/query-keys";
-import { mvpApi } from "../api";
-import { Card } from "../components/Card";
-import { PageHeader } from "../components/PageHeader";
-import type { MonthlySummaryReport, PersonalInsightsReport, PortfolioPerformanceReport, ReportWarning } from "../types";
+import { EmptyState } from "../../components/feedback/EmptyState";
+import { ErrorState } from "../../components/feedback/ErrorState";
+import { LoadingState } from "../../components/feedback/LoadingState";
+import { formatCurrency, formatDate, formatPercent } from "../../utils/format";
+import { queryKeys } from "../../utils/query-keys";
+import { moneymateApi } from "../../helpers/moneymate-api";
+import { Card } from "../../components/ui/Card";
+import { PageHeader } from "../../components/ui/PageHeader";
+import type { MonthlySummaryReport, PersonalInsightsReport, PortfolioPerformanceReport, ReportWarning } from "../../types/moneymate";
 
 export function ReportsPage() {
   const [month, setMonth] = useState(defaultMonth());
@@ -20,18 +20,18 @@ export function ReportsPage() {
 
   const monthly = useQuery({
     queryKey: queryKeys.reports.monthly(month),
-    queryFn: () => mvpApi.monthlySummary(month),
+    queryFn: () => moneymateApi.monthlySummary(month),
   });
   const performance = useQuery({
     queryKey: queryKeys.reports.performance(fromDate, toDate),
-    queryFn: () => mvpApi.portfolioPerformance(fromDate, toDate),
+    queryFn: () => moneymateApi.portfolioPerformance(fromDate, toDate),
   });
   const insights = useQuery({
     queryKey: queryKeys.reports.personalInsights(month, trendMonths),
-    queryFn: () => mvpApi.personalInsights(month, trendMonths),
+    queryFn: () => moneymateApi.personalInsights(month, trendMonths),
   });
   const exportCsv = useMutation({
-    mutationFn: mvpApi.exportReportsCsv,
+    mutationFn: moneymateApi.exportReportsCsv,
     onSuccess: (blob) => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");

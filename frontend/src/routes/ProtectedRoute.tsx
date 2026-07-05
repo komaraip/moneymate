@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { LoadingState } from "../../components/feedback/LoadingState";
-import { useAuth } from "./useAuth";
+import { LoadingState } from "../components/feedback/LoadingState";
+import { useAuth } from "../hooks/useAuth";
 
 type ProtectedRouteProps = {
   children: ReactNode;

@@ -1,8 +1,8 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { AuthProvider } from "../features/auth/AuthProvider";
-import { ThemeProvider } from "../features/settings/ThemeProvider";
-import { queryClient } from "../lib/query-client";
+import { AuthProvider } from "./AuthProvider";
+import { ThemeProvider } from "./ThemeProvider";
+import { queryClient } from "./query-client";
 
 type AppProvidersProps = {
   children: ReactNode;

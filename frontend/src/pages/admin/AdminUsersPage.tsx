@@ -1,15 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { ErrorState } from "../../../components/feedback/ErrorState";
-import { LoadingState } from "../../../components/feedback/LoadingState";
-import { formatDate } from "../../../lib/format";
-import { queryKeys } from "../../../lib/query-keys";
-import { useAuth } from "../../auth/useAuth";
-import { mvpApi } from "../api";
-import { Card } from "../components/Card";
-import { PageHeader } from "../components/PageHeader";
-import type { AdminUser } from "../types";
+import { Pencil } from "lucide-react";
+import { useState } from "react";
+import { ErrorState } from "../../components/feedback/ErrorState";
+import { InlineAlert } from "../../components/feedback/InlineAlert";
+import { LoadingState } from "../../components/feedback/LoadingState";
+import { FormField as Field } from "../../components/forms/FormField";
+import { formatDate } from "../../utils/format";
+import { queryKeys } from "../../utils/query-keys";
+import { useAuth } from "../../hooks/useAuth";
+import { moneymateApi } from "../../helpers/moneymate-api";
+import { Card } from "../../components/ui/Card";
+import { Modal } from "../../components/ui/Modal";
+import { PageHeader } from "../../components/ui/PageHeader";
+import type { AdminUser } from "../../types/moneymate";
 
 type Filters = {
   search: string;
@@ -33,12 +36,12 @@ export function AdminUsersPage() {
   const users = useQuery({
     enabled: user?.role === "admin",
     queryKey: queryKeys.admin.users(cleanFilters(filters)),
-    queryFn: () => mvpApi.adminUsers(cleanFilters(filters)),
+    queryFn: () => moneymateApi.adminUsers(cleanFilters(filters)),
   });
   const update = useMutation({
     mutationFn: () => {
       if (!editing) throw new Error("Pengguna belum dipilih.");
-      return mvpApi.updateAdminUser(editing.id, form);
+      return moneymateApi.updateAdminUser(editing.id, form);
     },
     onSuccess: () => {
       setEditing(null);
@@ -146,7 +149,9 @@ export function AdminUsersPage() {
               Akun aktif
             </label>
           </div>
-          {update.error ? <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-100">{errorMessage(update.error)}</p> : null}
+          <div className="mt-4">
+            <InlineAlert messages={[errorMessage(update.error)]} tone="error" />
+          </div>
           <div className="mt-5 flex justify-end gap-2">
             <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300" onClick={() => setEditing(null)} type="button">
               Batal
@@ -172,31 +177,6 @@ function cleanFilters(filters: Filters) {
     role: filters.role || undefined,
     is_active: filters.is_active || undefined,
   };
-}
-
-function Field({ children, label }: { children: ReactNode; label: string }) {
-  return (
-    <label className="block text-sm">
-      <span className="mb-2 block text-zinc-300">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function Modal({ children, onClose, title }: { children: ReactNode; onClose: () => void; title: string }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
-      <section className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
-          <button className="rounded-lg border border-zinc-800 p-2 text-zinc-300" onClick={onClose} type="button">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="mt-4">{children}</div>
-      </section>
-    </div>
-  );
 }
 
 function errorMessage(error: unknown) {

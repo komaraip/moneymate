@@ -1,15 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { ErrorState } from "../../../components/feedback/ErrorState";
-import { LoadingState } from "../../../components/feedback/LoadingState";
-import { queryKeys } from "../../../lib/query-keys";
-import { useAuth } from "../../auth/useAuth";
-import { mvpApi } from "../api";
-import { Card } from "../components/Card";
-import { PageHeader } from "../components/PageHeader";
+import { ErrorState } from "../../components/feedback/ErrorState";
+import { LoadingState } from "../../components/feedback/LoadingState";
+import { queryKeys } from "../../utils/query-keys";
+import { useAuth } from "../../hooks/useAuth";
+import { moneymateApi } from "../../helpers/moneymate-api";
+import { Card } from "../../components/ui/Card";
+import { PageHeader } from "../../components/ui/PageHeader";
 
 export function AdminDashboardPage() {
   const { user } = useAuth();
-  const overview = useQuery({ queryKey: queryKeys.admin.overview, queryFn: mvpApi.adminOverview, enabled: user?.role === "admin" });
+  const overview = useQuery({ queryKey: queryKeys.admin.overview, queryFn: moneymateApi.adminOverview, enabled: user?.role === "admin" });
 
   if (user?.role !== "admin") {
     return <ErrorState message="Halaman admin hanya tersedia untuk admin." />;

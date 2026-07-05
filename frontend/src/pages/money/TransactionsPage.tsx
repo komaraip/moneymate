@@ -1,15 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { ErrorState } from "../../../components/feedback/ErrorState";
-import { LoadingState } from "../../../components/feedback/LoadingState";
-import { formatCurrency, formatDate, formatNumber } from "../../../lib/format";
-import { queryKeys } from "../../../lib/query-keys";
-import { mvpApi } from "../api";
-import { Card } from "../components/Card";
-import { PageHeader } from "../components/PageHeader";
-import type { CashAccount, Instrument, Transaction, TransactionCategory } from "../types";
+import { ErrorState } from "../../components/feedback/ErrorState";
+import { LoadingState } from "../../components/feedback/LoadingState";
+import { formatCurrency, formatDate, formatNumber } from "../../utils/format";
+import { queryKeys } from "../../utils/query-keys";
+import { moneymateApi } from "../../helpers/moneymate-api";
+import { Card } from "../../components/ui/Card";
+import { Modal } from "../../components/ui/Modal";
+import { PageHeader } from "../../components/ui/PageHeader";
+import type { CashAccount, Instrument, Transaction, TransactionCategory } from "../../types/moneymate";
 
 type TransactionForm = {
   cash_account_id: string;
@@ -95,10 +96,10 @@ const emptyQuickForm = (): QuickForm => ({
 export function TransactionsPage() {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<TransactionFilters>(emptyFilters);
-  const transactions = useQuery({ queryKey: queryKeys.transactions.filtered(filters), queryFn: () => mvpApi.transactions(cleanFilters(filters)) });
-  const instruments = useQuery({ queryKey: queryKeys.instruments.all, queryFn: mvpApi.instruments });
-  const cashAccounts = useQuery({ queryKey: queryKeys.cashAccounts.all, queryFn: mvpApi.cashAccounts });
-  const categories = useQuery({ queryKey: queryKeys.transactionCategories.all, queryFn: () => mvpApi.transactionCategories() });
+  const transactions = useQuery({ queryKey: queryKeys.transactions.filtered(filters), queryFn: () => moneymateApi.transactions(cleanFilters(filters)) });
+  const instruments = useQuery({ queryKey: queryKeys.instruments.all, queryFn: moneymateApi.instruments });
+  const cashAccounts = useQuery({ queryKey: queryKeys.cashAccounts.all, queryFn: moneymateApi.cashAccounts });
+  const categories = useQuery({ queryKey: queryKeys.transactionCategories.all, queryFn: () => moneymateApi.transactionCategories() });
   const [quickForm, setQuickForm] = useState<QuickForm>(emptyQuickForm);
   const [form, setForm] = useState<TransactionForm>(emptyForm);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -109,7 +110,7 @@ export function TransactionsPage() {
   const [successMessage, setSuccessMessage] = useState("");
 
   const create = useMutation({
-    mutationFn: () => mvpApi.createTransaction(toPayload(form)),
+    mutationFn: () => moneymateApi.createTransaction(toPayload(form)),
     onSuccess: () => {
       setSuccessMessage("Transaksi berhasil ditambahkan.");
       closeForm();
@@ -118,7 +119,7 @@ export function TransactionsPage() {
   });
 
   const quickCreate = useMutation({
-    mutationFn: () => mvpApi.createTransaction(quickPayload(quickForm)),
+    mutationFn: () => moneymateApi.createTransaction(quickPayload(quickForm)),
     onSuccess: () => {
       setSuccessMessage("Transaksi cepat berhasil disimpan.");
       setQuickErrors([]);
@@ -130,7 +131,7 @@ export function TransactionsPage() {
   const update = useMutation({
     mutationFn: () => {
       if (!editing) throw new Error("Transaksi belum dipilih.");
-      return mvpApi.updateTransaction(editing.id, toPayload(form));
+      return moneymateApi.updateTransaction(editing.id, toPayload(form));
     },
     onSuccess: () => {
       setSuccessMessage("Transaksi berhasil diperbarui.");
@@ -140,7 +141,7 @@ export function TransactionsPage() {
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => mvpApi.deleteTransaction(id),
+    mutationFn: (id: string) => moneymateApi.deleteTransaction(id),
     onSuccess: () => {
       setSuccessMessage("Transaksi berhasil dihapus.");
       setDeleteTarget(null);
@@ -450,19 +451,10 @@ function TransactionModal({
   const activeAccounts = accounts.filter((item) => item.is_active !== false);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
-      <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-xl">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-zinc-400">Data manual, bukan real-time</p>
-            <h3 className="text-lg font-semibold text-white">{isEditing ? "Edit Transaksi" : "Tambah Transaksi"}</h3>
-          </div>
-          <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300" onClick={onClose} title="Tutup" type="button">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <Modal onClose={onClose} size="xl" title={isEditing ? "Edit Transaksi" : "Tambah Transaksi"}>
+      <p className="mb-5 text-sm text-zinc-400">Data manual, bukan real-time</p>
 
-        <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
           <Field label="Tipe">
             <select
               className={inputClass}
@@ -572,20 +564,19 @@ function TransactionModal({
           <Field label="Catatan">
             <input className={inputClass} onChange={(e) => setForm({ ...form, notes: e.target.value })} value={form.notes} />
           </Field>
-        </div>
+      </div>
 
-        <Feedback error={error} errors={errors} />
+      <Feedback error={error} errors={errors} />
 
-        <div className="mt-5 flex justify-end gap-3">
+      <div className="mt-5 flex justify-end gap-3">
           <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
             {isSaving ? "Menyimpan..." : "Simpan"}
           </button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -603,21 +594,18 @@ function ConfirmDelete({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <section className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-xl">
-        <h3 className="text-lg font-semibold text-white">Hapus Transaksi</h3>
-        <p className="mt-2 text-sm text-zinc-400">Transaksi {label} akan dihapus. Efek saldo kas akan dibalik otomatis untuk transaksi personal.</p>
-        {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
-        <div className="mt-5 flex justify-end gap-3">
+    <Modal onClose={onCancel} size="sm" title="Hapus Transaksi">
+      <p className="text-sm text-zinc-400">Transaksi {label} akan dihapus. Efek saldo kas akan dibalik otomatis untuk transaksi personal.</p>
+      {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
+      <div className="mt-5 flex justify-end gap-3">
           <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isDeleting} onClick={onConfirm} type="button">
             {isDeleting ? "Menghapus..." : "Hapus"}
           </button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 

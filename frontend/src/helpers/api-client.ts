@@ -1,3 +1,5 @@
+import { config } from "../config";
+
 type ApiEnvelope<T> = {
   success: boolean;
   data: T;
@@ -30,8 +32,6 @@ export class ApiError extends Error {
     this.details = details;
   }
 }
-
-const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
 class ApiClient {
   private accessToken: string | null = null;
@@ -72,7 +72,7 @@ class ApiClient {
       headers["Content-Type"] = "application/json";
     }
 
-    const response = await fetch(`${baseUrl}${path}`, {
+    const response = await fetch(`${config.apiBaseUrl}${path}`, {
       method: options.method ?? "GET",
       credentials: "include",
       headers,
@@ -100,7 +100,7 @@ class ApiClient {
   }
 
   private async requestBlob(path: string, retryOnUnauthorized = true): Promise<Blob> {
-    const response = await fetch(`${baseUrl}${path}`, {
+    const response = await fetch(`${config.apiBaseUrl}${path}`, {
       method: "GET",
       credentials: "include",
       headers: {
@@ -139,7 +139,7 @@ class ApiClient {
   }
 
   private async refreshAccessToken() {
-    const response = await fetch(`${baseUrl}/api/v1/auth/refresh`, {
+    const response = await fetch(`${config.apiBaseUrl}/api/v1/auth/refresh`, {
       method: "POST",
       credentials: "include",
     });

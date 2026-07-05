@@ -1,4 +1,4 @@
-import { apiClient } from "../../lib/api";
+import { apiClient } from "./api-client";
 import type {
   AdminOverview,
   AdminUser,
@@ -20,9 +20,9 @@ import type {
   SavingsGoal,
   Transaction,
   TransactionCategory,
-} from "./types";
+} from "../types/moneymate";
 
-export const mvpApi = {
+export const moneymateApi = {
   overview: () => apiClient.get<Overview>("/api/v1/dashboard/overview"),
   allocation: () => apiClient.get<AllocationItem[]>("/api/v1/dashboard/asset-allocation"),
   alerts: () => apiClient.get<AlertItem[]>("/api/v1/dashboard/alerts"),

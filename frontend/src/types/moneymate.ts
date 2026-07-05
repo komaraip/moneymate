@@ -1,4 +1,4 @@
-import type { components } from "../../lib/generated/openapi";
+import type { components } from "./openapi";
 
 type Schemas = components["schemas"];
 

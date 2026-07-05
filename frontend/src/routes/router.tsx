@@ -1,20 +1,20 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import { DashboardLayout } from "./layouts/DashboardLayout";
-import { LoginPage } from "../features/auth/LoginPage";
-import { ProtectedRoute } from "../features/auth/ProtectedRoute";
-import { AdminDashboardPage } from "../features/admin/pages/AdminDashboardPage";
-import { AuditLogPage } from "../features/admin/pages/AuditLogPage";
-import { AdminUsersPage } from "../features/admin/pages/AdminUsersPage";
-import { HoldingsPage } from "../features/assets/pages/HoldingsPage";
-import { InstrumentsPage } from "../features/assets/pages/InstrumentsPage";
-import { ImportPage } from "../features/imports/pages/ImportPage";
-import { AccountsPage } from "../features/money/pages/AccountsPage";
-import { BudgetsPage } from "../features/money/pages/BudgetsPage";
-import { SavingsGoalsPage } from "../features/money/pages/SavingsGoalsPage";
-import { TransactionsPage } from "../features/money/pages/TransactionsPage";
-import { OverviewPage } from "../features/overview/pages/OverviewPage";
-import { ReportsPage } from "../features/reports/pages/ReportsPage";
-import { SettingsPage } from "../features/settings/pages/SettingsPage";
+import { DashboardLayout } from "../components/layout/DashboardLayout";
+import { LoginPage } from "../pages/auth/LoginPage";
+import { ProtectedRoute } from "./ProtectedRoute";
+import { AdminDashboardPage } from "../pages/admin/AdminDashboardPage";
+import { AuditLogPage } from "../pages/admin/AuditLogPage";
+import { AdminUsersPage } from "../pages/admin/AdminUsersPage";
+import { HoldingsPage } from "../pages/assets/HoldingsPage";
+import { InstrumentsPage } from "../pages/assets/InstrumentsPage";
+import { ImportPage } from "../pages/assets/ImportPage";
+import { AccountsPage } from "../pages/money/AccountsPage";
+import { BudgetsPage } from "../pages/money/BudgetsPage";
+import { SavingsGoalsPage } from "../pages/money/SavingsGoalsPage";
+import { TransactionsPage } from "../pages/money/TransactionsPage";
+import { OverviewPage } from "../pages/overview/OverviewPage";
+import { ReportsPage } from "../pages/reports/ReportsPage";
+import { SettingsPage } from "../pages/settings/SettingsPage";
 
 const dashboardChildren = [
   { index: true, element: <OverviewPage /> },

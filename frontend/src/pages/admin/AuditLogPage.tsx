@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ErrorState } from "../../../components/feedback/ErrorState";
-import { LoadingState } from "../../../components/feedback/LoadingState";
-import { formatDate } from "../../../lib/format";
-import { queryKeys } from "../../../lib/query-keys";
-import { mvpApi } from "../api";
-import { Card } from "../components/Card";
-import { PageHeader } from "../components/PageHeader";
+import { ErrorState } from "../../components/feedback/ErrorState";
+import { LoadingState } from "../../components/feedback/LoadingState";
+import { formatDate } from "../../utils/format";
+import { queryKeys } from "../../utils/query-keys";
+import { moneymateApi } from "../../helpers/moneymate-api";
+import { Card } from "../../components/ui/Card";
+import { PageHeader } from "../../components/ui/PageHeader";
 
 const actions = ["create", "update", "delete", "adjust", "confirm_import"];
 const entityTypes = ["transaction", "instrument", "cash_account", "cash_adjustment", "price_snapshot", "import_job", "asset_category"];
@@ -15,7 +15,7 @@ export function AuditLogPage() {
   const [filters, setFilters] = useState({ entity_type: "", action: "" });
   const audit = useQuery({
     queryKey: queryKeys.auditLogs.filtered(filters),
-    queryFn: () => mvpApi.auditLogs(filters),
+    queryFn: () => moneymateApi.auditLogs(filters),
   });
 
   if (audit.isLoading) return <LoadingState />;

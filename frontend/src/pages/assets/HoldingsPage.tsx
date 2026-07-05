@@ -1,27 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { EmptyState } from "../../../components/feedback/EmptyState";
-import { ErrorState } from "../../../components/feedback/ErrorState";
-import { LoadingState } from "../../../components/feedback/LoadingState";
-import { formatCurrency, formatNumber, formatPercent } from "../../../lib/format";
-import { queryKeys } from "../../../lib/query-keys";
-import { mvpApi } from "../api";
-import { Card } from "../components/Card";
-import { PageHeader } from "../components/PageHeader";
+import { EmptyState } from "../../components/feedback/EmptyState";
+import { ErrorState } from "../../components/feedback/ErrorState";
+import { LoadingState } from "../../components/feedback/LoadingState";
+import { formatCurrency, formatNumber, formatPercent } from "../../utils/format";
+import { queryKeys } from "../../utils/query-keys";
+import { moneymateApi } from "../../helpers/moneymate-api";
+import { Card } from "../../components/ui/Card";
+import { PageHeader } from "../../components/ui/PageHeader";
 
 export function HoldingsPage() {
   const queryClient = useQueryClient();
-  const holdings = useQuery({ queryKey: queryKeys.holdings.all, queryFn: mvpApi.holdings });
-  const instruments = useQuery({ queryKey: queryKeys.instruments.all, queryFn: mvpApi.instruments });
+  const holdings = useQuery({ queryKey: queryKeys.holdings.all, queryFn: moneymateApi.holdings });
+  const instruments = useQuery({ queryKey: queryKeys.instruments.all, queryFn: moneymateApi.instruments });
   const recalc = useMutation({
-    mutationFn: mvpApi.recalculateHoldings,
+    mutationFn: moneymateApi.recalculateHoldings,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.holdings.all }),
   });
   const [instrumentId, setInstrumentId] = useState("");
   const [price, setPrice] = useState("");
   const manualPrice = useMutation({
     mutationFn: () =>
-      mvpApi.createManualPrice({
+      moneymateApi.createManualPrice({
         instrument_id: instrumentId,
         price_date: "2026-06-30",
         price: Number(price),

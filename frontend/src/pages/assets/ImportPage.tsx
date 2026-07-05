@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
-import { queryKeys } from "../../../lib/query-keys";
-import { mvpApi } from "../api";
-import { Card } from "../components/Card";
-import { PageHeader } from "../components/PageHeader";
-import type { ImportConfirmResult, ImportPreview, ImportPreviewRow } from "../types";
+import { queryKeys } from "../../utils/query-keys";
+import { moneymateApi } from "../../helpers/moneymate-api";
+import { Card } from "../../components/ui/Card";
+import { PageHeader } from "../../components/ui/PageHeader";
+import type { ImportConfirmResult, ImportPreview, ImportPreviewRow } from "../../types/moneymate";
 
 const sectionLabels: Record<ImportPreviewRow["section"], string> = {
   holdings: "Portofolio",
@@ -25,7 +25,7 @@ export function ImportPage() {
       if (!file) {
         throw new Error("Pilih file CSV atau XLSX terlebih dahulu.");
       }
-      return mvpApi.uploadImport(file);
+      return moneymateApi.uploadImport(file);
     },
     onSuccess: (data) => {
       setPreview(data);
@@ -38,7 +38,7 @@ export function ImportPage() {
       if (!preview?.job_id) {
         throw new Error("Pratinjau impor belum tersedia.");
       }
-      return mvpApi.confirmImport(preview.job_id);
+      return moneymateApi.confirmImport(preview.job_id);
     },
     onSuccess: (data) => {
       setResult(data);

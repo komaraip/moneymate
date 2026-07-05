@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
-import { apiClient } from "../../lib/api";
+import { apiClient } from "../helpers/api-client";
 
 export type AuthUser = {
   id: string;

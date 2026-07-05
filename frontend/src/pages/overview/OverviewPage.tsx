@@ -1,21 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState } from "../../../components/feedback/EmptyState";
-import { ErrorState } from "../../../components/feedback/ErrorState";
-import { LoadingState } from "../../../components/feedback/LoadingState";
-import { formatCurrency, formatPercent } from "../../../lib/format";
-import { queryKeys } from "../../../lib/query-keys";
-import { mvpApi } from "../api";
-import { Card } from "../components/Card";
-import { PageHeader } from "../components/PageHeader";
-import type { Budget, SavingsGoal } from "../types";
+import { EmptyState } from "../../components/feedback/EmptyState";
+import { ErrorState } from "../../components/feedback/ErrorState";
+import { LoadingState } from "../../components/feedback/LoadingState";
+import { formatCurrency, formatPercent } from "../../utils/format";
+import { queryKeys } from "../../utils/query-keys";
+import { moneymateApi } from "../../helpers/moneymate-api";
+import { Card } from "../../components/ui/Card";
+import { PageHeader } from "../../components/ui/PageHeader";
+import type { Budget, SavingsGoal } from "../../types/moneymate";
 
 export function OverviewPage() {
   const month = defaultMonth();
-  const overview = useQuery({ queryKey: queryKeys.dashboard.overview, queryFn: mvpApi.overview });
-  const allocation = useQuery({ queryKey: queryKeys.dashboard.allocation, queryFn: mvpApi.allocation });
-  const alerts = useQuery({ queryKey: queryKeys.dashboard.alerts, queryFn: mvpApi.alerts });
-  const budgets = useQuery({ queryKey: queryKeys.budgets.month(month), queryFn: () => mvpApi.budgets(month) });
-  const savingsGoals = useQuery({ queryKey: queryKeys.savingsGoals.all, queryFn: mvpApi.savingsGoals });
+  const overview = useQuery({ queryKey: queryKeys.dashboard.overview, queryFn: moneymateApi.overview });
+  const allocation = useQuery({ queryKey: queryKeys.dashboard.allocation, queryFn: moneymateApi.allocation });
+  const alerts = useQuery({ queryKey: queryKeys.dashboard.alerts, queryFn: moneymateApi.alerts });
+  const budgets = useQuery({ queryKey: queryKeys.budgets.month(month), queryFn: () => moneymateApi.budgets(month) });
+  const savingsGoals = useQuery({ queryKey: queryKeys.savingsGoals.all, queryFn: moneymateApi.savingsGoals });
 
   if (overview.isLoading) return <LoadingState />;
   if (overview.isError) return <ErrorState message="Ringkasan belum bisa dimuat." />;

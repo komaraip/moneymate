@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { ErrorState } from "../../../components/feedback/ErrorState";
-import { LoadingState } from "../../../components/feedback/LoadingState";
-import { queryKeys } from "../../../lib/query-keys";
-import { mvpApi } from "../api";
-import { PageHeader } from "../components/PageHeader";
-import type { AssetCategory, Instrument } from "../types";
+import { ErrorState } from "../../components/feedback/ErrorState";
+import { LoadingState } from "../../components/feedback/LoadingState";
+import { queryKeys } from "../../utils/query-keys";
+import { moneymateApi } from "../../helpers/moneymate-api";
+import { Modal } from "../../components/ui/Modal";
+import { PageHeader } from "../../components/ui/PageHeader";
+import type { AssetCategory, Instrument } from "../../types/moneymate";
 
 type InstrumentForm = {
   type: string;
@@ -30,8 +31,8 @@ const emptyForm = (): InstrumentForm => ({
 
 export function InstrumentsPage() {
   const queryClient = useQueryClient();
-  const instruments = useQuery({ queryKey: queryKeys.instruments.all, queryFn: mvpApi.instruments });
-  const categories = useQuery({ queryKey: queryKeys.assetCategories.all, queryFn: mvpApi.assetCategories });
+  const instruments = useQuery({ queryKey: queryKeys.instruments.all, queryFn: moneymateApi.instruments });
+  const categories = useQuery({ queryKey: queryKeys.assetCategories.all, queryFn: moneymateApi.assetCategories });
   const [form, setForm] = useState<InstrumentForm>(emptyForm);
   const [editing, setEditing] = useState<Instrument | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Instrument | null>(null);
@@ -39,7 +40,7 @@ export function InstrumentsPage() {
   const [formErrors, setFormErrors] = useState<string[]>([]);
 
   const create = useMutation({
-    mutationFn: () => mvpApi.createInstrument(toPayload(form)),
+    mutationFn: () => moneymateApi.createInstrument(toPayload(form)),
     onSuccess: () => {
       closeForm();
       invalidateInstrumentWrites(queryClient);
@@ -49,7 +50,7 @@ export function InstrumentsPage() {
   const update = useMutation({
     mutationFn: () => {
       if (!editing) throw new Error("Instrumen belum dipilih.");
-      return mvpApi.updateInstrument(editing.id, toPayload(form));
+      return moneymateApi.updateInstrument(editing.id, toPayload(form));
     },
     onSuccess: () => {
       closeForm();
@@ -58,7 +59,7 @@ export function InstrumentsPage() {
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => mvpApi.deleteInstrument(id),
+    mutationFn: (id: string) => moneymateApi.deleteInstrument(id),
     onSuccess: () => {
       setDeleteTarget(null);
       invalidateInstrumentWrites(queryClient);
@@ -202,19 +203,10 @@ function InstrumentModal({
   setForm: (form: InstrumentForm) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
-      <section className="w-full max-w-2xl rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-xl">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-zinc-400">Master data manual</p>
-            <h3 className="text-lg font-semibold text-white">{isEditing ? "Edit Instrumen" : "Tambah Instrumen"}</h3>
-          </div>
-          <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300" onClick={onClose} title="Tutup" type="button">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <Modal onClose={onClose} size="lg" title={isEditing ? "Edit Instrumen" : "Tambah Instrumen"}>
+      <p className="mb-5 text-sm text-zinc-400">Master data manual</p>
 
-        <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
           <Field label="Tipe">
             <select className={inputClass} onChange={(e) => setForm({ ...form, type: e.target.value })} value={form.type}>
               <option value="stock">Saham</option>
@@ -256,20 +248,19 @@ function InstrumentModal({
               <option value="false">Nonaktif</option>
             </select>
           </Field>
-        </div>
+      </div>
 
-        <Feedback error={error} errors={errors} />
+      <Feedback error={error} errors={errors} />
 
-        <div className="mt-5 flex justify-end gap-3">
+      <div className="mt-5 flex justify-end gap-3">
           <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
             {isSaving ? "Menyimpan..." : "Simpan"}
           </button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -287,21 +278,18 @@ function ConfirmDelete({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <section className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-xl">
-        <h3 className="text-lg font-semibold text-white">Nonaktifkan Instrumen</h3>
-        <p className="mt-2 text-sm text-zinc-400">Instrumen {label} akan dibuat nonaktif. Transaksi historis tidak dihapus.</p>
-        {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
-        <div className="mt-5 flex justify-end gap-3">
+    <Modal onClose={onCancel} size="sm" title="Nonaktifkan Instrumen">
+      <p className="text-sm text-zinc-400">Instrumen {label} akan dibuat nonaktif. Transaksi historis tidak dihapus.</p>
+      {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
+      <div className="mt-5 flex justify-end gap-3">
           <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isDeleting} onClick={onConfirm} type="button">
             {isDeleting ? "Memproses..." : "Nonaktifkan"}
           </button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
