@@ -3,11 +3,11 @@ type ErrorStateProps = {
   message: string;
 };
 
-export function ErrorState({ title = "Gagal memuat data", message }: ErrorStateProps) {
+export function ErrorState({ title = "Failed to load data", message }: ErrorStateProps) {
   return (
-    <div className="rounded-xl border border-red-900/60 bg-red-950/30 p-5 text-sm text-red-100">
-      <p className="font-medium">{title}</p>
-      <p className="mt-2 text-red-200/80">{message}</p>
+    <div className="rounded-2xl border border-fin-loss/20 bg-fin-loss/5 p-5 card-shadow">
+      <p className="text-sm font-bold text-main font-display">{title}</p>
+      <p className="mt-2 text-xs text-muted font-sans">{message}</p>
     </div>
   );
 }

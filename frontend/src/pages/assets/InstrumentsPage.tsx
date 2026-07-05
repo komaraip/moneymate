@@ -7,7 +7,9 @@ import { queryKeys } from "../../utils/query-keys";
 import { moneymateApi } from "../../helpers/moneymate-api";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Select } from "../../components/ui/Select";
 import type { AssetCategory, Instrument } from "../../types/moneymate";
+import { motion } from "framer-motion";
 
 type InstrumentForm = {
   type: string;
@@ -83,9 +85,9 @@ export function InstrumentsPage() {
   return (
     <div>
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <PageHeader description="Master data instrumen investasi" title="Instrumen" />
+        <PageHeader description="Master data instrumen investasi" title="Instrument" />
         <button
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover"
           onClick={() => openCreate(setForm, setEditing, setFormOpen, setFormErrors)}
           type="button"
         >
@@ -98,15 +100,15 @@ export function InstrumentsPage() {
         <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-surface text-muted">
             <tr>
-              {["Tipe", "Ticker", "Nama", "Kategori", "Mata uang", "Status", "Aksi"].map((header) => (
-                <th className="px-4 py-3 text-left" key={header}>
+              {["Type", "Ticker", "Nama", "Category", "Currency", "Status", "Aksi"].map((header, index) => (
+                <th className="text-left p-4 text-[11px] font-semibold text-muted uppercase tracking-[0.08em] font-sans" key={header}>
                   {header}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-subtle">
-            {instruments.data?.map((item) => (
+            {instruments.data?.map((item, index) => (
               <tr key={item.id}>
                 <td className="px-4 py-3">{instrumentTypeLabel(item.type)}</td>
                 <td className="px-4 py-3">{item.ticker ?? "-"}</td>
@@ -117,7 +119,7 @@ export function InstrumentsPage() {
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
                     <button
-                      className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200"
+                      className="rounded-xl p-2 text-muted hover:bg-primary/10 hover:text-primary transition-colors"
                       onClick={() => openEdit(item, setForm, setEditing, setFormOpen, setFormErrors)}
                       title="Edit instrumen"
                       type="button"
@@ -125,7 +127,7 @@ export function InstrumentsPage() {
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
-                      className="rounded-lg border border-subtle p-2 text-muted hover:border-rose-500 hover:text-rose-200"
+                      className="rounded-xl p-2 text-muted hover:bg-fin-loss/10 hover:text-fin-loss transition-colors"
                       onClick={() => setDeleteTarget(item)}
                       title="Nonaktifkan instrumen"
                       type="button"
@@ -207,25 +209,26 @@ function InstrumentModal({
       <p className="mb-5 text-sm text-muted">Master data manual</p>
 
       <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Tipe">
-            <select className={inputClass} onChange={(e) => setForm({ ...form, type: e.target.value })} value={form.type}>
-              <option value="stock">Saham</option>
-              <option value="etf">ETF</option>
-              <option value="mutual_fund">Reksadana</option>
-              <option value="gold">Emas</option>
-              <option value="cash">Kas</option>
-              <option value="other">Lainnya</option>
-            </select>
+          <Field label="Type">
+            <Select
+              options={[
+                { label: "Saham", value: "stock" },
+                { label: "ETF", value: "etf" },
+                { label: "Reksadana", value: "mutual_fund" },
+                { label: "Emas", value: "gold" },
+                { label: "Kas", value: "cash" },
+                { label: "Lainnya", value: "other" },
+              ]}
+              value={form.type}
+              onChange={(val) => setForm({ ...form, type: val })}
+            />
           </Field>
-          <Field label="Kategori">
-            <select className={inputClass} onChange={(e) => setForm({ ...form, category_id: e.target.value })} value={form.category_id}>
-              <option value="">Tanpa kategori</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+          <Field label="Category">
+            <Select
+              options={[{ label: "Tanpa kategori", value: "" }, ...categories.map((c) => ({ label: c.name, value: c.id }))]}
+              value={form.category_id}
+              onChange={(val) => setForm({ ...form, category_id: val })}
+            />
           </Field>
           <Field label="Ticker">
             <input className={inputClass} onChange={(e) => setForm({ ...form, ticker: e.target.value })} value={form.ticker} />
@@ -236,27 +239,35 @@ function InstrumentModal({
           <Field label="Penyedia">
             <input className={inputClass} onChange={(e) => setForm({ ...form, provider: e.target.value })} value={form.provider} />
           </Field>
-          <Field label="Mata uang">
-            <select className={inputClass} onChange={(e) => setForm({ ...form, currency: e.target.value })} value={form.currency}>
-              <option value="IDR">IDR</option>
-              <option value="USD">USD</option>
-            </select>
+          <Field label="Currency">
+            <Select
+              options={[
+                { label: "IDR", value: "IDR" },
+                { label: "USD", value: "USD" },
+              ]}
+              value={form.currency}
+              onChange={(val) => setForm({ ...form, currency: val })}
+            />
           </Field>
           <Field label="Status">
-            <select className={inputClass} onChange={(e) => setForm({ ...form, is_active: e.target.value === "true" })} value={String(form.is_active)}>
-              <option value="true">Aktif</option>
-              <option value="false">Nonaktif</option>
-            </select>
+            <Select
+              options={[
+                { label: "Aktif", value: "true" },
+                { label: "Nonaktif", value: "false" },
+              ]}
+              value={String(form.is_active)}
+              onChange={(val) => setForm({ ...form, is_active: val === "true" })}
+            />
           </Field>
       </div>
 
       <Feedback error={error} errors={errors} />
 
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
+          <button className="rounded-xl border border-subtle/50 px-4 py-2.5 text-xs font-semibold text-muted hover:text-main hover:bg-fin-surface transition-all" onClick={onClose} type="button">
             Batal
           </button>
-          <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
+          <button className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
             {isSaving ? "Menyimpan..." : "Simpan"}
           </button>
       </div>
@@ -282,10 +293,10 @@ function ConfirmDelete({
       <p className="text-sm text-muted">Instrumen {label} akan dibuat nonaktif. Transaksi historis tidak dihapus.</p>
       {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
+          <button className="rounded-xl border border-subtle/50 px-4 py-2.5 text-xs font-semibold text-muted hover:text-main hover:bg-fin-surface transition-all" onClick={onCancel} type="button">
             Batal
           </button>
-          <button className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isDeleting} onClick={onConfirm} type="button">
+          <button className="rounded-xl bg-fin-loss px-4 py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-60" disabled={isDeleting} onClick={onConfirm} type="button">
             {isDeleting ? "Memproses..." : "Nonaktifkan"}
           </button>
       </div>
@@ -330,7 +341,7 @@ function validateInstrument(form: InstrumentForm) {
   const errors: string[] = [];
   if (!["stock", "etf", "mutual_fund", "gold", "cash", "other"].includes(form.type)) errors.push("Tipe instrumen tidak valid.");
   if (!form.name.trim()) errors.push("Nama instrumen wajib diisi.");
-  if (!form.currency.trim()) errors.push("Mata uang wajib diisi.");
+  if (!form.currency.trim()) errors.push("Currency is required.");
   return errors;
 }
 
@@ -368,8 +379,8 @@ function instrumentTypeLabel(type: string) {
 
 function Field({ children, label }: { children: React.ReactNode; label: string }) {
   return (
-    <label className="block text-sm">
-      <span className="mb-2 block text-muted">{label}</span>
+    <label className="block">
+      <span className="text-[11px] font-semibold text-muted uppercase tracking-[0.06em] mb-2 block font-sans">{label}</span>
       {children}
     </label>
   );
@@ -378,9 +389,9 @@ function Field({ children, label }: { children: React.ReactNode; label: string }
 function Feedback({ error, errors }: { error: string; errors: string[] }) {
   if (!error && errors.length === 0) return null;
   return (
-    <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-      {error ? <p>{error}</p> : null}
-      {errors.map((item) => (
+    <div className="mt-4 rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 text-xs text-warning font-sans">
+      {error ? <p className="font-semibold">{error}</p> : null}
+      {errors.map((item, index) => (
         <p key={item}>{item}</p>
       ))}
     </div>
@@ -393,4 +404,4 @@ function errorMessage(error: unknown) {
   return "Request gagal diproses.";
 }
 
-const inputClass = "w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";
+const inputClass = "input-field font-sans";

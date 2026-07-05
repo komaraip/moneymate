@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { ApiError } from "../../helpers/api-client";
 import { useAuth } from "../../hooks/useAuth";
 import { AuthSplitLayout } from "../../components/layout/AuthSplitLayout";
+import { motion } from "framer-motion";
 
 export function LoginPage() {
   const navigate = useNavigate();

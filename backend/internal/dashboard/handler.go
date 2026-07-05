@@ -30,6 +30,7 @@ func (h Handler) Routes() chi.Router {
 	router.Get("/asset-allocation", h.assetAllocation)
 	router.Get("/performance", h.performance)
 	router.Get("/alerts", h.alerts)
+	router.Get("/search", h.search)
 
 	return router
 }
@@ -284,4 +285,99 @@ func alert(code string, title string, message string, severity string) map[strin
 
 func internalErr(err error, message string) error {
 	return apperror.Wrap(err, apperror.CodeInternal, message, http.StatusInternalServerError)
+}
+
+type SearchResult struct {
+	Type  string `json:"type"`
+	Title string `json:"title"`
+	Href  string `json:"href"`
+}
+
+func (h Handler) search(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		response.JSON(w, r, http.StatusOK, []SearchResult{}, nil)
+		return
+	}
+	
+	user, _ := auth.UserFromContext(r.Context())
+	searchPattern := "%" + q + "%"
+	
+	results := []SearchResult{}
+	
+	// 1. Search Instruments
+	rows, err := h.db.Query(r.Context(), `
+		SELECT id, name, ticker
+		FROM instruments
+		WHERE (name ILIKE $1 OR ticker ILIKE $1)
+		LIMIT 5
+	`, searchPattern)
+	if err == nil {
+		for rows.Next() {
+			var id, name string
+			var ticker *string
+			if rows.Scan(&id, &name, &ticker) == nil {
+				title := name
+				if ticker != nil {
+					title += " (" + *ticker + ")"
+				}
+				results = append(results, SearchResult{Type: "instrument", Title: title, Href: "/dashboard/assets/instruments"})
+			}
+		}
+		rows.Close()
+	}
+	
+	// 2. Search Cash Accounts
+	rows, err = h.db.Query(r.Context(), `
+		SELECT id, name
+		FROM cash_accounts
+		WHERE user_id = $1 AND name ILIKE $2
+		LIMIT 5
+	`, user.ID, searchPattern)
+	if err == nil {
+		for rows.Next() {
+			var id, name string
+			if rows.Scan(&id, &name) == nil {
+				results = append(results, SearchResult{Type: "account", Title: name, Href: "/dashboard/accounts"})
+			}
+		}
+		rows.Close()
+	}
+	
+	// 3. Search Budgets
+	rows, err = h.db.Query(r.Context(), `
+		SELECT b.id, tc.name
+		FROM monthly_budgets b
+		JOIN transaction_categories tc ON tc.id = b.category_id
+		WHERE b.user_id = $1 AND tc.name ILIKE $2
+		LIMIT 5
+	`, user.ID, searchPattern)
+	if err == nil {
+		for rows.Next() {
+			var id, name string
+			if rows.Scan(&id, &name) == nil {
+				results = append(results, SearchResult{Type: "budget", Title: "Budget: " + name, Href: "/dashboard/budgets"})
+			}
+		}
+		rows.Close()
+	}
+	
+	// 4. Search Transactions
+	rows, err = h.db.Query(r.Context(), `
+		SELECT id, description
+		FROM transactions
+		WHERE user_id = $1 AND description ILIKE $2
+		LIMIT 5
+	`, user.ID, searchPattern)
+	if err == nil {
+		for rows.Next() {
+			var id, desc string
+			if rows.Scan(&id, &desc) == nil {
+				results = append(results, SearchResult{Type: "transaction", Title: desc, Href: "/dashboard/transactions"})
+			}
+		}
+		rows.Close()
+	}
+	
+	response.JSON(w, r, http.StatusOK, results, nil)
 }

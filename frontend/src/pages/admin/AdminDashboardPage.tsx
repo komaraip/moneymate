@@ -6,44 +6,51 @@ import { useAuth } from "../../hooks/useAuth";
 import { moneymateApi } from "../../helpers/moneymate-api";
 import { Card } from "../../components/ui/Card";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Users, ShieldCheck, Activity, History } from "lucide-react";
+import { motion } from "framer-motion";
 
 export function AdminDashboardPage() {
   const { user } = useAuth();
   const overview = useQuery({ queryKey: queryKeys.admin.overview, queryFn: moneymateApi.adminOverview, enabled: user?.role === "admin" });
 
   if (user?.role !== "admin") {
-    return <ErrorState message="Halaman admin hanya tersedia untuk admin." />;
+    return <ErrorState message="Admin page is only available for admin users." />;
   }
   if (overview.isLoading) return <LoadingState />;
-  if (overview.isError) return <ErrorState message="Ringkasan admin belum bisa dimuat." />;
+  if (overview.isError) return <ErrorState message="Failed to load admin overview." />;
 
   const data = overview.data;
   if (!data) return null;
 
   return (
     <div>
-      <PageHeader description="Pantau platform tanpa membuka data finansial privat pengguna" title="Admin Dashboard" />
-      <div className="grid gap-4 md:grid-cols-3">
-        <Metric label="Total Pengguna" value={String(data.total_users)} />
-        <Metric label="Pengguna Aktif" value={String(data.active_users)} />
-        <Metric label="Pengguna Nonaktif" value={String(data.inactive_users)} />
-        <Metric label="Admin" value={String(data.admin_users)} />
-        <Metric label="User" value={String(data.regular_users)} />
-        <Metric label="Audit 7 Hari" value={String(data.audit_logs_last_7d)} />
+      <PageHeader description="Monitor platform without exposing user financial data" title="Admin Dashboard" />
+      <div className="grid gap-3 md:grid-cols-3 lg:gap-4">
+        <Metric label="Total Users" value={String(data.total_users)} icon={Users} />
+        <Metric label="Active Users" value={String(data.active_users)} icon={Activity} />
+        <Metric label="Inactive Users" value={String(data.inactive_users)} icon={Users} />
+        <Metric label="Admins" value={String(data.admin_users)} icon={ShieldCheck} />
+        <Metric label="Regular Users" value={String(data.regular_users)} icon={Users} />
+        <Metric label="Audit Logs (7d)" value={String(data.audit_logs_last_7d)} icon={History} />
       </div>
       <Card className="mt-5">
-        <h3 className="font-semibold text-main">Batas Privasi Admin</h3>
-        <p className="mt-2 text-sm leading-6 text-muted">{data.privacy_statement}</p>
+        <h3 className="text-sm font-bold text-main tracking-tight font-display">Privacy Boundary</h3>
+        <p className="mt-2 text-xs leading-6 text-muted font-sans">{data.privacy_statement}</p>
       </Card>
     </div>
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ElementType }) {
   return (
-    <Card>
-      <p className="text-sm text-muted">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-main">{value}</p>
+    <Card className="relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
+      {Icon && (
+        <div className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] pointer-events-none">
+          <Icon className="size-20 -translate-y-3 translate-x-3" />
+        </div>
+      )}
+      <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-muted mb-2.5 font-sans">{label}</p>
+      <p className="text-2xl lg:text-3xl font-bold text-main font-mono tracking-tighter leading-none">{value}</p>
     </Card>
   );
 }

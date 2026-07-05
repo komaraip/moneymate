@@ -10,7 +10,9 @@ import { moneymateApi } from "../../helpers/moneymate-api";
 import { Card } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Select } from "../../components/ui/Select";
 import type { CashAccount, Instrument, Transaction, TransactionCategory } from "../../types/moneymate";
+import { motion } from "framer-motion";
 
 type TransactionForm = {
   cash_account_id: string;
@@ -48,14 +50,14 @@ type QuickForm = {
 };
 
 const transactionTypes = [
-  { label: "Pengeluaran", value: "expense" },
-  { label: "Pemasukan", value: "income" },
+  { label: "Expense", value: "expense" },
+  { label: "Income", value: "income" },
   { label: "Transfer", value: "transfer" },
-  { label: "Beli Investasi", value: "buy" },
-  { label: "Jual Investasi", value: "sell" },
-  { label: "Dividen", value: "dividend" },
+  { label: "Buy Investment", value: "buy" },
+  { label: "Sell Investment", value: "sell" },
+  { label: "Dividend", value: "dividend" },
   { label: "Fee", value: "fee" },
-  { label: "Penyesuaian", value: "adjustment" },
+  { label: "Adjustment", value: "adjustment" },
 ] as const;
 
 const emptyForm = (): TransactionForm => ({
@@ -112,7 +114,7 @@ export function TransactionsPage() {
   const create = useMutation({
     mutationFn: () => moneymateApi.createTransaction(toPayload(form)),
     onSuccess: () => {
-      setSuccessMessage("Transaksi berhasil ditambahkan.");
+      setSuccessMessage("Transaction added successfully.");
       closeForm();
       invalidateTransactionWrites(queryClient);
     },
@@ -121,7 +123,7 @@ export function TransactionsPage() {
   const quickCreate = useMutation({
     mutationFn: () => moneymateApi.createTransaction(quickPayload(quickForm)),
     onSuccess: () => {
-      setSuccessMessage("Transaksi cepat berhasil disimpan.");
+      setSuccessMessage("Quick transaction saved successfully.");
       setQuickErrors([]);
       setQuickForm(emptyQuickForm());
       invalidateTransactionWrites(queryClient);
@@ -130,11 +132,11 @@ export function TransactionsPage() {
 
   const update = useMutation({
     mutationFn: () => {
-      if (!editing) throw new Error("Transaksi belum dipilih.");
+      if (!editing) throw new Error("Transaction not selected.");
       return moneymateApi.updateTransaction(editing.id, toPayload(form));
     },
     onSuccess: () => {
-      setSuccessMessage("Transaksi berhasil diperbarui.");
+      setSuccessMessage("Transaction updated successfully.");
       closeForm();
       invalidateTransactionWrites(queryClient);
     },
@@ -143,14 +145,14 @@ export function TransactionsPage() {
   const remove = useMutation({
     mutationFn: (id: string) => moneymateApi.deleteTransaction(id),
     onSuccess: () => {
-      setSuccessMessage("Transaksi berhasil dihapus.");
+      setSuccessMessage("Transaction deleted successfully.");
       setDeleteTarget(null);
       invalidateTransactionWrites(queryClient);
     },
   });
 
   if (transactions.isLoading) return <LoadingState />;
-  if (transactions.isError) return <ErrorState message="Transaksi belum bisa dimuat." />;
+  if (transactions.isError) return <ErrorState message="Transactions could not be loaded." />;
 
   const submit = () => {
     const errors = validateTransaction(form);
@@ -166,14 +168,14 @@ export function TransactionsPage() {
   return (
     <div>
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <PageHeader description="Catat pemasukan, pengeluaran, transfer, dan transaksi investasi manual." title="Transaksi" />
+        <PageHeader description="Record income, expenses, transfers, and manual investment transactions" title="Transactions" />
         <button
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover"
           onClick={() => openCreate(setForm, setEditing, setFormOpen, setFormErrors)}
           type="button"
         >
           <Plus className="h-4 w-4" />
-          Tambah Transaksi
+          Add Transaction
         </button>
       </div>
 
@@ -201,46 +203,50 @@ export function TransactionsPage() {
         setFilters={setFilters}
       />
 
-      {successMessage ? <p className="mb-4 rounded-lg border border-emerald-500/30 bg-success/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</p> : null}
+      {successMessage ? <p className="mb-4 rounded-xl border border-fin-gain/30 bg-fin-gain/5 px-4 py-2.5 text-xs font-semibold text-fin-gain font-sans">{successMessage}</p> : null}
 
-      <Table headers={["Tanggal", "Tipe", "Kategori/Instrumen", "Akun", "Nominal", "Aksi"]}>
-        {transactions.data?.map((item) => (
-          <tr className="border-t border-subtle" key={item.id}>
-            <td className="px-4 py-3">{formatDate(item.transaction_date)}</td>
-            <td className="px-4 py-3">{transactionTypeLabel(item.type)}</td>
-            <td className="px-4 py-3">{item.category_name ?? item.instrument_ticker ?? item.instrument_name ?? "-"}</td>
-            <td className="px-4 py-3">{accountLabel(item)}</td>
-            <td className="px-4 py-3 text-right">
+      <Table headers={["Date", "Type", "Category/Instrument", "Account", "Amount", "Actions"]}>
+        {transactions.data?.map((item, index) => (
+          <motion.tr key={item.id} className="border-b border-subtle/30 hover:bg-fin-surface/50 transition-all duration-200" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+            <td className="p-4 text-xs font-mono text-muted">{formatDate(item.transaction_date)}</td>
+            <td className="p-4">
+              <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg ${item.type === 'income' || item.type === 'buy' || item.type === 'dividend' ? 'bg-fin-gain/10 text-fin-gain' : item.type === 'expense' || item.type === 'sell' || item.type === 'fee' ? 'bg-fin-loss/10 text-fin-loss' : 'bg-primary/10 text-primary'}`}>
+                {transactionTypeLabel(item.type)}
+              </span>
+            </td>
+            <td className="p-4 text-sm font-semibold text-main font-sans">{item.category_name ?? item.instrument_ticker ?? item.instrument_name ?? "-"}</td>
+            <td className="p-4 text-xs text-muted font-sans">{accountLabel(item)}</td>
+            <td className="p-4 text-right font-mono font-bold text-main">
               {isPersonalType(item.type)
                 ? formatCurrency(item.amount ?? item.net_value ?? 0, item.currency)
                 : `${formatCurrency(item.net_value ?? 0, item.currency)} / ${formatNumber(item.units ?? 0)} unit`}
             </td>
-            <td className="px-4 py-3">
-              <div className="flex justify-end gap-2">
+            <td className="p-4">
+              <div className="flex justify-end gap-1.5">
                 <button
-                  className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200"
+                  className="rounded-xl p-2 text-muted hover:bg-primary/10 hover:text-primary transition-colors"
                   onClick={() => openEdit(item, setForm, setEditing, setFormOpen, setFormErrors)}
-                  title="Edit transaksi"
+                  title="Edit transaction"
                   type="button"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
                 <button
-                  className="rounded-lg border border-subtle p-2 text-muted hover:border-rose-500 hover:text-rose-200"
+                  className="rounded-xl p-2 text-muted hover:bg-fin-loss/10 hover:text-fin-loss transition-colors"
                   onClick={() => setDeleteTarget(item)}
-                  title="Hapus transaksi"
+                  title="Delete transaction"
                   type="button"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </td>
-          </tr>
+          </motion.tr>
         ))}
         {transactions.data?.length === 0 ? (
           <tr>
-            <td className="px-4 py-8 text-center text-muted" colSpan={6}>
-              Belum ada transaksi. Tambahkan pemasukan atau pengeluaran pertama.
+            <td className="px-4 py-8 text-center text-xs text-muted font-sans" colSpan={6}>
+              No transactions yet. Add your first income or expense.
             </td>
           </tr>
         ) : null}
@@ -306,48 +312,46 @@ function QuickAddCard({
 
   return (
     <Card className="mb-4">
-      <div className="mb-3">
-        <h3 className="font-semibold text-main">Tambah Cepat</h3>
-        <p className="mt-1 text-sm text-muted">Untuk pemasukan dan pengeluaran harian. Transfer dan investasi tetap lewat form lengkap.</p>
+      <div className="mb-4">
+        <h3 className="text-sm font-bold text-main tracking-tight font-display">Quick Add</h3>
+        <p className="text-[11px] text-muted mt-0.5 font-sans">For daily income and expenses. Use the full form for transfers and investments.</p>
       </div>
       <div className="grid gap-3 lg:grid-cols-[140px_150px_1fr_1fr_160px_1fr_auto] lg:items-end">
-        <Field label="Tipe">
-          <select className={inputClass} onChange={(event) => setForm({ ...form, category_id: "", type: event.target.value as QuickForm["type"] })} value={form.type}>
-            <option value="expense">Pengeluaran</option>
-            <option value="income">Pemasukan</option>
-          </select>
+        <Field label="Type">
+          <Select
+            options={[
+              { label: "Expense", value: "expense" },
+              { label: "Income", value: "income" },
+            ]}
+            value={form.type}
+            onChange={(val) => setForm({ ...form, category_id: "", type: val as QuickForm["type"] })}
+          />
         </Field>
-        <Field label="Tanggal">
+        <Field label="Date">
           <input className={inputClass} onChange={(event) => setForm({ ...form, transaction_date: event.target.value })} type="date" value={form.transaction_date} />
         </Field>
-        <Field label="Akun">
-          <select className={inputClass} onChange={(event) => setForm({ ...form, cash_account_id: event.target.value })} value={form.cash_account_id}>
-            <option value="">Pilih akun</option>
-            {activeAccounts.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.account_name}
-              </option>
-            ))}
-          </select>
+        <Field label="Account">
+          <Select
+            options={[{ label: "Select account...", value: "" }, ...activeAccounts.map((a) => ({ label: a.account_name, value: a.id }))]}
+            value={form.cash_account_id}
+            onChange={(val) => setForm({ ...form, cash_account_id: val })}
+          />
         </Field>
-        <Field label="Kategori">
-          <select className={inputClass} onChange={(event) => setForm({ ...form, category_id: event.target.value })} value={form.category_id}>
-            <option value="">Pilih kategori</option>
-            {filteredCategories.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
+        <Field label="Category">
+          <Select
+            options={[{ label: "Select category...", value: "" }, ...filteredCategories.map((c) => ({ label: c.name, value: c.id }))]}
+            value={form.category_id}
+            onChange={(val) => setForm({ ...form, category_id: val })}
+          />
         </Field>
-        <Field label="Nominal">
+        <Field label="Amount">
           <input className={inputClass} inputMode="decimal" onChange={(event) => setForm({ ...form, amount: event.target.value })} value={form.amount} />
         </Field>
-        <Field label="Catatan">
-          <input className={inputClass} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Opsional" value={form.notes} />
+        <Field label="Notes">
+          <input className={inputClass} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Optional" value={form.notes} />
         </Field>
-        <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
-          {isSaving ? "Menyimpan..." : "Simpan Cepat"}
+        <button className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app disabled:opacity-60 hover:bg-primary-hover transition-colors" disabled={isSaving} onClick={onSubmit} type="button">
+          {isSaving ? "Saving..." : "Quick Save"}
         </button>
       </div>
       <Feedback error={error} errors={errors} />
@@ -371,49 +375,40 @@ function TransactionFiltersCard({
   return (
     <Card className="mb-4">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6 xl:items-end">
-        <Field label="Cari">
-          <input className={inputClass} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Catatan, akun, kategori" value={filters.search} />
+        <Field label="Search">
+          <input className={inputClass} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Notes, account, category" value={filters.search} />
         </Field>
-        <Field label="Tipe">
-          <select className={inputClass} onChange={(event) => setFilters({ ...filters, type: event.target.value })} value={filters.type}>
-            <option value="">Semua tipe</option>
-            {transactionTypes.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
+        <Field label="Type">
+          <Select
+            options={[{ label: "All types", value: "" }, ...transactionTypes]}
+            value={filters.type}
+            onChange={(val) => setFilters({ ...filters, type: val })}
+          />
         </Field>
-        <Field label="Kategori">
-          <select className={inputClass} onChange={(event) => setFilters({ ...filters, category_id: event.target.value })} value={filters.category_id}>
-            <option value="">Semua kategori</option>
-            {categories.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
+        <Field label="Category">
+          <Select
+            options={[{ label: "All categories", value: "" }, ...categories.map((c) => ({ label: c.name, value: c.id }))]}
+            value={filters.category_id}
+            onChange={(val) => setFilters({ ...filters, category_id: val })}
+          />
         </Field>
-        <Field label="Akun">
-          <select className={inputClass} onChange={(event) => setFilters({ ...filters, cash_account_id: event.target.value })} value={filters.cash_account_id}>
-            <option value="">Semua akun</option>
-            {accounts.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.account_name}
-              </option>
-            ))}
-          </select>
+        <Field label="Account">
+          <Select
+            options={[{ label: "All accounts", value: "" }, ...accounts.map((a) => ({ label: a.account_name, value: a.id }))]}
+            value={filters.cash_account_id}
+            onChange={(val) => setFilters({ ...filters, cash_account_id: val })}
+          />
         </Field>
-        <Field label="Dari">
+        <Field label="From">
           <input className={inputClass} onChange={(event) => setFilters({ ...filters, from: event.target.value })} type="date" value={filters.from} />
         </Field>
-        <Field label="Sampai">
+        <Field label="To">
           <input className={inputClass} onChange={(event) => setFilters({ ...filters, to: event.target.value })} type="date" value={filters.to} />
         </Field>
       </div>
       <div className="mt-3 flex justify-end">
-        <button className="rounded-lg border border-subtle px-3 py-2 text-sm text-zinc-200" onClick={onReset} type="button">
-          Reset Filter
+        <button className="rounded-xl border border-subtle/50 px-4 py-2 text-xs font-semibold text-muted hover:text-main hover:bg-fin-surface transition-all" onClick={onReset} type="button">
+          Reset Filters
         </button>
       </div>
     </Card>
@@ -451,117 +446,103 @@ function TransactionModal({
   const activeAccounts = accounts.filter((item) => item.is_active !== false);
 
   return (
-    <Modal onClose={onClose} size="xl" title={isEditing ? "Edit Transaksi" : "Tambah Transaksi"}>
-      <p className="mb-5 text-sm text-muted">Data manual, bukan real-time</p>
+    <Modal onClose={onClose} size="xl" title={isEditing ? "Edit Transaction" : "Add Transaction"}>
+      <p className="mb-5 text-[11px] text-muted font-sans">Manual data entry — not real-time</p>
 
       <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Tipe">
-            <select
-              className={inputClass}
-              onChange={(event) =>
+          <Field label="Type">
+            <Select
+              options={transactionTypes.map((item) => ({ label: item.label, value: item.value }))}
+              value={form.type}
+              onChange={(val) =>
                 setForm({
                   ...form,
                   category_id: "",
                   instrument_id: "",
                   transfer_cash_account_id: "",
-                  type: event.target.value,
+                  type: val,
                 })
               }
-              value={form.type}
-            >
-              {transactionTypes.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+            />
           </Field>
-          <Field label="Tanggal">
+          <Field label="Date">
             <input className={inputClass} onChange={(e) => setForm({ ...form, transaction_date: e.target.value })} type="date" value={form.transaction_date} />
           </Field>
 
           {personal ? (
             <>
-              <Field label={transfer ? "Akun asal" : "Akun"}>
-                <select className={inputClass} onChange={(e) => setForm({ ...form, cash_account_id: e.target.value })} value={form.cash_account_id}>
-                  <option value="">Pilih akun</option>
-                  {activeAccounts.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.account_name} - {formatCurrency(item.balance ?? 0, item.currency)}
-                    </option>
-                  ))}
-                </select>
+              <Field label={transfer ? "Source Account" : "Account"}>
+                <Select
+                  options={[{ label: "Pilih akun", value: "" }, ...activeAccounts.map((item) => ({ label: `${item.account_name} - ${formatCurrency(item.balance ?? 0, item.currency)}`, value: item.id }))]}
+                  value={form.cash_account_id}
+                  onChange={(val) => setForm({ ...form, cash_account_id: val })}
+                />
               </Field>
               {transfer ? (
-                <Field label="Akun tujuan">
-                  <select className={inputClass} onChange={(e) => setForm({ ...form, transfer_cash_account_id: e.target.value })} value={form.transfer_cash_account_id}>
-                    <option value="">Pilih akun tujuan</option>
-                    {activeAccounts.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.account_name} - {item.currency}
-                      </option>
-                    ))}
-                  </select>
+                <Field label="Destination Account">
+                  <Select
+                    options={[{ label: "Pilih akun tujuan", value: "" }, ...activeAccounts.map((item) => ({ label: `${item.account_name} - ${item.currency}`, value: item.id }))]}
+                    value={form.transfer_cash_account_id}
+                    onChange={(val) => setForm({ ...form, transfer_cash_account_id: val })}
+                  />
                 </Field>
               ) : (
-                <Field label="Kategori">
-                  <select className={inputClass} onChange={(e) => setForm({ ...form, category_id: e.target.value })} value={form.category_id}>
-                    <option value="">Pilih kategori</option>
-                    {filteredCategories.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
+                <Field label="Category">
+                  <Select
+                    options={[{ label: "Pilih kategori", value: "" }, ...filteredCategories.map((item) => ({ label: item.name, value: item.id }))]}
+                    value={form.category_id}
+                    onChange={(val) => setForm({ ...form, category_id: val })}
+                  />
                 </Field>
               )}
-              <Field label="Nominal">
+              <Field label="Amount">
                 <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, amount: e.target.value })} value={form.amount} />
               </Field>
             </>
           ) : (
             <>
-              <Field label="Instrumen">
-                <select className={inputClass} onChange={(e) => setForm({ ...form, instrument_id: e.target.value })} value={form.instrument_id}>
-                  <option value="">Pilih instrumen</option>
-                  {instruments.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.ticker ? `${item.ticker} - ${item.name}` : item.name}
-                    </option>
-                  ))}
-                </select>
+              <Field label="Instrument">
+                <Select
+                  options={[{ label: "Pilih instrumen", value: "" }, ...instruments.map((item) => ({ label: item.ticker ? `${item.ticker} - ${item.name}` : item.name, value: item.id }))]}
+                  value={form.instrument_id}
+                  onChange={(val) => setForm({ ...form, instrument_id: val })}
+                />
               </Field>
-              <Field label="Harga">
+              <Field label="Price">
                 <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, price: e.target.value })} value={form.price} />
               </Field>
-              <Field label="Unit">
+              <Field label="Units">
                 <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, units: e.target.value })} value={form.units} />
               </Field>
             </>
           )}
 
-          <Field label="Mata uang">
-            <select className={inputClass} onChange={(e) => setForm({ ...form, currency: e.target.value })} value={form.currency}>
-              <option value="IDR">IDR</option>
-              <option value="USD">USD</option>
-            </select>
+          <Field label="Currency">
+            <Select
+              options={[
+                { label: "IDR", value: "IDR" },
+                { label: "USD", value: "USD" },
+              ]}
+              value={form.currency}
+              onChange={(val) => setForm({ ...form, currency: val })}
+            />
           </Field>
           {form.currency !== "IDR" ? (
-            <Field label="Kurs ke IDR">
+            <Field label="Exchange Rate to IDR">
               <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, fx_rate_to_idr: e.target.value })} value={form.fx_rate_to_idr} />
             </Field>
           ) : null}
           {!personal ? (
             <>
-              <Field label="Biaya">
+              <Field label="Fees">
                 <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, fees: e.target.value })} value={form.fees} />
               </Field>
-              <Field label="Pajak">
+              <Field label="Tax">
                 <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, tax: e.target.value })} value={form.tax} />
               </Field>
             </>
           ) : null}
-          <Field label="Catatan">
+          <Field label="Notes">
             <input className={inputClass} onChange={(e) => setForm({ ...form, notes: e.target.value })} value={form.notes} />
           </Field>
       </div>
@@ -569,11 +550,11 @@ function TransactionModal({
       <Feedback error={error} errors={errors} />
 
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
-            Batal
+          <button className="rounded-xl border border-subtle/50 px-4 py-2.5 text-xs font-semibold text-muted hover:text-main hover:bg-fin-surface transition-all" onClick={onClose} type="button">
+            Cancel
           </button>
-          <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
-            {isSaving ? "Menyimpan..." : "Simpan"}
+          <button className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app disabled:opacity-60 hover:bg-primary-hover transition-colors" disabled={isSaving} onClick={onSubmit} type="button">
+            {isSaving ? "Saving..." : "Save"}
           </button>
       </div>
     </Modal>
@@ -594,15 +575,15 @@ function ConfirmDelete({
   onConfirm: () => void;
 }) {
   return (
-    <Modal onClose={onCancel} size="sm" title="Hapus Transaksi">
-      <p className="text-sm text-muted">Transaksi {label} akan dihapus. Efek saldo kas akan dibalik otomatis untuk transaksi personal.</p>
-      {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
+    <Modal onClose={onCancel} size="sm" title="Delete Transaction">
+      <p className="text-xs text-muted font-sans">Transaction "{label}" will be deleted. Cash balance effects will be automatically reversed for personal transactions.</p>
+      {error ? <p className="mt-3 rounded-xl border border-fin-loss/30 bg-fin-loss/5 px-4 py-2.5 text-xs font-semibold text-fin-loss font-sans">{error}</p> : null}
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
-            Batal
+          <button className="rounded-xl border border-subtle/50 px-4 py-2.5 text-xs font-semibold text-muted hover:text-main hover:bg-fin-surface transition-all" onClick={onCancel} type="button">
+            Cancel
           </button>
-          <button className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isDeleting} onClick={onConfirm} type="button">
-            {isDeleting ? "Menghapus..." : "Hapus"}
+          <button className="rounded-xl bg-fin-loss px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60 transition-colors" disabled={isDeleting} onClick={onConfirm} type="button">
+            {isDeleting ? "Deleting..." : "Delete"}
           </button>
       </div>
     </Modal>
@@ -651,35 +632,35 @@ function openEdit(
 
 function validateTransaction(form: TransactionForm) {
   const errors: string[] = [];
-  if (!form.transaction_date) errors.push("Tanggal transaksi wajib diisi.");
-  if (!transactionTypes.some((item) => item.value === form.type)) errors.push("Tipe transaksi tidak valid.");
-  if (!form.currency) errors.push("Mata uang wajib diisi.");
-  if (form.currency !== "IDR" && (!isNumeric(form.fx_rate_to_idr) || numberValue(form.fx_rate_to_idr) <= 0)) errors.push("Kurs ke IDR wajib diisi untuk transaksi non-IDR.");
+  if (!form.transaction_date) errors.push("Transaction date is required.");
+  if (!transactionTypes.some((item) => item.value === form.type)) errors.push("Invalid transaction type.");
+  if (!form.currency) errors.push("Currency is required.");
+  if (form.currency !== "IDR" && (!isNumeric(form.fx_rate_to_idr) || numberValue(form.fx_rate_to_idr) <= 0)) errors.push("Exchange rate is required for non-IDR transactions.");
 
   if (isPersonalType(form.type)) {
-    if (!form.cash_account_id) errors.push("Akun wajib dipilih.");
-    if (!isNumeric(form.amount) || numberValue(form.amount) <= 0) errors.push("Nominal wajib lebih dari 0.");
-    if ((form.type === "income" || form.type === "expense") && !form.category_id) errors.push("Kategori wajib dipilih.");
-    if (form.type === "transfer" && !form.transfer_cash_account_id) errors.push("Akun tujuan wajib dipilih.");
+    if (!form.cash_account_id) errors.push("Account must be selected.");
+    if (!isNumeric(form.amount) || numberValue(form.amount) <= 0) errors.push("Amount must be greater than 0.");
+    if ((form.type === "income" || form.type === "expense") && !form.category_id) errors.push("Category must be selected.");
+    if (form.type === "transfer" && !form.transfer_cash_account_id) errors.push("Destination account must be selected.");
     if (form.type === "transfer" && form.cash_account_id && form.transfer_cash_account_id && form.cash_account_id === form.transfer_cash_account_id) {
-      errors.push("Akun asal dan tujuan transfer harus berbeda.");
+      errors.push("Source and destination accounts must be different.");
     }
   } else {
-    if (!form.instrument_id) errors.push("Instrumen wajib dipilih.");
-    if (!isNumeric(form.price) || numberValue(form.price) < 0) errors.push("Harga wajib diisi dan tidak boleh negatif.");
-    if ((form.type === "buy" || form.type === "sell") && (!isNumeric(form.units) || numberValue(form.units) <= 0)) errors.push("Unit wajib lebih dari 0 untuk beli/jual.");
-    if (!isNumeric(form.fees) || numberValue(form.fees) < 0) errors.push("Biaya tidak boleh negatif.");
-    if (!isNumeric(form.tax) || numberValue(form.tax) < 0) errors.push("Pajak tidak boleh negatif.");
+    if (!form.instrument_id) errors.push("Instrument must be selected.");
+    if (!isNumeric(form.price) || numberValue(form.price) < 0) errors.push("Price must be provided and cannot be negative.");
+    if ((form.type === "buy" || form.type === "sell") && (!isNumeric(form.units) || numberValue(form.units) <= 0)) errors.push("Units must be greater than 0 for buy/sell.");
+    if (!isNumeric(form.fees) || numberValue(form.fees) < 0) errors.push("Fees cannot be negative.");
+    if (!isNumeric(form.tax) || numberValue(form.tax) < 0) errors.push("Tax cannot be negative.");
   }
   return errors;
 }
 
 function validateQuickForm(form: QuickForm) {
   const errors: string[] = [];
-  if (!form.transaction_date) errors.push("Tanggal transaksi wajib diisi.");
-  if (!form.cash_account_id) errors.push("Akun wajib dipilih.");
-  if (!form.category_id) errors.push("Kategori wajib dipilih.");
-  if (!isNumeric(form.amount) || numberValue(form.amount) <= 0) errors.push("Nominal wajib lebih dari 0.");
+  if (!form.transaction_date) errors.push("Transaction date is required.");
+  if (!form.cash_account_id) errors.push("Account must be selected.");
+  if (!form.category_id) errors.push("Category must be selected.");
+  if (!isNumeric(form.amount) || numberValue(form.amount) <= 0) errors.push("Amount must be greater than 0.");
   return errors;
 }
 
@@ -752,8 +733,8 @@ function invalidateTransactionWrites(queryClient: ReturnType<typeof useQueryClie
 
 function Field({ children, label }: { children: ReactNode; label: string }) {
   return (
-    <label className="block text-sm">
-      <span className="mb-2 block text-muted">{label}</span>
+    <label className="block">
+      <span className="text-[11px] font-semibold text-muted uppercase tracking-[0.06em] mb-2 block font-sans">{label}</span>
       {children}
     </label>
   );
@@ -762,9 +743,9 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
 function Feedback({ error, errors }: { error: string; errors: string[] }) {
   if (!error && errors.length === 0) return null;
   return (
-    <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-      {error ? <p>{error}</p> : null}
-      {errors.map((item) => (
+    <div className="mt-4 rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 text-xs text-warning font-sans">
+      {error ? <p className="font-semibold">{error}</p> : null}
+      {errors.map((item, index) => (
         <p key={item}>{item}</p>
       ))}
     </div>
@@ -773,12 +754,12 @@ function Feedback({ error, errors }: { error: string; errors: string[] }) {
 
 function Table({ headers, children }: { headers: string[]; children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-subtle">
+    <div className="overflow-x-auto rounded-2xl surface-card card-shadow overflow-hidden">
       <table className="w-full min-w-[860px] text-sm">
-        <thead className="bg-surface text-muted">
-          <tr>
-            {headers.map((header) => (
-              <th className="px-4 py-3 text-left" key={header}>
+        <thead>
+          <tr className="border-b border-subtle/50">
+            {headers.map((header, index) => (
+              <th className="text-left p-4 text-[11px] font-semibold text-muted uppercase tracking-[0.08em] font-sans" key={header}>
                 {header}
               </th>
             ))}
@@ -809,13 +790,13 @@ function errorMessage(error: unknown) {
 
 function transactionTypeLabel(type: string) {
   const labels: Record<string, string> = {
-    adjustment: "Penyesuaian",
-    buy: "Beli Investasi",
-    dividend: "Dividen",
-    expense: "Pengeluaran",
+    adjustment: "Adjustment",
+    buy: "Buy Investment",
+    dividend: "Dividend",
+    expense: "Expense",
     fee: "Fee",
-    income: "Pemasukan",
-    sell: "Jual Investasi",
+    income: "Income",
+    sell: "Sell Investment",
     transfer: "Transfer",
   };
   return labels[type] ?? type;
@@ -835,4 +816,4 @@ function isNumeric(value: string) {
   return value.trim() !== "" && Number.isFinite(Number(value));
 }
 
-const inputClass = "w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";
+const inputClass = "input-field font-sans";

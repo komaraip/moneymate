@@ -14,6 +14,7 @@ import { Card } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import type { SavingsGoal } from "../../types/moneymate";
+import { motion } from "framer-motion";
 
 type GoalForm = {
   name: string;
@@ -97,7 +98,7 @@ export function SavingsGoalsPage() {
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <PageHeader description="Rencanakan dana darurat, liburan, dan tujuan tabungan pribadi" title="Tujuan Tabungan" />
         <button
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover"
           onClick={() => openCreate(setForm, setEditing, setFormOpen, setFormErrors)}
           type="button"
         >
@@ -107,7 +108,7 @@ export function SavingsGoalsPage() {
       </div>
 
       {successMessage ? (
-        <div className="mb-4 rounded-lg border border-emerald-500/30 bg-success/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</div>
+        <div className="mb-4 rounded-xl border border-fin-gain/30 bg-fin-gain/5 px-4 py-2.5 text-xs font-semibold text-fin-gain font-sans">{successMessage}</div>
       ) : null}
 
       <Card className="mb-5">
@@ -122,7 +123,7 @@ export function SavingsGoalsPage() {
         <EmptyState title="Belum ada tujuan tabungan" description="Tambahkan tujuan tabungan pribadi untuk memantau progress." />
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <GoalCard
               item={item}
               key={item.id}
@@ -150,7 +151,7 @@ export function SavingsGoalsPage() {
             <Field label="Deadline">
               <input className={inputClass} type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} />
             </Field>
-            <Field label="Catatan">
+            <Field label="Notes">
               <textarea className={`${inputClass} min-h-24`} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
             </Field>
             <label className="flex items-center gap-2 text-sm text-muted">
@@ -164,7 +165,7 @@ export function SavingsGoalsPage() {
               Batal
             </button>
             <button
-              className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60"
+              className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover disabled:opacity-60"
               disabled={create.isPending || update.isPending}
               onClick={submit}
               type="button"
@@ -240,7 +241,7 @@ function GoalCard({ item, onDelete, onEdit }: { item: SavingsGoal; onDelete: () 
       ) : null}
       {item.notes ? <p className="mt-3 text-sm text-muted">{item.notes}</p> : null}
       <div className="mt-4 flex justify-end gap-2">
-        <button className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200" onClick={onEdit} type="button">
+        <button className="rounded-xl p-2 text-muted hover:bg-primary/10 hover:text-primary transition-colors" onClick={onEdit} type="button">
           <Pencil className="h-4 w-4" />
         </button>
         <button className="rounded-lg border border-subtle p-2 text-muted hover:border-red-500 hover:text-red-200" onClick={onDelete} type="button">
@@ -331,4 +332,4 @@ function errorMessage(error: unknown) {
   return "Request gagal diproses.";
 }
 
-const inputClass = "w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";
+const inputClass = "input-field font-sans";

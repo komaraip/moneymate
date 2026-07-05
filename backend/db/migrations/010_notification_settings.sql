@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS user_notification_settings (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    budget_alerts BOOLEAN NOT NULL DEFAULT TRUE,
+    weekly_summaries BOOLEAN NOT NULL DEFAULT FALSE,
+    transaction_alerts BOOLEAN NOT NULL DEFAULT TRUE,
+    security_alerts BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

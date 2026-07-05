@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { ApiError } from "../../helpers/api-client";
 import { moneymateApi } from "../../helpers/moneymate-api";
 import { AuthSplitLayout } from "../../components/layout/AuthSplitLayout";
+import { motion } from "framer-motion";
 
 export function RegisterPage() {
   const navigate = useNavigate();

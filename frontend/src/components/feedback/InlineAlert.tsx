@@ -4,9 +4,9 @@ type InlineAlertProps = {
 };
 
 const toneClass = {
-  error: "border-red-500/30 bg-red-500/10 text-red-100",
-  success: "border-emerald-500/30 bg-success/10 text-emerald-100",
-  warning: "border-amber-500/30 bg-amber-500/10 text-amber-100",
+  error: "border-fin-loss/20 bg-fin-loss/5 text-fin-loss",
+  success: "border-fin-gain/20 bg-fin-gain/5 text-fin-gain",
+  warning: "border-warning/20 bg-warning/5 text-warning",
 };
 
 export function InlineAlert({ messages, tone = "warning" }: InlineAlertProps) {
@@ -16,7 +16,7 @@ export function InlineAlert({ messages, tone = "warning" }: InlineAlertProps) {
   }
 
   return (
-    <div className={`rounded-lg border px-3 py-2 text-sm ${toneClass[tone]}`}>
+    <div className={`rounded-xl border px-4 py-3 text-xs font-sans ${toneClass[tone]}`}>
       {items.map((message) => (
         <p key={message}>{message}</p>
       ))}

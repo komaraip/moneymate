@@ -5,11 +5,13 @@ import { EmptyState } from "../../components/feedback/EmptyState";
 import { ErrorState } from "../../components/feedback/ErrorState";
 import { LoadingState } from "../../components/feedback/LoadingState";
 import { formatCurrency, formatDate, formatPercent } from "../../utils/format";
+import { Select } from "../../components/ui/Select";
 import { queryKeys } from "../../utils/query-keys";
 import { moneymateApi } from "../../helpers/moneymate-api";
 import { Card } from "../../components/ui/Card";
 import { PageHeader } from "../../components/ui/PageHeader";
 import type { MonthlySummaryReport, PersonalInsightsReport, PortfolioPerformanceReport, ReportWarning } from "../../types/moneymate";
+import { motion } from "framer-motion";
 
 export function ReportsPage() {
   const [month, setMonth] = useState(defaultMonth());
@@ -88,18 +90,18 @@ export function ReportsPage() {
           </div>
           <label className="text-sm text-muted">
             <span className="mb-2 block font-medium">Tren</span>
-            <select
-              className="w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main"
-              onChange={(event) => setTrendMonths(Number(event.target.value))}
-              value={trendMonths}
-            >
-              <option value={3}>3 bulan</option>
-              <option value={6}>6 bulan</option>
-              <option value={12}>12 bulan</option>
-            </select>
+            <Select
+              options={[
+                { label: "3 bulan", value: "3" },
+                { label: "6 bulan", value: "6" },
+                { label: "12 bulan", value: "12" },
+              ]}
+              value={String(trendMonths)}
+              onChange={(val) => setTrendMonths(Number(val))}
+            />
           </label>
           <button
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             disabled={exportCsv.isPending}
             onClick={() => exportCsv.mutate()}
             type="button"
@@ -134,8 +136,8 @@ function PersonalInsights({ data }: { data: PersonalInsightsReport }) {
         <h3 className="text-lg font-semibold text-main">Insight Personal {data.month}</h3>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <Metric label="Pemasukan" value={formatCurrency(data.income_total)} />
-        <Metric label="Pengeluaran" value={formatCurrency(data.expense_total)} />
+        <Metric label="Income" value={formatCurrency(data.income_total)} />
+        <Metric label="Expense" value={formatCurrency(data.expense_total)} />
         <Metric label="Cashflow Bersih" value={formatCurrency(data.net_cashflow)} />
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
@@ -143,9 +145,9 @@ function PersonalInsights({ data }: { data: PersonalInsightsReport }) {
           <h4 className="font-semibold text-main">Breakdown Kategori</h4>
           <SimpleTable
             emptyLabel="Belum ada pemasukan atau pengeluaran pada bulan ini."
-            rows={data.category_breakdown.map((row) => ({
+            rows={data.category_breakdown.map((row, index) => ({
               key: `${row.type}-${row.category_id ?? row.category_name}`,
-              left: `${row.category_name} / ${row.type === "income" ? "Pemasukan" : "Pengeluaran"}`,
+              left: `${row.category_name} / ${row.type === "income" ? "Income" : "Expense"}`,
               right: formatCurrency(row.total_idr),
               detail: `${row.transaction_count} transaksi / ${formatPercent(row.percent)}`,
             }))}
@@ -155,7 +157,7 @@ function PersonalInsights({ data }: { data: PersonalInsightsReport }) {
           <h4 className="font-semibold text-main">Tren Cashflow</h4>
           <SimpleTable
             emptyLabel="Tren cashflow belum tersedia."
-            rows={data.cashflow_trend.map((row) => ({
+            rows={data.cashflow_trend.map((row, index) => ({
               key: row.month,
               left: row.month,
               right: formatCurrency(row.net_cashflow),
@@ -180,8 +182,8 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
         <Metric label="Portofolio" value={formatMaybeCurrency(data.portfolio_value)} />
         <Metric label="Kas" value={formatMaybeCurrency(data.cash_balance)} />
         <Metric label="Pergerakan Kas" value={formatMaybeCurrency(data.cash_net_movement)} />
-        <Metric label="Pemasukan" value={formatMaybeCurrency(data.income_total)} />
-        <Metric label="Pengeluaran" value={formatMaybeCurrency(data.expense_total)} />
+        <Metric label="Income" value={formatMaybeCurrency(data.income_total)} />
+        <Metric label="Expense" value={formatMaybeCurrency(data.expense_total)} />
         <Metric label="Cashflow Bersih" value={formatMaybeCurrency(data.net_cashflow)} />
         <Metric label="Laba/Rugi Belum Terealisasi" value={formatMaybeCurrency(data.unrealized_profit_loss)} />
       </div>
@@ -190,7 +192,7 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
           <h4 className="font-semibold text-main">Progress Anggaran</h4>
           <SimpleTable
             emptyLabel="Belum ada anggaran pada bulan ini."
-            rows={(data.budgets ?? []).map((row) => ({
+            rows={(data.budgets ?? []).map((row, index) => ({
               key: row.id,
               left: row.category_name,
               right: formatCurrency(row.spent),
@@ -202,7 +204,7 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
           <h4 className="font-semibold text-main">Total Transaksi per Aset</h4>
           <SimpleTable
             emptyLabel="Belum ada transaksi pada bulan ini."
-            rows={data.transaction_totals_by_asset_type.map((row) => ({
+            rows={data.transaction_totals_by_asset_type.map((row, index) => ({
               key: `${row.asset_type}-${row.transaction_type}`,
               left: `${row.asset_type} / ${row.transaction_type}`,
               right: formatCurrency(row.total_idr),
@@ -214,7 +216,7 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
           <h4 className="font-semibold text-main">Total Transaksi per Instrumen</h4>
           <SimpleTable
             emptyLabel="Belum ada transaksi instrumen."
-            rows={data.transaction_totals_by_instrument.map((row) => ({
+            rows={data.transaction_totals_by_instrument.map((row, index) => ({
               key: `${row.instrument_id ?? row.name}-${row.transaction_type}`,
               left: `${row.ticker ?? row.name} / ${row.transaction_type}`,
               right: formatCurrency(row.total_idr),
@@ -250,7 +252,7 @@ function PerformanceSummary({ data }: { data: PortfolioPerformanceReport }) {
           <h4 className="font-semibold text-main">Alokasi</h4>
           <SimpleTable
             emptyLabel="Alokasi belum tersedia."
-            rows={data.allocation_breakdown.map((row) => ({
+            rows={data.allocation_breakdown.map((row, index) => ({
               key: row.asset,
               left: row.asset,
               right: formatCurrency(row.value),
@@ -262,7 +264,7 @@ function PerformanceSummary({ data }: { data: PortfolioPerformanceReport }) {
           <h4 className="font-semibold text-main">Posisi</h4>
           <SimpleTable
             emptyLabel="Holding belum tersedia."
-            rows={data.holdings_performance.map((row) => ({
+            rows={data.holdings_performance.map((row, index) => ({
               key: row.instrument_id,
               left: row.ticker ?? row.name,
               right: formatCurrency(row.current_value_idr),
@@ -299,7 +301,7 @@ function SimpleTable({ emptyLabel, rows }: { emptyLabel: string; rows: Array<{ k
   }
   return (
     <div className="mt-4 divide-y divide-subtle">
-      {rows.map((row) => (
+      {rows.map((row, index) => (
         <div className="flex items-start justify-between gap-4 py-3" key={row.key}>
           <div>
             <p className="text-sm font-medium text-main">{row.left}</p>
@@ -320,7 +322,7 @@ function Warnings({ warnings }: { warnings: ReportWarning[] }) {
     <Card className="mt-4">
       <h4 className="font-semibold text-main">Catatan Kualitas Data</h4>
       <div className="mt-3 space-y-2">
-        {warnings.map((warning) => (
+        {warnings.map((warning, index) => (
           <div className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2" key={`${warning.code}-${warning.message}`}>
             <p className="text-sm font-medium text-amber-100">{warning.code}</p>
             <p className="mt-1 text-sm text-amber-100/80">{warning.message}</p>

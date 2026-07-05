@@ -9,7 +9,9 @@ import { moneymateApi } from "../../helpers/moneymate-api";
 import { Card } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Select } from "../../components/ui/Select";
 import type { CashAccount, CashAdjustment } from "../../types/moneymate";
+import { motion } from "framer-motion";
 
 type CashForm = {
   account_name: string;
@@ -132,7 +134,7 @@ export function AccountsPage() {
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <PageHeader description="Saldo kas dikelola manual pada MVP" title="Kas" />
         <button
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover"
           onClick={() => openCreate(setForm, setEditing, setFormOpen, setFormErrors)}
           type="button"
         >
@@ -142,26 +144,26 @@ export function AccountsPage() {
       </div>
 
       {successMessage ? (
-        <div className="mb-4 rounded-lg border border-emerald-500/30 bg-success/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</div>
+        <div className="mb-4 rounded-xl border border-fin-gain/30 bg-fin-gain/5 px-4 py-2.5 text-xs font-semibold text-fin-gain font-sans">{successMessage}</div>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
-        {cash.data?.map((item) => (
-          <Card key={item.id}>
+        {cash.data?.map((item, index) => (
+          <Card key={item.id} className="relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-muted">{item.account_type}</p>
-                <h3 className="mt-1 text-lg font-semibold text-main">{item.account_name}</h3>
+                <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-muted font-sans">{item.account_type}</p>
+                <h3 className="mt-1.5 text-lg font-bold text-main font-display tracking-tight">{item.account_name}</h3>
               </div>
-              <span className={`rounded-full px-2 py-1 text-xs ${item.is_active ? "bg-success/10 text-emerald-200" : "bg-surface-hover text-muted"}`}>
-                {item.is_active ? "Aktif" : "Nonaktif"}
+              <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold font-mono tracking-wider ${item.is_active ? "bg-fin-gain/10 text-fin-gain" : "bg-fin-surface-hover text-muted"}`}>
+                {item.is_active ? "ACTIVE" : "INACTIVE"}
               </span>
             </div>
-            <p className="mt-3 text-2xl font-semibold text-accent">{formatCurrency(item.balance, item.currency)}</p>
-            {item.notes ? <p className="mt-2 text-sm text-muted">{item.notes}</p> : null}
-            <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <p className="mt-4 text-2xl lg:text-3xl font-bold text-main font-mono tracking-tighter leading-none">{formatCurrency(item.balance, item.currency)}</p>
+            {item.notes ? <p className="mt-2 text-xs text-muted font-sans">{item.notes}</p> : null}
+            <div className="mt-5 flex flex-wrap justify-end gap-1.5">
               <button
-                className="inline-flex items-center gap-2 rounded-lg border border-subtle px-3 py-2 text-sm text-muted hover:border-emerald-500 hover:text-emerald-200"
+                className="inline-flex items-center gap-2 rounded-xl border border-subtle/50 px-4 py-2 text-sm text-muted hover:bg-primary/10 hover:text-primary transition-colors"
                 onClick={() => openAdjustment(item)}
                 type="button"
               >
@@ -169,7 +171,7 @@ export function AccountsPage() {
                 Sesuaikan Saldo
               </button>
               <button
-                className="inline-flex items-center gap-2 rounded-lg border border-subtle px-3 py-2 text-sm text-muted hover:border-emerald-500 hover:text-emerald-200"
+                className="inline-flex items-center gap-2 rounded-xl border border-subtle/50 px-4 py-2 text-sm text-muted hover:bg-primary/10 hover:text-primary transition-colors"
                 onClick={() => setHistoryTarget(item)}
                 type="button"
               >
@@ -177,7 +179,7 @@ export function AccountsPage() {
                 Histori
               </button>
               <button
-                className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200"
+                className="rounded-xl p-2 text-muted hover:bg-primary/10 hover:text-primary transition-colors"
                 onClick={() => openEdit(item, setForm, setEditing, setFormOpen, setFormErrors)}
                 title="Edit akun cash"
                 type="button"
@@ -185,7 +187,7 @@ export function AccountsPage() {
                 <Pencil className="h-4 w-4" />
               </button>
               <button
-                className="rounded-lg border border-subtle p-2 text-muted hover:border-rose-500 hover:text-rose-200"
+                className="rounded-xl p-2 text-muted hover:bg-fin-loss/10 hover:text-fin-loss transition-colors"
                 onClick={() => setDeleteTarget(item)}
                 title="Nonaktifkan akun cash"
                 type="button"
@@ -300,29 +302,41 @@ function CashModal({
             <input className={inputClass} onChange={(e) => setForm({ ...form, account_name: e.target.value })} value={form.account_name} />
           </Field>
           <Field label="Tipe akun">
-            <select className={inputClass} onChange={(e) => setForm({ ...form, account_type: e.target.value })} value={form.account_type}>
-              <option value="bank">Bank</option>
-              <option value="wallet">E-wallet</option>
-              <option value="cash">Tunai</option>
-              <option value="other">Lainnya</option>
-            </select>
+            <Select
+              options={[
+                { label: "Bank", value: "bank" },
+                { label: "E-wallet", value: "wallet" },
+                { label: "Tunai", value: "cash" },
+                { label: "Lainnya", value: "other" },
+              ]}
+              value={form.account_type}
+              onChange={(val) => setForm({ ...form, account_type: val })}
+            />
           </Field>
-          <Field label="Mata uang">
-            <select className={inputClass} onChange={(e) => setForm({ ...form, currency: e.target.value })} value={form.currency}>
-              <option value="IDR">IDR</option>
-              <option value="USD">USD</option>
-            </select>
+          <Field label="Currency">
+            <Select
+              options={[
+                { label: "IDR", value: "IDR" },
+                { label: "USD", value: "USD" },
+              ]}
+              value={form.currency}
+              onChange={(val) => setForm({ ...form, currency: val })}
+            />
           </Field>
           <Field label="Saldo">
             <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, balance: e.target.value })} value={form.balance} />
           </Field>
           <Field label="Status">
-            <select className={inputClass} onChange={(e) => setForm({ ...form, is_active: e.target.value === "true" })} value={String(form.is_active)}>
-              <option value="true">Aktif</option>
-              <option value="false">Nonaktif</option>
-            </select>
+            <Select
+              options={[
+                { label: "Aktif", value: "true" },
+                { label: "Nonaktif", value: "false" },
+              ]}
+              value={String(form.is_active)}
+              onChange={(val) => setForm({ ...form, is_active: val === "true" })}
+            />
           </Field>
-          <Field label="Catatan">
+          <Field label="Notes">
             <input className={inputClass} onChange={(e) => setForm({ ...form, notes: e.target.value })} value={form.notes} />
           </Field>
       </div>
@@ -330,10 +344,10 @@ function CashModal({
       <Feedback error={error} errors={errors} />
 
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
+          <button className="rounded-xl border border-subtle/50 px-4 py-2.5 text-xs font-semibold text-muted hover:text-main hover:bg-fin-surface transition-all" onClick={onClose} type="button">
             Batal
           </button>
-          <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
+          <button className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
             {isSaving ? "Menyimpan..." : "Simpan"}
           </button>
       </div>
@@ -359,10 +373,10 @@ function ConfirmDelete({
       <p className="text-sm text-muted">Akun {label} akan dibuat nonaktif. Saldo historis tetap tersimpan.</p>
       {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
+          <button className="rounded-xl border border-subtle/50 px-4 py-2.5 text-xs font-semibold text-muted hover:text-main hover:bg-fin-surface transition-all" onClick={onCancel} type="button">
             Batal
           </button>
-          <button className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isDeleting} onClick={onConfirm} type="button">
+          <button className="rounded-xl bg-fin-loss px-4 py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-60" disabled={isDeleting} onClick={onConfirm} type="button">
             {isDeleting ? "Memproses..." : "Nonaktifkan"}
           </button>
       </div>
@@ -398,18 +412,22 @@ function AdjustmentModal({
             <input className={inputClass} onChange={(e) => setForm({ ...form, adjustment_date: e.target.value })} type="date" value={form.adjustment_date} />
           </Field>
           <Field label="Tipe penyesuaian">
-            <select className={inputClass} onChange={(e) => setForm({ ...form, type: e.target.value })} value={form.type}>
-              <option value="deposit">Deposit</option>
-              <option value="withdrawal">Penarikan</option>
-              <option value="correction">Koreksi</option>
-              <option value="transfer_in">Transfer Masuk</option>
-              <option value="transfer_out">Transfer Keluar</option>
-            </select>
+            <Select
+              options={[
+                { label: "Deposit", value: "deposit" },
+                { label: "Penarikan", value: "withdrawal" },
+                { label: "Koreksi", value: "correction" },
+                { label: "Transfer Masuk", value: "transfer_in" },
+                { label: "Transfer Keluar", value: "transfer_out" },
+              ]}
+              value={form.type}
+              onChange={(val) => setForm({ ...form, type: val })}
+            />
           </Field>
-          <Field label="Nominal">
+          <Field label="Amount">
             <input className={inputClass} inputMode="decimal" onChange={(e) => setForm({ ...form, amount: e.target.value })} value={form.amount} />
           </Field>
-          <Field label="Catatan">
+          <Field label="Notes">
             <input className={inputClass} onChange={(e) => setForm({ ...form, note: e.target.value })} value={form.note} />
           </Field>
       </div>
@@ -420,10 +438,10 @@ function AdjustmentModal({
       <Feedback error={error} errors={errors} />
 
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
+          <button className="rounded-xl border border-subtle/50 px-4 py-2.5 text-xs font-semibold text-muted hover:text-main hover:bg-fin-surface transition-all" onClick={onClose} type="button">
             Batal
           </button>
-          <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
+          <button className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
             {isSaving ? "Menyimpan..." : "Simpan Penyesuaian"}
           </button>
       </div>
@@ -462,27 +480,27 @@ function HistoryModal({
 
 function AdjustmentTable({ rows }: { rows: CashAdjustment[] }) {
   return (
-    <div className="overflow-auto rounded-xl border border-subtle">
+    <div className="overflow-auto rounded-2xl surface-card card-shadow overflow-hidden">
       <table className="w-full min-w-[900px] text-sm">
-        <thead className="bg-surface text-muted">
-          <tr>
-            {["Tanggal", "Tipe", "Nominal", "Saldo Sebelum", "Saldo Setelah", "Catatan"].map((header) => (
-              <th className="px-4 py-3 text-left" key={header}>
+        <thead>
+          <tr className="border-b border-subtle/50">
+            {["Date", "Type", "Amount", "Balance Before", "Balance After", "Notes"].map((header, index) => (
+              <th className="text-left p-4 text-[11px] font-semibold text-muted uppercase tracking-[0.08em] font-sans" key={header}>
                 {header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-subtle">
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <td className="px-4 py-3 text-muted">{formatDate(row.adjustment_date ?? row.created_at)}</td>
-              <td className="px-4 py-3 text-muted">{adjustmentTypeLabel(row.type)}</td>
-              <td className={`px-4 py-3 ${row.amount < 0 ? "text-rose-200" : "text-emerald-200"}`}>{formatCurrency(row.amount, row.currency)}</td>
-              <td className="px-4 py-3 text-muted">{formatCurrency(row.balance_before, row.currency)}</td>
-              <td className="px-4 py-3 text-muted">{formatCurrency(row.balance_after, row.currency)}</td>
-              <td className="px-4 py-3 text-muted">{row.note ?? "-"}</td>
-            </tr>
+        <tbody className="divide-y divide-subtle/30">
+          {rows.map((row, index) => (
+            <motion.tr key={row.id} className="hover:bg-fin-surface/50 transition-all duration-200" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+              <td className="p-4 text-xs font-mono text-muted">{formatDate(row.adjustment_date ?? row.created_at)}</td>
+              <td className="p-4 text-xs font-sans text-main font-medium">{adjustmentTypeLabel(row.type)}</td>
+              <td className={`p-4 font-mono font-bold ${row.amount < 0 ? "text-fin-loss" : "text-fin-gain"}`}>{formatCurrency(row.amount, row.currency)}</td>
+              <td className="p-4 text-xs font-mono text-muted">{formatCurrency(row.balance_before, row.currency)}</td>
+              <td className="p-4 text-xs font-mono text-muted">{formatCurrency(row.balance_after, row.currency)}</td>
+              <td className="p-4 text-xs font-sans text-muted">{row.note ?? "-"}</td>
+            </motion.tr>
           ))}
         </tbody>
       </table>
@@ -525,7 +543,7 @@ function openEdit(
 function validateCash(form: CashForm) {
   const errors: string[] = [];
   if (!form.account_name.trim()) errors.push("Nama akun cash wajib diisi.");
-  if (!form.currency.trim()) errors.push("Mata uang wajib diisi.");
+  if (!form.currency.trim()) errors.push("Currency is required.");
   if (form.balance.trim() === "" || !Number.isFinite(Number(form.balance))) errors.push("Saldo wajib berupa angka.");
   return errors;
 }
@@ -585,8 +603,8 @@ function invalidateCashWrites(queryClient: ReturnType<typeof useQueryClient>, ca
 
 function Field({ children, label }: { children: React.ReactNode; label: string }) {
   return (
-    <label className="block text-sm">
-      <span className="mb-2 block text-muted">{label}</span>
+    <label className="block">
+      <span className="text-[11px] font-semibold text-muted uppercase tracking-[0.06em] mb-2 block font-sans">{label}</span>
       {children}
     </label>
   );
@@ -595,9 +613,9 @@ function Field({ children, label }: { children: React.ReactNode; label: string }
 function Feedback({ error, errors }: { error: string; errors: string[] }) {
   if (!error && errors.length === 0) return null;
   return (
-    <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-      {error ? <p>{error}</p> : null}
-      {errors.map((item) => (
+    <div className="mt-4 rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 text-xs text-warning font-sans">
+      {error ? <p className="font-semibold">{error}</p> : null}
+      {errors.map((item, index) => (
         <p key={item}>{item}</p>
       ))}
     </div>
@@ -610,4 +628,4 @@ function errorMessage(error: unknown) {
   return "Request gagal diproses.";
 }
 
-const inputClass = "w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";
+const inputClass = "input-field font-sans";

@@ -6,7 +6,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["DM Sans", "DM Sans Fallback", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "JetBrains Mono Fallback", "monospace"],
+        display: ["Outfit", "Outfit Fallback", "system-ui", "sans-serif"],
       },
       colors: {
         app: "rgb(var(--bg-app) / <alpha-value>)",
@@ -23,6 +25,11 @@ export default {
         danger: "rgb(var(--color-danger) / <alpha-value>)",
         success: "rgb(var(--color-success) / <alpha-value>)",
         warning: "rgb(var(--color-warning) / <alpha-value>)",
+        "fin-gain": "rgb(var(--fin-gain) / <alpha-value>)",
+        "fin-loss": "rgb(var(--fin-loss) / <alpha-value>)",
+        "fin-neutral": "rgb(var(--fin-neutral) / <alpha-value>)",
+        "fin-surface": "rgb(var(--fin-surface) / <alpha-value>)",
+        "fin-surface-hover": "rgb(var(--fin-surface-hover) / <alpha-value>)",
       },
     },
   },

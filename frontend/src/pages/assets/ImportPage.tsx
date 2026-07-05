@@ -6,6 +6,7 @@ import { moneymateApi } from "../../helpers/moneymate-api";
 import { Card } from "../../components/ui/Card";
 import { PageHeader } from "../../components/ui/PageHeader";
 import type { ImportConfirmResult, ImportPreview, ImportPreviewRow } from "../../types/moneymate";
+import { motion } from "framer-motion";
 
 const sectionLabels: Record<ImportPreviewRow["section"], string> = {
   holdings: "Portofolio",
@@ -94,7 +95,7 @@ export function ImportPage() {
 
           <div className="flex flex-wrap gap-3">
             <button
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
               disabled={!file || uploadImport.isPending}
               onClick={() => uploadImport.mutate()}
               type="button"
@@ -130,7 +131,7 @@ export function ImportPage() {
 
           <Card className="mb-5">
             <div className="flex flex-wrap gap-2">
-              {detectedSections.map((section) => (
+              {detectedSections.map((section, index) => (
                 <span className="rounded-full border border-subtle px-3 py-1 text-xs text-muted" key={section}>
                   {section}
                 </span>
@@ -158,15 +159,15 @@ function PreviewTable({ rows }: { rows: ImportPreviewRow[] }) {
       <table className="w-full min-w-[980px] text-sm">
         <thead className="bg-surface text-muted">
           <tr>
-            {["Baris", "Bagian", "Status", "Data Normalisasi", "Masalah"].map((header) => (
-              <th className="px-4 py-3 text-left" key={header}>
+            {["Baris", "Bagian", "Status", "Data Normalisasi", "Masalah"].map((header, index) => (
+              <th className="text-left p-4 text-[11px] font-semibold text-muted uppercase tracking-[0.08em] font-sans" key={header}>
                 {header}
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-subtle">
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <tr className="align-top" key={row.id || `${row.section}-${row.row_number}`}>
               <td className="px-4 py-3 text-muted">{row.row_number}</td>
               <td className="px-4 py-3">{sectionLabels[row.section] ?? row.section}</td>
@@ -179,7 +180,7 @@ function PreviewTable({ rows }: { rows: ImportPreviewRow[] }) {
               <td className="px-4 py-3">
                 {row.errors.length > 0 ? (
                   <ul className="space-y-1 text-xs text-amber-200">
-                    {row.errors.map((error) => (
+                    {row.errors.map((error, index) => (
                       <li key={error}>{error}</li>
                     ))}
                   </ul>
@@ -256,7 +257,7 @@ function Success({ result }: { result: ImportConfirmResult }) {
     ? `Nilai portfolio dihitung ulang untuk ${result.holdings_count} holding pada snapshot ${result.holdings_snapshot_date}.`
     : "Nilai portfolio belum dihitung ulang otomatis.";
   return (
-    <div className="mt-4 rounded-lg border border-emerald-500/30 bg-success/10 px-3 py-2 text-sm text-emerald-100">
+    <div className="mt-4 rounded-xl border border-fin-gain/30 bg-fin-gain/5 px-4 py-2.5 text-xs font-semibold text-fin-gain font-sans">
       Import {status}. Diimpor: {result.imported_rows}, dilewati: {result.skipped_rows}, baris error: {result.failed_rows}. {result.message} {recalculation}
     </div>
   );

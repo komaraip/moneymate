@@ -12,7 +12,9 @@ import { moneymateApi } from "../../helpers/moneymate-api";
 import { Card } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Select } from "../../components/ui/Select";
 import type { AdminUser } from "../../types/moneymate";
+import { motion } from "framer-motion";
 
 type Filters = {
   search: string;
@@ -85,7 +87,7 @@ export function AdminUsersPage() {
     <div>
       <PageHeader description="Kelola metadata akun tanpa membuka data finansial privat" title="Pengguna">
         <button
-          className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950"
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover"
           onClick={() => {
             setCreateForm({ email: "", full_name: "", password: "", role: "user" });
             setCreating(true);
@@ -104,26 +106,34 @@ export function AdminUsersPage() {
           </label>
           <label className="text-sm text-muted">
             <span className="mb-2 block font-medium">Role</span>
-            <select className={inputClass} onChange={(event) => setFilters((current) => ({ ...current, role: event.target.value }))} value={filters.role}>
-              <option value="">Semua</option>
-              <option value="admin">Admin</option>
-              <option value="user">User</option>
-            </select>
+            <Select
+              options={[
+                { label: "Semua", value: "" },
+                { label: "Admin", value: "admin" },
+                { label: "User", value: "user" },
+              ]}
+              value={filters.role}
+              onChange={(val) => setFilters((current) => ({ ...current, role: val }))}
+            />
           </label>
           <label className="text-sm text-muted">
             <span className="mb-2 block font-medium">Status</span>
-            <select className={inputClass} onChange={(event) => setFilters((current) => ({ ...current, is_active: event.target.value }))} value={filters.is_active}>
-              <option value="">Semua</option>
-              <option value="true">Aktif</option>
-              <option value="false">Nonaktif</option>
-            </select>
+            <Select
+              options={[
+                { label: "Semua", value: "" },
+                { label: "Aktif", value: "true" },
+                { label: "Nonaktif", value: "false" },
+              ]}
+              value={filters.is_active}
+              onChange={(val) => setFilters((current) => ({ ...current, is_active: val }))}
+            />
           </label>
         </div>
         <p className="mt-3 text-sm text-muted">Admin tidak melihat transaksi, kas, portofolio, anggaran, atau tujuan tabungan pengguna lain di halaman ini.</p>
       </Card>
 
       {successMessage ? (
-        <div className="mb-4 rounded-lg border border-emerald-500/30 bg-success/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</div>
+        <div className="mb-4 rounded-xl border border-fin-gain/30 bg-fin-gain/5 px-4 py-2.5 text-xs font-semibold text-fin-gain font-sans">{successMessage}</div>
       ) : null}
 
       <Card>
@@ -139,7 +149,7 @@ export function AdminUsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-subtle">
-              {(users.data ?? []).map((item) => (
+              {(users.data ?? []).map((item, index) => (
                 <tr key={item.id}>
                   <td className="py-3 pr-4">
                     <p className="font-medium text-main">{item.full_name}</p>
@@ -154,7 +164,7 @@ export function AdminUsersPage() {
                   <td className="py-3 pr-4 text-muted">{formatDate(item.created_at)}</td>
                   <td className="py-3 pr-4 text-right">
                     <div className="flex justify-end gap-2">
-                      <button className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200" onClick={() => openEdit(item, setEditing, setForm)} type="button" title="Edit Pengguna">
+                      <button className="rounded-xl p-2 text-muted hover:bg-primary/10 hover:text-primary transition-colors" onClick={() => openEdit(item, setEditing, setForm)} type="button" title="Edit Pengguna">
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button className="rounded-lg border border-subtle p-2 text-muted hover:border-danger hover:text-danger" onClick={() => setDeleting(item)} type="button" disabled={item.id === user?.id} title={item.id === user?.id ? "Tidak dapat menghapus akun sendiri" : "Hapus Pengguna"}>
@@ -178,10 +188,14 @@ export function AdminUsersPage() {
               <p className="mt-1 text-sm text-muted">{editing.email}</p>
             </div>
             <Field label="Role">
-              <select className={inputClass} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as "admin" | "user" }))} value={form.role}>
-                <option value="admin">Admin</option>
-                <option value="user">User</option>
-              </select>
+              <Select
+                options={[
+                  { label: "Admin", value: "admin" },
+                  { label: "User", value: "user" },
+                ]}
+                value={form.role}
+                onChange={(val) => setForm((current) => ({ ...current, role: val as "admin" | "user" }))}
+              />
             </Field>
             <label className="flex items-center gap-2 text-sm text-muted">
               <input checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} type="checkbox" />
@@ -195,7 +209,7 @@ export function AdminUsersPage() {
             <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-muted" onClick={() => setEditing(null)} type="button">
               Batal
             </button>
-            <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={update.isPending} onClick={() => update.mutate()} type="button">
+            <button className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover disabled:opacity-60" disabled={update.isPending} onClick={() => update.mutate()} type="button">
               Simpan
             </button>
           </div>
@@ -215,10 +229,14 @@ export function AdminUsersPage() {
               <input className={inputClass} onChange={(event) => setCreateForm((current) => ({ ...current, password: event.target.value }))} type="text" value={createForm.password} />
             </Field>
             <Field label="Role">
-              <select className={inputClass} onChange={(event) => setCreateForm((current) => ({ ...current, role: event.target.value as "admin" | "user" }))} value={createForm.role}>
-                <option value="admin">Admin</option>
-                <option value="user">User</option>
-              </select>
+              <Select
+                options={[
+                  { label: "Admin", value: "admin" },
+                  { label: "User", value: "user" },
+                ]}
+                value={createForm.role}
+                onChange={(val) => setCreateForm((current) => ({ ...current, role: val as "admin" | "user" }))}
+              />
             </Field>
           </div>
           <div className="mt-4">
@@ -228,7 +246,7 @@ export function AdminUsersPage() {
             <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-muted" onClick={() => setCreating(false)} type="button">
               Batal
             </button>
-            <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={create.isPending} onClick={() => create.mutate()} type="button">
+            <button className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-app transition-all hover:bg-primary-hover disabled:opacity-60" disabled={create.isPending} onClick={() => create.mutate()} type="button">
               Simpan
             </button>
           </div>
@@ -277,4 +295,4 @@ function errorMessage(error: unknown) {
   return "Request gagal diproses.";
 }
 
-const inputClass = "w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";
+const inputClass = "input-field font-sans";
