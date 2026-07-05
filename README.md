@@ -125,10 +125,14 @@ Current primary app routes are grouped by personal finance domain:
 /                       Ringkasan
 /transactions           Transaksi
 /accounts               Akun & Wallet
+/budgets                Anggaran
+/savings-goals          Tujuan Tabungan
 /reports                Laporan
 /assets/portfolio       Portofolio
 /assets/instruments     Instrumen
 /imports                Impor Data
+/admin                  Admin Dashboard
+/admin/users            Pengguna
 /admin/audit-log        Log Audit
 /settings               Pengaturan
 ```
@@ -492,7 +496,7 @@ Stop services after testing:
 docker compose down
 ```
 
-The smoke suite logs in with the seeded admin account, recalculates holdings for `2026-06-30`, checks ringkasan/portofolio/laporan pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, opens the cash adjustment/history UI without mutating data, previews a small CSV import fixture without confirming the import, and verifies CSV report download starts.
+The smoke suite logs in with the seeded admin account, recalculates holdings for `2026-06-30`, checks ringkasan, portofolio, anggaran, tujuan tabungan, laporan, pengaturan theme, and admin metadata pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, opens the cash adjustment/history UI without mutating data, previews a small CSV import fixture without confirming the import, and verifies CSV report download starts.
 
 ## Troubleshooting
 

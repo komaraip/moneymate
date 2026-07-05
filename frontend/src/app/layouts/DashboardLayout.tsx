@@ -67,7 +67,7 @@ export function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-zinc-800 bg-zinc-950 px-5 py-6 lg:block">
+      <aside className="fixed inset-y-0 left-0 hidden w-72 overflow-y-auto border-r border-zinc-800 bg-zinc-950 px-5 py-6 lg:block">
         <SidebarContent />
       </aside>
 
@@ -81,7 +81,7 @@ export function DashboardLayout() {
           />
           <aside
             aria-label="Navigasi utama"
-            className="relative z-10 flex h-full w-[min(20rem,85vw)] flex-col border-r border-zinc-800 bg-zinc-950 px-5 py-6 shadow-2xl"
+            className="relative z-10 flex h-full w-[min(20rem,85vw)] flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950 px-5 py-6 shadow-2xl"
             id="mobile-navigation"
           >
             <div className="mb-4 flex items-start justify-between gap-4">

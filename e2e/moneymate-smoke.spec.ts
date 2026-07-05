@@ -108,6 +108,33 @@ test.describe("MoneyMate MVP smoke", () => {
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toContain("moneymate");
   });
+
+  test("navigasi personal finance, tema, dan admin metadata dapat dibuka", async ({ page, request }) => {
+    await loginAndPrepare(page, request);
+
+    await page.getByRole("link", { name: "Anggaran" }).click();
+    await expect(page.getByRole("heading", { name: "Anggaran" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Tambah Anggaran/i })).toBeVisible();
+
+    await page.getByRole("link", { name: "Tujuan Tabungan" }).click();
+    await expect(page.getByRole("heading", { name: "Tujuan Tabungan" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Tambah Tujuan/i })).toBeVisible();
+
+    await page.getByRole("link", { name: "Pengaturan" }).click();
+    await expect(page.getByRole("heading", { name: "Pengaturan" })).toBeVisible();
+    await page.getByRole("button", { name: "Terang" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
+    await page.getByRole("link", { name: "Admin Dashboard" }).click();
+    await expect(page.getByRole("heading", { name: "Admin Dashboard" })).toBeVisible();
+    await expect(page.getByText("Batas Privasi Admin")).toBeVisible();
+    await expect(page.getByText(/tidak dibuka di dashboard admin/i)).toBeVisible();
+
+    await page.getByRole("link", { name: "Pengguna" }).click();
+    await expect(page.getByRole("heading", { name: "Pengguna" })).toBeVisible();
+    await expect(page.getByLabel("Cari pengguna")).toBeVisible();
+    await expect(page.getByText("Admin tidak melihat transaksi")).toBeVisible();
+  });
 });
 
 async function loginAndPrepare(page: Page, request: APIRequestContext) {
