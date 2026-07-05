@@ -68,8 +68,6 @@ P2/later functionality:
 The current roadmap intentionally excludes:
 
 - Company finance workflows.
-- Cloud backup or remote storage integrations.
-- Production deployment.
 - Real market data integration.
 - FIFO, tax-lot accounting, TWR, or MWR.
 - Buy/sell recommendation logic.
@@ -94,10 +92,14 @@ Primary frontend routes should follow the personal finance navigation groups:
 /                       Overview / Ringkasan
 /transactions           Money Management / Transaksi
 /accounts               Money Management / Akun & Wallet
+/budgets                Money Management / Anggaran
+/savings-goals          Money Management / Tujuan Tabungan
 /reports                Reports / Laporan
 /assets/portfolio       Assets & Net Worth / Portofolio
 /assets/instruments     Assets & Net Worth / Instrumen
 /imports                Assets & Net Worth / Impor Data
+/admin                  Admin / Admin Dashboard
+/admin/users            Admin / Pengguna
 /admin/audit-log        Admin / Log Audit
 /settings               Settings / Pengaturan
 ```
@@ -106,7 +108,7 @@ Compatibility routes from the earlier MVP can redirect to the primary routes whi
 
 ## Demo Safety
 
-Demo data, seed credentials, and local backup scripts are local-only. No production secrets should be committed. Database backup/export workflows remain recovery and local demo tooling; they are not personal finance report exports.
+Demo data and seed credentials are local-only. No production secrets should be committed.
 
 ## Personal Transaction Behavior
 

@@ -1,57 +1,59 @@
 # MoneyMate Personal Finance
 
-MoneyMate is a local fullstack MVP evolving into a multi-user personal finance web app for individual users. The current app tracks portfolio holdings, manual prices, transactions, cash accounts, reports, backups, and dashboard summaries while the next roadmap expands it toward income, expenses, transfers, budgets, savings goals, and personal net worth.
+MoneyMate adalah aplikasi web personal finance untuk user individu. Fokus saat ini:
 
-Current stack:
+- income, expense, transfer, dan cashflow
+- akun/wallet dan saldo kas
+- portofolio/net worth dengan harga manual/mock
+- anggaran bulanan
+- tujuan tabungan
+- laporan personal
+- admin metadata pengguna tanpa membuka data finansial privat user lain
+
+Harga dan nilai portofolio di MVP ini bersifat manual/mock, bukan real-time. Aplikasi tidak memberikan rekomendasi beli/jual.
+
+## Stack
 
 - Frontend: React, TypeScript, Vite, Tailwind CSS, TanStack Query.
 - Backend: Go, chi router, slog, PostgreSQL via pgx.
-- Local services: Docker Compose with PostgreSQL, backend API, frontend Vite server.
-
-Financial safety note: all prices are manual/mock in this MVP. The app does not provide buy/sell recommendations and does not claim real-time market data. See [docs/moneymate-personal-finance-scope.md](docs/moneymate-personal-finance-scope.md) for the approved personal finance product direction.
-
-## Prerequisites
-
-- Docker Desktop.
-- Node.js 20+ only if running frontend outside Docker.
-- Go only if running backend outside Docker.
-
-This workspace previously showed `go` and `make` may not be available on PATH, so Docker and PowerShell commands are the primary path.
+- Database: PostgreSQL.
 
 ## Environment
 
-Create local env file:
+Buat file `.env` lokal dari contoh:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Safe local demo credentials:
+Demo credential lokal:
 
 ```txt
 Email: admin@moneymate.local
 Password: changeme-local-demo
 ```
 
-These are local placeholders only. Do not use them in production.
-If you change `SEED_ADMIN_EMAIL` or `SEED_ADMIN_PASSWORD` in your ignored local `.env`, update `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` to match before running Playwright smoke tests.
+Nilai tersebut hanya placeholder lokal. Jangan gunakan untuk production.
 
-## First Run With Docker
+## Menjalankan Lokal
 
-If port `5432` is already used by another PostgreSQL service, use `15432`:
+Repository ini hanya menyertakan source aplikasi inti. Jalankan service dengan tool lokal.
+
+Terminal backend:
 
 ```powershell
-$env:POSTGRES_PORT = "15432"
+cd backend
+go run ./cmd/migrate
+go run ./cmd/seed
+go run ./cmd/api
 ```
 
-Build services, run migrations, seed data, then start the app:
+Terminal frontend:
 
 ```powershell
-docker compose build backend migrate seed frontend
-docker compose up -d postgres
-docker compose run --rm migrate
-docker compose run --rm seed
-docker compose up -d backend frontend
+cd frontend
+npm install
+npx vite --host 0.0.0.0
 ```
 
 Open:
@@ -61,65 +63,24 @@ Frontend: http://localhost:5173
 Backend health: http://localhost:8080/healthz
 ```
 
-After login, open `Portofolio` and click `Hitung Ulang`, or call:
+## Build Lokal
+
+Frontend:
 
 ```powershell
-$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"admin@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
-$headers = @{ Authorization = "Bearer $($login.data.access_token)" }
-Invoke-RestMethod "http://localhost:8080/api/v1/holdings/recalculate?date=2026-06-30" -Method Post -Headers $headers
+cd frontend
+npx tsc --noEmit
+npx vite build
 ```
 
-Import CSV/XLSX from the UI:
-
-```txt
-http://localhost:5173/imports
-```
-
-The import parser recognizes spreadsheet-like sections named `INVESTMENT`, `INVESMENT`, `PORTFOLIO`, `HOLDINGS`, `ORDERS`, `TRANSACTIONS`, `ASSET/VALUE`, and `CASH`.
-
-PowerShell API smoke path using `curl.exe` for multipart upload:
+Backend:
 
 ```powershell
-$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"admin@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
-$token = $login.data.access_token
-$preview = curl.exe -s -X POST "http://localhost:8080/api/v1/imports/upload" -H "Authorization: Bearer $token" -F "file=@.\sample-assets.csv" | ConvertFrom-Json
-$jobId = $preview.data.job_id
-Invoke-RestMethod "http://localhost:8080/api/v1/imports/jobs/$jobId/confirm" -Method Post -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body "{}"
+cd backend
+go build ./...
 ```
 
-Reports and CSV export:
-
-```txt
-http://localhost:5173/reports
-```
-
-PowerShell API examples:
-
-```powershell
-$login = Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType "application/json" -Body '{"email":"admin@moneymate.local","password":"changeme-local-demo"}' -SessionVariable session
-$headers = @{ Authorization = "Bearer $($login.data.access_token)" }
-Invoke-RestMethod "http://localhost:8080/api/v1/reports/monthly-summary?month=2026-06" -Headers $headers
-Invoke-RestMethod "http://localhost:8080/api/v1/reports/portfolio-performance?from=2026-06-01&to=2026-06-30" -Headers $headers
-Invoke-WebRequest "http://localhost:8080/api/v1/reports/export.csv" -Headers $headers -OutFile ".\moneymate-portfolio-export.csv"
-```
-
-Cash adjustment ledger:
-
-```powershell
-$cashAccountId = (Invoke-RestMethod "http://localhost:8080/api/v1/cash-accounts" -Headers $headers).data[0].id
-$adjustment = @{
-  adjustment_date = "2026-06-15"
-  type = "deposit"
-  amount = 50000
-  note = "Top up cash"
-} | ConvertTo-Json
-Invoke-RestMethod "http://localhost:8080/api/v1/cash-accounts/$cashAccountId/adjust" -Method Post -Headers $headers -ContentType "application/json" -Body $adjustment
-Invoke-RestMethod "http://localhost:8080/api/v1/cash-accounts/$cashAccountId/adjustments" -Headers $headers
-```
-
-Adjustment request amounts must be positive. `withdrawal` and `transfer_out` are stored as negative ledger movements. Cash balances are not allowed to become negative.
-
-Current primary app routes are grouped by personal finance domain:
+## Routes Utama
 
 ```txt
 /                       Ringkasan
@@ -137,439 +98,25 @@ Current primary app routes are grouped by personal finance domain:
 /settings               Pengaturan
 ```
 
-Older MVP routes such as `/orders`, `/cash`, `/portfolio`, `/instruments`, `/import-data`, and `/audit-log` redirect to the current routes for local compatibility.
+Route lama seperti `/orders`, `/cash`, `/portfolio`, `/instruments`, `/import-data`, dan `/audit-log` masih redirect ke route baru untuk kompatibilitas lokal.
 
-CSV export columns are stable for the MVP:
+## Catatan Produk
 
-```txt
-section,generated_at,record_id,snapshot_date,transaction_date,price_date,account_name,instrument_type,ticker,name,transaction_type,units,price,average_price_idr,current_price_idr,gross_value,fees,tax,net_value,balance,total_cost_idr,current_value_idr,profit_loss_idr,profit_loss_percent,currency,original_currency,fx_rate_to_idr,source,is_realtime,warnings,note
-```
+- Role final hanya `admin` dan `user`.
+- Data finansial user-owned harus user-scoped.
+- Admin hanya melihat metadata pengguna dan audit log. Admin tidak membaca transaksi, kas, portofolio, anggaran, atau tujuan tabungan user lain secara default.
+- Realized P/L, FIFO, TWR, MWR, tax-lot accounting, real market data, dan workflow production tidak termasuk scope saat ini.
 
-## Database Backup And Restore
+## API
 
-The report CSV export is for user analysis in Excel or Google Sheets. It is not a recovery backup and does not contain every database table.
-
-The database backup workflow uses PostgreSQL `pg_dump` custom format through Docker Compose. It is intended for local recovery or migration of the full MVP database, including users, sessions, instruments, asset categories, transactions, cash accounts, cash adjustment ledger rows, price snapshots, holdings snapshots, import jobs/import rows, and audit logs.
-
-Backup files are written to `backups/`, which is ignored by Git:
-
-```powershell
-.\scripts\backup-db.ps1
-```
-
-Or with the root npm shortcut:
-
-```powershell
-npm run db:backup
-```
-
-Each backup creates:
-
-```txt
-backups/moneymate-moneymate-YYYYMMDD-HHMMSS.dump
-backups/moneymate-moneymate-YYYYMMDD-HHMMSS.metadata.md
-```
-
-The metadata file records the generated timestamp, local environment name, database name, Docker Compose service, backup file name, and restore command. It intentionally does not store passwords, tokens, cookies, or production secrets.
-
-### Local Backup Status
-
-The backup status workflow is read-only. It inspects matched MoneyMate backup files inside `backups/` and reports backup count, total dump size, newest/oldest timestamps, old backups, largest files, and metadata coverage.
-
-Inspect backup status:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-status.ps1 -OlderThanDays 30 -LargestCount 5
-```
-
-Or with the root npm shortcut:
-
-```powershell
-npm run db:backup:status
-```
-
-Use the direct PowerShell command when changing parameters such as `-OlderThanDays`, `-LargestCount`, or `-IncludeMetadataDetails`.
-
-Show missing/orphan metadata details:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-status.ps1 -OlderThanDays 30 -LargestCount 5 -IncludeMetadataDetails
-```
-
-The status script never deletes or uploads files. It only matches files named like `moneymate-<database>-YYYYMMDD-HHMMSS.dump` and refuses to inspect paths outside the repository `backups/` folder.
-
-### Local Restore Drill
-
-The restore drill validates a local backup file and, only when explicitly confirmed, restores it into a disposable database named `moneymate_restore_drill_*`. It never restores into the active app database by default.
-
-Validate a backup file without creating a database:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-backup-drill.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump"
-```
-
-Or with npm by setting `BACKUP_FILE` first:
-
-```powershell
-$env:BACKUP_FILE = ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump"
-npm run db:backup:restore-drill
-Remove-Item Env:BACKUP_FILE
-```
-
-Run a disposable restore drill:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-backup-drill.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -RunRestore -ConfirmRestoreDrill RESTORE_LOCAL_BACKUP_DRILL
-```
-
-The drill refuses backup files outside `backups/`, refuses backup names outside `moneymate-<database>-YYYYMMDD-HHMMSS.dump`, rejects dangerous database names such as `moneymate` or `postgres`, and drops the disposable drill database when the drill completes. Use `-KeepDrillDatabase` only when you intentionally want to inspect the restored drill database afterward.
-
-### Local Backup Retention
-
-Backups are local-only and ignored by Git. The cleanup workflow is dry-run by default and only matches MoneyMate backup files named like `moneymate-<database>-YYYYMMDD-HHMMSS.dump` plus matching `.metadata.md` files inside `backups/`.
-
-Recommended local policy: keep at least the newest 10 backups and delete older backups after 30 days.
-
-Preview cleanup without deleting files:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-backups.ps1 -KeepNewest 10 -OlderThanDays 30
-```
-
-Or with the root npm shortcut:
-
-```powershell
-npm run db:backup:cleanup
-```
-
-Use the direct PowerShell command when changing retention parameters.
-
-Apply cleanup explicitly:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-backups.ps1 -KeepNewest 10 -OlderThanDays 30 -Apply -ConfirmCleanup DELETE_LOCAL_BACKUPS
-```
-
-The cleanup script:
-
-- never deletes outside the repository `backups/` folder
-- keeps the newest `-KeepNewest` matched dumps even if they are older than `-OlderThanDays`
-- deletes matching metadata only when its dump is deleted
-- ignores non-MoneyMate files and unrelated dump names
-- prints the exact files before deleting anything
-
-Orphan metadata files are preserved by default. To include old orphan metadata in a cleanup, pass `-IncludeOrphanMetadata`:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-backups.ps1 -KeepNewest 10 -OlderThanDays 30 -IncludeOrphanMetadata
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-backups.ps1 -KeepNewest 10 -OlderThanDays 30 -IncludeOrphanMetadata -Apply -ConfirmCleanup DELETE_LOCAL_BACKUPS
-```
-
-Restore is intentionally explicit because it can overwrite local development data. Stop app services first so only PostgreSQL is using the database:
-
-```powershell
-docker compose stop backend frontend
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -ConfirmRestore RESTORE_LOCAL_DATABASE
-```
-
-Use the direct PowerShell command for restore operations. On Windows, npm can treat forwarded `-BackupFile` and `-ConfirmRestore` values as npm options instead of PowerShell parameters.
-
-To validate restore without overwriting the default local database, restore into a separate local database name:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-db.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -DatabaseName moneymate_restore_smoke -ConfirmRestore RESTORE_LOCAL_DATABASE
-```
-
-Stop services:
-
-```powershell
-docker compose down
-Remove-Item Env:POSTGRES_PORT -ErrorAction SilentlyContinue
-```
-
-Reset local database volume:
-
-```powershell
-docker compose down -v
-```
-
-## Run Without Docker
-
-Frontend:
-
-```powershell
-cd frontend
-Copy-Item .env.example .env
-npm install
-npm run dev
-```
-
-Backend, only if Go is installed:
-
-```powershell
-cd backend
-Copy-Item .env.example .env
-go run ./cmd/api
-```
-
-Migrate and seed without Docker, only if Go and PostgreSQL are available:
-
-```powershell
-cd backend
-go run ./cmd/migrate
-go run ./cmd/seed
-```
-
-## Validation Commands
-
-Backend tests through Docker Compose:
-
-```powershell
-$repoPath = (Resolve-Path .).Path
-docker compose run --rm -v "${repoPath}:/workspace" -w /workspace/backend backend go test ./...
-```
-
-Backend API integration tests through Docker:
-
-```powershell
-docker compose up -d postgres
-$repoPath = (Resolve-Path .).Path
-docker compose run --rm -v "${repoPath}:/workspace" -w /workspace/backend backend go test -tags=integration ./internal/httpapi
-```
-
-The integration suite uses `httptest` against the actual chi router, creates a temporary PostgreSQL schema, runs migrations into that schema, truncates between tests, and drops the schema after the run. It covers auth, RBAC, write flows, manual prices, holdings recalculation, import preview/confirm, duplicate ticker handling, dashboard totals after import, and audit log creation.
-
-If Go is available locally, the same integration suite can be run with:
-
-```powershell
-$env:MONEYMATE_TEST_DATABASE_URL = "postgres://moneymate:moneymate@localhost:$postgresPort/moneymate?sslmode=disable"
-npm run backend:test:integration
-```
-
-Frontend build:
-
-```powershell
-npm --prefix frontend run build
-```
-
-Frontend component tests:
-
-```powershell
-npm run frontend:test
-```
-
-OpenAPI and generated type drift:
-
-```powershell
-npm run api:lint
-npm run api:types:check
-```
-
-Compose validation:
-
-```powershell
-docker compose config
-```
-
-PowerShell backup script parser checks:
-
-```powershell
-$scripts = @(
-  "scripts\restore-backup-drill.ps1",
-  "scripts\backup-db.ps1",
-  "scripts\restore-db.ps1",
-  "scripts\cleanup-backups.ps1",
-  "scripts\backup-status.ps1"
-)
-foreach ($script in $scripts) {
-  $tokens = $null
-  $errors = $null
-  $null = [System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$errors)
-  if ($errors.Count -gt 0) {
-    Write-Error "Parser errors in $script"
-    $errors | Format-List *
-    exit 1
-  }
-}
-```
-
-Backup and restore smoke check:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-db.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-backup-drill.ps1 -BackupFile ".\backups\moneymate-moneymate-YYYYMMDD-HHMMSS.dump" -RunRestore -ConfirmRestoreDrill RESTORE_LOCAL_BACKUP_DRILL
-```
-
-Whitespace hygiene:
-
-```powershell
-git diff --check
-```
-
-## API Documentation
-
-The MVP OpenAPI 3.1 contract is available at:
+Kontrak API ada di:
 
 ```txt
 docs/api/openapi.yaml
 ```
 
-It documents the implemented local REST API, response envelope format, JWT access token behavior, refresh cookie behavior, and current MVP limitations around manual/mock price data.
-
-Install root API contract tooling:
-
-```powershell
-npm install
-```
-
-Lint the OpenAPI contract:
-
-```powershell
-npx --yes @redocly/cli lint docs/api/openapi.yaml
-```
-
-Or use the repeatable root script after `npm install`:
-
-```powershell
-npm run api:lint
-```
-
-Regenerate frontend API types after editing `docs/api/openapi.yaml`:
-
-```powershell
-npm run api:types
-```
-
-Generated declarations are committed at:
+Generated frontend type saat ini tersimpan di:
 
 ```txt
 frontend/src/lib/generated/openapi.d.ts
 ```
-
-Check generated type drift before committing:
-
-```powershell
-npm run api:types:check
-```
-
-Backend tests include a chi router drift check that compares documented OpenAPI paths and methods against the actual registered routes.
-
-## Playwright Smoke Tests
-
-The Playwright smoke suite expects the local Docker services to be running with migrated and seeded data.
-
-Install root Playwright tooling and browsers:
-
-```powershell
-npm install
-npx playwright install
-```
-
-Start local services:
-
-```powershell
-docker compose build backend migrate seed frontend
-docker compose up -d postgres
-docker compose run --rm migrate
-docker compose run --rm seed
-docker compose up -d backend frontend
-```
-
-Run the smoke suite:
-
-```powershell
-npm run e2e
-```
-
-The suite reads these optional local environment variables and falls back to the safe demo placeholders in `.env.example`:
-
-```powershell
-$env:E2E_API_BASE_URL = "http://localhost:8080"
-$env:E2E_ADMIN_EMAIL = "admin@moneymate.local"
-$env:E2E_ADMIN_PASSWORD = "changeme-local-demo"
-npm run e2e
-```
-
-Stop services after testing:
-
-```powershell
-docker compose down
-```
-
-The smoke suite logs in with the seeded admin account, recalculates holdings for `2026-06-30`, checks ringkasan, portofolio, anggaran, tujuan tabungan, laporan, pengaturan theme, and admin metadata pages, opens create/edit/delete modal paths for transactions, instruments, and cash accounts, opens the cash adjustment/history UI without mutating data, previews a small CSV import fixture without confirming the import, and verifies CSV report download starts.
-
-## Troubleshooting
-
-- If `go` is not available on PATH, use the Docker Compose backend test commands above.
-- If `npm` is not available, run the direct PowerShell backup/status/cleanup/restore-drill scripts instead of root npm shortcuts.
-- If Playwright login fails after changing ignored local `.env` seed credentials, set `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` to the same values before running `npm run e2e`.
-- If Playwright still sees old frontend labels after UI changes, restart the frontend service with `docker compose restart frontend`.
-- If PostgreSQL port `5432` is already in use, set `$env:POSTGRES_PORT = "15432"` before starting services.
-- If a clean demo database is needed and losing local Docker data is acceptable, run `docker compose down -v`, then rerun migrations and seed. This deletes the local PostgreSQL volume.
-- `npm run api:lint` currently passes with documentation-style warnings from Redocly. These warnings are non-blocking for the MVP but remain useful cleanup work.
-- Avoid sharing raw `docker compose config` output publicly because it expands ignored local `.env` values.
-
-## CI Validation
-
-GitHub Actions runs:
-
-- Backend tests with Go 1.26 in Docker.
-- Backend API integration tests with PostgreSQL 16 and Go 1.26 in Docker.
-- Frontend dependency install, component tests, and `npm run build`.
-- `docker compose config`.
-- Redocly OpenAPI lint.
-- Generated OpenAPI type drift check.
-- Playwright smoke tests against Docker Compose services.
-
-## Implemented MVP Foundation
-
-- Auth login, refresh, logout, and `/me`.
-- Owner seed account with Argon2id password hash.
-- JWT access token and HTTP-only refresh cookie session.
-- RBAC middleware foundation.
-- PostgreSQL migrations for users, sessions, instruments, categories, transactions, cash accounts, prices, holdings, imports, and audit logs.
-- Instruments, asset categories, cash accounts, transactions, manual prices, holdings, dashboard, and audit APIs.
-- Cash adjustment ledger with transactional balance updates and adjustment history.
-- Weighted-average holdings calculation in backend.
-- Dashboard overview, asset allocation, performance, and alerts APIs.
-- Read-only report APIs for monthly summary, simple portfolio performance, and CSV export.
-- React protected dashboard shell and MVP screens.
-- CSV/XLSX import preview and confirm flow for holdings, orders, cash, asset summary rows, manual prices, import job rows, automatic holdings recalculation, and import audit log.
-- OpenAPI 3.1 contract for implemented MVP endpoints.
-- Generated frontend API declarations from the OpenAPI contract.
-- Frontend component tests and Playwright MVP smoke tests.
-- Backend API integration tests for auth, RBAC, write flows, import confirmation, holdings/dashboard consistency, and audit logs.
-- Backend API integration tests for report endpoints, CSV export, report warnings, and auth protection.
-- CI checks for backend tests, backend API integration tests, frontend tests/build, Docker Compose config, OpenAPI lint, generated type drift, and E2E smoke coverage.
-
-## Known Limitations
-
-- No external market data integration.
-- Manual/mock prices only; dashboard labels data as not real-time.
-- Cash balances are manually managed; orders do not automatically move cash yet.
-- Cash adjustment ledger records manual balance movements; it does not pair transfers between accounts yet.
-- Frontend forms cover the core MVP create/edit/deactivate and adjustment flows, but they intentionally avoid advanced production workflows.
-- Confirmed imports do not fetch market data. Imported prices remain manual; holdings snapshots are recalculated in the same database transaction as import confirmation so dashboard views use imported data immediately.
-- Reports use backend holdings snapshots for portfolio values, current active cash balances for cash, and cash adjustment ledger rows for period cash movement. Beginning net worth, complete opening cash history, realized P/L, FIFO, TWR, and MWR are not invented when the current data model cannot calculate them accurately. See `docs/realized_pl_methodology_note.md`.
-- No production deployment hardening, HTTPS termination, or managed secret workflow yet.
-
-## Demo-Ready Checklist
-
-- Core protected routes are available from the sidebar without visible placeholder pages.
-- Owner login, refresh cookie session, logout, and protected API access work for local MVP use.
-- Ringkasan, portofolio, transaksi, instrumen, kas, impor, laporan, dan log audit pages have loading/error/empty handling.
-- Import preview/confirm keeps prices manual/mock and recalculates holdings after confirmation.
-- Report CSV export is separate from full database backup and is meant for analysis only.
-- Backup, status, cleanup, restore, and disposable restore drill workflows are local-only and documented.
-- Main validation commands pass locally when Docker, npm, and Playwright browsers are available.
-
-Current demo readiness status: ready for a local MVP demo, with the known limitations listed above.
-
-## Roadmap
-
-Recommended next phase:
-
-1. Consider a typed API client wrapper generated from the OpenAPI paths.
-2. Tighten Redocly warning cleanup for quieter contract validation.
-3. Add paired transfer workflow only after transfer modeling is explicit.
-4. Add advanced realized P/L or return methodology only after the product decision is explicit.
