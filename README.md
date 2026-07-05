@@ -28,23 +28,12 @@ Copy-Item .env.example .env
 
 ## Running Locally
 
-This repository only includes the core application source. Run the services using local tools.
+This repository includes the core application source. The backend, database, and frontend all run on Docker Compose for local development.
 
-Backend terminal:
-
-```powershell
-cd backend
-go run ./cmd/migrate
-go run ./cmd/seed
-go run ./cmd/api
-```
-
-Frontend terminal:
+Start all services (Backend, Database, Frontend):
 
 ```powershell
-cd frontend
-npm install
-npx vite --host 0.0.0.0
+docker compose up -d
 ```
 
 Open:

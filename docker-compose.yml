@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: moneymate_db
+    restart: always
+    environment:
+      POSTGRES_USER: moneymate
+      POSTGRES_PASSWORD: moneymate
+      POSTGRES_DB: moneymate
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moneymate -d moneymate"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: golang:alpine
+    container_name: moneymate_backend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    command: >
+      sh -c "go run ./cmd/migrate && go run ./cmd/seed && go run ./cmd/api"
+
+  frontend:
+    image: node:22-alpine
+    container_name: moneymate_frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
