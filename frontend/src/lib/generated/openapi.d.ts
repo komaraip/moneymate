@@ -2031,6 +2031,140 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin platform overview
+         * @description Admin-only metadata summary. It intentionally does not expose private financial data from other users.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Admin metadata overview. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminOverviewEnvelope"];
+                    };
+                };
+                403: components["responses"]["ForbiddenError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search user accounts
+         * @description Admin-only user metadata search. Responses do not include transactions, cash, portfolio, budgets, or savings goals.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    role?: "admin" | "user";
+                    is_active?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Matching users. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminUserListEnvelope"];
+                    };
+                };
+                403: components["responses"]["ForbiddenError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update user role or activation status
+         * @description Admin-only. Role can only be `admin` or `user`; admins cannot deactivate or demote their own account.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AdminUserUpdate"];
+                };
+            };
+            responses: {
+                /** @description Updated user metadata. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminUserEnvelope"];
+                    };
+                };
+                400: components["responses"]["ValidationError"];
+                403: components["responses"]["ForbiddenError"];
+                404: components["responses"]["NotFoundError"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit-logs": {
         parameters: {
             query?: never;
@@ -2856,6 +2990,50 @@ export interface components {
                 holdings_count: number;
                 message: string;
             };
+        };
+        AdminOverview: {
+            /** @example 2 */
+            total_users: number;
+            /** @example 2 */
+            active_users: number;
+            /** @example 0 */
+            inactive_users: number;
+            /** @example 1 */
+            admin_users: number;
+            /** @example 1 */
+            regular_users: number;
+            /** @example 8 */
+            audit_logs_last_7d: number;
+            /** @example Admin hanya melihat metadata akun dan audit log. Data transaksi, kas, portofolio, anggaran, dan tujuan tabungan pengguna lain tidak dibuka di dashboard admin. */
+            privacy_statement: string;
+        };
+        AdminOverviewEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["AdminOverview"];
+        };
+        AdminUser: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            full_name: string;
+            /** @enum {string} */
+            role: "admin" | "user";
+            is_active: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminUserUpdate: {
+            /** @enum {string} */
+            role?: "admin" | "user";
+            is_active?: boolean;
+        };
+        AdminUserEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["AdminUser"];
+        };
+        AdminUserListEnvelope: components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["AdminUser"][];
         };
         AuditLog: {
             /** Format: uuid */

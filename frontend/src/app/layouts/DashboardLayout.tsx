@@ -12,6 +12,8 @@ import {
   PiggyBank,
   Target,
   Settings,
+  ShieldCheck,
+  Users,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -46,7 +48,12 @@ const navGroups = [
   },
   {
     title: "Admin",
-    items: [{ label: "Log Audit", href: "/admin/audit-log", icon: History }],
+    adminOnly: true,
+    items: [
+      { label: "Admin Dashboard", href: "/admin", icon: ShieldCheck },
+      { label: "Pengguna", href: "/admin/users", icon: Users },
+      { label: "Log Audit", href: "/admin/audit-log", icon: History },
+    ],
   },
   {
     title: "Settings",
@@ -181,9 +188,11 @@ function roleLabel(role?: string) {
 }
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const { user } = useAuth();
+  const groups = navGroups.filter((group) => !group.adminOnly || user?.role === "admin");
   return (
     <nav className="mt-8 space-y-6">
-      {navGroups.map((group) => (
+      {groups.map((group) => (
         <section aria-labelledby={`nav-${group.title}`} key={group.title}>
           <p
             className="px-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-zinc-600"

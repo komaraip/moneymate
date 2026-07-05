@@ -116,6 +116,52 @@ func TestRoleRestrictionsForWriteEndpoints(t *testing.T) {
 	assertStatus(t, adminWrite, http.StatusCreated)
 }
 
+func TestAdminUserManagementFlow(t *testing.T) {
+	app := newAPIIntegrationTest(t)
+	adminID := app.seedUser(t, "admin-users-it@moneymate.local", "admin")
+	userID := app.seedUser(t, "managed-user-it@moneymate.local", "user")
+	adminLogin := app.login(t, "admin-users-it@moneymate.local", integrationPassword)
+	userLogin := app.login(t, "managed-user-it@moneymate.local", integrationPassword)
+
+	forbidden := app.requestJSON(t, http.MethodGet, "/api/v1/admin/users", userLogin.AccessToken, nil)
+	assertStatus(t, forbidden, http.StatusForbidden)
+
+	overview := app.requestJSON(t, http.MethodGet, "/api/v1/admin/overview", adminLogin.AccessToken, nil)
+	assertStatus(t, overview, http.StatusOK)
+	overviewData := decodeData[adminOverviewResponse](t, overview.envelope)
+	if overviewData.TotalUsers != 2 || !strings.Contains(overviewData.PrivacyStatement, "transaksi") {
+		t.Fatalf("unexpected admin overview: %+v", overviewData)
+	}
+
+	list := app.requestJSON(t, http.MethodGet, "/api/v1/admin/users?search=managed", adminLogin.AccessToken, nil)
+	assertStatus(t, list, http.StatusOK)
+	users := decodeData[[]adminUserResponse](t, list.envelope)
+	if len(users) != 1 || users[0].ID != userID || users[0].Role != "user" {
+		t.Fatalf("expected managed user search result, got %+v", users)
+	}
+
+	update := app.requestJSON(t, http.MethodPut, "/api/v1/admin/users/"+userID, adminLogin.AccessToken, map[string]any{
+		"role":      "admin",
+		"is_active": false,
+	})
+	assertStatus(t, update, http.StatusOK)
+	updated := decodeData[adminUserResponse](t, update.envelope)
+	if updated.Role != "admin" || updated.IsActive {
+		t.Fatalf("expected role/status update, got %+v", updated)
+	}
+
+	selfDeactivate := app.requestJSON(t, http.MethodPut, "/api/v1/admin/users/"+adminID, adminLogin.AccessToken, map[string]any{
+		"is_active": false,
+	})
+	assertStatus(t, selfDeactivate, http.StatusBadRequest)
+	selfDemote := app.requestJSON(t, http.MethodPut, "/api/v1/admin/users/"+adminID, adminLogin.AccessToken, map[string]any{
+		"role": "user",
+	})
+	assertStatus(t, selfDemote, http.StatusBadRequest)
+
+	app.assertAudit(t, "user", "update")
+}
+
 func TestUserOwnedFinancialDataIsIsolated(t *testing.T) {
 	app := newAPIIntegrationTest(t)
 	app.seedUser(t, "user-a-it@moneymate.local", "user")
@@ -1223,6 +1269,18 @@ type userResponse struct {
 	Email    string `json:"email"`
 	FullName string `json:"full_name"`
 	Role     string `json:"role"`
+}
+
+type adminOverviewResponse struct {
+	TotalUsers       int    `json:"total_users"`
+	PrivacyStatement string `json:"privacy_statement"`
+}
+
+type adminUserResponse struct {
+	ID       string `json:"id"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	IsActive bool   `json:"is_active"`
 }
 
 type instrumentResponse struct {

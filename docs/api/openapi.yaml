@@ -34,6 +34,7 @@ tags:
   - name: Cash Accounts
   - name: Imports
   - name: Reports
+  - name: Admin
   - name: Audit Logs
 
 paths:
@@ -1526,6 +1527,87 @@ paths:
                     metadata,2026-07-02T10:00:00+07:00,,,,,,,,,,,,,,,,,,,,,,,,,,,,Data manual/mock, bukan real-time.,,,,
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/admin/overview:
+    get:
+      tags: [Admin]
+      summary: Admin platform overview
+      security:
+        - bearerAuth: []
+      description: Admin-only metadata summary. It intentionally does not expose private financial data from other users.
+      responses:
+        "200":
+          description: Admin metadata overview.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOverviewEnvelope"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+
+  /api/v1/admin/users:
+    get:
+      tags: [Admin]
+      summary: Search user accounts
+      security:
+        - bearerAuth: []
+      description: Admin-only user metadata search. Responses do not include transactions, cash, portfolio, budgets, or savings goals.
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [admin, user]
+        - name: is_active
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["true", "false"]
+      responses:
+        "200":
+          description: Matching users.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserListEnvelope"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+
+  /api/v1/admin/users/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    put:
+      tags: [Admin]
+      summary: Update user role or activation status
+      security:
+        - bearerAuth: []
+      description: Admin-only. Role can only be `admin` or `user`; admins cannot deactivate or demote their own account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserUpdate"
+      responses:
+        "200":
+          description: Updated user metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserEnvelope"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
 
   /api/v1/audit-logs:
     get:
@@ -3384,6 +3466,99 @@ components:
                   type: integer
                 message:
                   type: string
+
+    AdminOverview:
+      type: object
+      required:
+        - total_users
+        - active_users
+        - inactive_users
+        - admin_users
+        - regular_users
+        - audit_logs_last_7d
+        - privacy_statement
+      properties:
+        total_users:
+          type: integer
+          example: 2
+        active_users:
+          type: integer
+          example: 2
+        inactive_users:
+          type: integer
+          example: 0
+        admin_users:
+          type: integer
+          example: 1
+        regular_users:
+          type: integer
+          example: 1
+        audit_logs_last_7d:
+          type: integer
+          example: 8
+        privacy_statement:
+          type: string
+          example: Admin hanya melihat metadata akun dan audit log. Data transaksi, kas, portofolio, anggaran, dan tujuan tabungan pengguna lain tidak dibuka di dashboard admin.
+
+    AdminOverviewEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AdminOverview"
+
+    AdminUser:
+      type: object
+      required: [id, email, full_name, role, is_active, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        role:
+          type: string
+          enum: [admin, user]
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AdminUserUpdate:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [admin, user]
+        is_active:
+          type: boolean
+      minProperties: 1
+
+    AdminUserEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AdminUser"
+
+    AdminUserListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AdminUser"
 
     AuditLog:
       type: object

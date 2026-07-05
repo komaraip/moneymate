@@ -1,0 +1,49 @@
+import { useQuery } from "@tanstack/react-query";
+import { ErrorState } from "../../../components/feedback/ErrorState";
+import { LoadingState } from "../../../components/feedback/LoadingState";
+import { queryKeys } from "../../../lib/query-keys";
+import { useAuth } from "../../auth/useAuth";
+import { mvpApi } from "../api";
+import { Card } from "../components/Card";
+import { PageHeader } from "../components/PageHeader";
+
+export function AdminDashboardPage() {
+  const { user } = useAuth();
+  const overview = useQuery({ queryKey: queryKeys.admin.overview, queryFn: mvpApi.adminOverview, enabled: user?.role === "admin" });
+
+  if (user?.role !== "admin") {
+    return <ErrorState message="Halaman admin hanya tersedia untuk admin." />;
+  }
+  if (overview.isLoading) return <LoadingState />;
+  if (overview.isError) return <ErrorState message="Ringkasan admin belum bisa dimuat." />;
+
+  const data = overview.data;
+  if (!data) return null;
+
+  return (
+    <div>
+      <PageHeader description="Pantau platform tanpa membuka data finansial privat pengguna" title="Admin Dashboard" />
+      <div className="grid gap-4 md:grid-cols-3">
+        <Metric label="Total Pengguna" value={String(data.total_users)} />
+        <Metric label="Pengguna Aktif" value={String(data.active_users)} />
+        <Metric label="Pengguna Nonaktif" value={String(data.inactive_users)} />
+        <Metric label="Admin" value={String(data.admin_users)} />
+        <Metric label="User" value={String(data.regular_users)} />
+        <Metric label="Audit 7 Hari" value={String(data.audit_logs_last_7d)} />
+      </div>
+      <Card className="mt-5">
+        <h3 className="font-semibold text-white">Batas Privasi Admin</h3>
+        <p className="mt-2 text-sm leading-6 text-zinc-300">{data.privacy_statement}</p>
+      </Card>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <Card>
+      <p className="text-sm text-zinc-400">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+    </Card>
+  );
+}

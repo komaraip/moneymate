@@ -1,5 +1,7 @@
 import { apiClient } from "../../lib/api";
 import type {
+  AdminOverview,
+  AdminUser,
   AlertItem,
   AllocationItem,
   AuditLog,
@@ -66,6 +68,16 @@ export const mvpApi = {
   createSavingsGoal: (body: unknown) => apiClient.post<SavingsGoal>("/api/v1/savings-goals", body),
   updateSavingsGoal: (id: string, body: unknown) => apiClient.put<SavingsGoal>(`/api/v1/savings-goals/${id}`, body),
   deleteSavingsGoal: (id: string) => apiClient.delete<{ status: string }>(`/api/v1/savings-goals/${id}`),
+  adminOverview: () => apiClient.get<AdminOverview>("/api/v1/admin/overview"),
+  adminUsers: (filters?: { search?: string; role?: string; is_active?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.search) params.set("search", filters.search);
+    if (filters?.role) params.set("role", filters.role);
+    if (filters?.is_active) params.set("is_active", filters.is_active);
+    const query = params.toString();
+    return apiClient.get<AdminUser[]>(`/api/v1/admin/users${query ? `?${query}` : ""}`);
+  },
+  updateAdminUser: (id: string, body: unknown) => apiClient.put<AdminUser>(`/api/v1/admin/users/${id}`, body),
   cashAccounts: () => apiClient.get<CashAccount[]>("/api/v1/cash-accounts"),
   createCashAccount: (body: unknown) => apiClient.post<CashAccount>("/api/v1/cash-accounts", body),
   updateCashAccount: (id: string, body: unknown) => apiClient.put<CashAccount>(`/api/v1/cash-accounts/${id}`, body),

@@ -42,6 +42,10 @@ export const queryKeys = {
     all: ["audit-logs"] as const,
     filtered: (filters: { entity_type?: string; action?: string }) => ["audit-logs", filters] as const,
   },
+  admin: {
+    overview: ["admin", "overview"] as const,
+    users: (filters: { search?: string; role?: string; is_active?: string }) => ["admin", "users", filters] as const,
+  },
   imports: {
     all: ["imports"] as const,
   },

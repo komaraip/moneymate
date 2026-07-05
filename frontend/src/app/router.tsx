@@ -2,7 +2,9 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { LoginPage } from "../features/auth/LoginPage";
 import { ProtectedRoute } from "../features/auth/ProtectedRoute";
+import { AdminDashboardPage } from "../features/admin/pages/AdminDashboardPage";
 import { AuditLogPage } from "../features/admin/pages/AuditLogPage";
+import { AdminUsersPage } from "../features/admin/pages/AdminUsersPage";
 import { HoldingsPage } from "../features/assets/pages/HoldingsPage";
 import { InstrumentsPage } from "../features/assets/pages/InstrumentsPage";
 import { ImportPage } from "../features/imports/pages/ImportPage";
@@ -24,6 +26,8 @@ const dashboardChildren = [
   { path: "assets/portfolio", element: <HoldingsPage /> },
   { path: "assets/instruments", element: <InstrumentsPage /> },
   { path: "imports", element: <ImportPage /> },
+  { path: "admin", element: <AdminDashboardPage /> },
+  { path: "admin/users", element: <AdminUsersPage /> },
   { path: "admin/audit-log", element: <AuditLogPage /> },
   { path: "settings", element: <SettingsPage /> },
   { path: "portfolio", element: <Navigate to="/assets/portfolio" replace /> },

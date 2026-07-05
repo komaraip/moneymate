@@ -7,6 +7,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
+	adminapi "moneymate/backend/internal/admin"
 	"moneymate/backend/internal/auth"
 	"moneymate/backend/internal/budget"
 	"moneymate/backend/internal/config"
@@ -56,10 +57,11 @@ func NewRouter(cfg config.Config, logger *slog.Logger, authService *auth.Service
 	reportHandler := reports.NewHandler(db, cfg)
 	budgetHandler := budget.NewHandler(db)
 	savingsHandler := savings.NewHandler(db)
+	adminHandler := adminapi.NewHandler(db)
 	protected := chi.NewRouter()
 	protected.Use(auth.RequireAuth(authService))
 	mountUserRoutes(protected, masterHandler, ledgerHandler, portfolioHandler, dashboardHandler, importHandler, reportHandler, budgetHandler, savingsHandler)
-	mountAdminRoutes(protected, masterHandler)
+	mountAdminRoutes(protected, masterHandler, adminHandler)
 	chiRouter.Mount("/api/v1", protected)
 
 	return chiRouter
@@ -90,9 +92,10 @@ func mountUserRoutes(
 	router.Mount("/savings-goals", savingsHandler.Routes())
 }
 
-func mountAdminRoutes(router chi.Router, masterHandler masterdata.Handler) {
+func mountAdminRoutes(router chi.Router, masterHandler masterdata.Handler, adminHandler adminapi.Handler) {
 	router.Group(func(admin chi.Router) {
 		admin.Use(auth.RequireAdmin())
+		admin.Mount("/admin", adminHandler.Routes())
 		admin.Mount("/audit-logs", masterHandler.AuditRoutes())
 		admin.Mount("/admin/audit-logs", masterHandler.AuditRoutes())
 	})
