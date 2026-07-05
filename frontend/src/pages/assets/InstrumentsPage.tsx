@@ -94,9 +94,9 @@ export function InstrumentsPage() {
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-800">
+      <div className="overflow-hidden rounded-xl border border-subtle">
         <table className="w-full min-w-[900px] text-sm">
-          <thead className="bg-zinc-900 text-zinc-400">
+          <thead className="bg-surface text-muted">
             <tr>
               {["Tipe", "Ticker", "Nama", "Kategori", "Mata uang", "Status", "Aksi"].map((header) => (
                 <th className="px-4 py-3 text-left" key={header}>
@@ -105,7 +105,7 @@ export function InstrumentsPage() {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800">
+          <tbody className="divide-y divide-subtle">
             {instruments.data?.map((item) => (
               <tr key={item.id}>
                 <td className="px-4 py-3">{instrumentTypeLabel(item.type)}</td>
@@ -117,7 +117,7 @@ export function InstrumentsPage() {
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
                     <button
-                      className="rounded-lg border border-zinc-700 p-2 text-zinc-300 hover:border-emerald-500 hover:text-emerald-200"
+                      className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200"
                       onClick={() => openEdit(item, setForm, setEditing, setFormOpen, setFormErrors)}
                       title="Edit instrumen"
                       type="button"
@@ -125,7 +125,7 @@ export function InstrumentsPage() {
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
-                      className="rounded-lg border border-zinc-700 p-2 text-zinc-300 hover:border-rose-500 hover:text-rose-200"
+                      className="rounded-lg border border-subtle p-2 text-muted hover:border-rose-500 hover:text-rose-200"
                       onClick={() => setDeleteTarget(item)}
                       title="Nonaktifkan instrumen"
                       type="button"
@@ -138,7 +138,7 @@ export function InstrumentsPage() {
             ))}
             {instruments.data?.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-center text-zinc-500" colSpan={7}>
+                <td className="px-4 py-8 text-center text-muted" colSpan={7}>
                   Belum ada instrumen.
                 </td>
               </tr>
@@ -204,7 +204,7 @@ function InstrumentModal({
 }) {
   return (
     <Modal onClose={onClose} size="lg" title={isEditing ? "Edit Instrumen" : "Tambah Instrumen"}>
-      <p className="mb-5 text-sm text-zinc-400">Master data manual</p>
+      <p className="mb-5 text-sm text-muted">Master data manual</p>
 
       <div className="grid gap-4 md:grid-cols-2">
           <Field label="Tipe">
@@ -253,7 +253,7 @@ function InstrumentModal({
       <Feedback error={error} errors={errors} />
 
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
+          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
@@ -279,10 +279,10 @@ function ConfirmDelete({
 }) {
   return (
     <Modal onClose={onCancel} size="sm" title="Nonaktifkan Instrumen">
-      <p className="text-sm text-zinc-400">Instrumen {label} akan dibuat nonaktif. Transaksi historis tidak dihapus.</p>
+      <p className="text-sm text-muted">Instrumen {label} akan dibuat nonaktif. Transaksi historis tidak dihapus.</p>
       {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
+          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isDeleting} onClick={onConfirm} type="button">
@@ -369,7 +369,7 @@ function instrumentTypeLabel(type: string) {
 function Field({ children, label }: { children: React.ReactNode; label: string }) {
   return (
     <label className="block text-sm">
-      <span className="mb-2 block text-zinc-300">{label}</span>
+      <span className="mb-2 block text-muted">{label}</span>
       {children}
     </label>
   );
@@ -393,4 +393,4 @@ function errorMessage(error: unknown) {
   return "Request gagal diproses.";
 }
 
-const inputClass = "w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-500";
+const inputClass = "w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";

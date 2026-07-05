@@ -8,7 +8,7 @@ type FormFieldProps = {
 export function FormField({ children, label }: FormFieldProps) {
   return (
     <label className="block text-sm">
-      <span className="mb-2 block text-zinc-300">{label}</span>
+      <span className="mb-2 block text-muted">{label}</span>
       {children}
     </label>
   );

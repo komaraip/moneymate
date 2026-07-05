@@ -12,7 +12,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (isBootstrapping) {
     return (
-      <div className="min-h-screen bg-zinc-950 p-8 text-zinc-100">
+      <div className="min-h-screen bg-app p-8 text-main">
         <LoadingState label="Memeriksa sesi" />
       </div>
     );

@@ -41,7 +41,7 @@ export function HoldingsPage() {
       <PageHeader description="Portofolio dihitung backend dengan metode weighted average cost" title="Portofolio" />
       <Card className="mb-4">
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
-          <select className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" onChange={(e) => setInstrumentId(e.target.value)} value={instrumentId}>
+          <select className="rounded-lg border border-subtle bg-app px-3 py-2" onChange={(e) => setInstrumentId(e.target.value)} value={instrumentId}>
             <option value="">Pilih instrumen</option>
             {instruments.data?.map((item) => (
               <option key={item.id} value={item.id}>
@@ -49,8 +49,8 @@ export function HoldingsPage() {
               </option>
             ))}
           </select>
-          <input className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" onChange={(e) => setPrice(e.target.value)} placeholder="Harga manual" value={price} />
-          <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm" disabled={!instrumentId || !price || manualPrice.isPending} onClick={() => manualPrice.mutate()} type="button">
+          <input className="rounded-lg border border-subtle bg-app px-3 py-2" onChange={(e) => setPrice(e.target.value)} placeholder="Harga manual" value={price} />
+          <button className="rounded-lg border border-subtle px-4 py-2 text-sm" disabled={!instrumentId || !price || manualPrice.isPending} onClick={() => manualPrice.mutate()} type="button">
             Update Harga Manual
           </button>
           <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950" disabled={recalc.isPending} onClick={() => recalc.mutate()} type="button">
@@ -61,12 +61,12 @@ export function HoldingsPage() {
       {!holdings.data?.length ? (
         <EmptyState description="Klik Hitung Ulang setelah seed data tersedia." title="Portofolio kosong" />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-zinc-800">
+        <div className="overflow-hidden rounded-xl border border-subtle">
           <table className="w-full min-w-[900px] text-sm">
-            <thead className="bg-zinc-900 text-zinc-400">
+            <thead className="bg-surface text-muted">
               <tr>{["Instrumen", "Unit", "Harga Rata-rata", "Harga Terkini", "Nilai", "L/R", "L/R %", "Peringatan"].map((h) => <th className="px-4 py-3 text-left" key={h}>{h}</th>)}</tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800">
+            <tbody className="divide-y divide-subtle">
               {holdings.data.map((item) => (
                 <tr key={item.id}>
                   <td className="px-4 py-3">{item.ticker ? `${item.ticker} - ` : ""}{item.name}</td>

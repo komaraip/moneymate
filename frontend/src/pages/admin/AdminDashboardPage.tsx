@@ -32,8 +32,8 @@ export function AdminDashboardPage() {
         <Metric label="Audit 7 Hari" value={String(data.audit_logs_last_7d)} />
       </div>
       <Card className="mt-5">
-        <h3 className="font-semibold text-white">Batas Privasi Admin</h3>
-        <p className="mt-2 text-sm leading-6 text-zinc-300">{data.privacy_statement}</p>
+        <h3 className="font-semibold text-main">Batas Privasi Admin</h3>
+        <p className="mt-2 text-sm leading-6 text-muted">{data.privacy_statement}</p>
       </Card>
     </div>
   );
@@ -42,8 +42,8 @@ export function AdminDashboardPage() {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <Card>
-      <p className="text-sm text-zinc-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      <p className="text-sm text-muted">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-main">{value}</p>
     </Card>
   );
 }

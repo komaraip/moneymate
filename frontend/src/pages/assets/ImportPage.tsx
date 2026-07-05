@@ -79,7 +79,7 @@ export function ImportPage() {
             </label>
             <input
               accept=".csv,.xlsx"
-              className="block w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 file:mr-4 file:rounded-md file:border-0 file:bg-zinc-800 file:px-3 file:py-1.5 file:text-sm file:text-zinc-100"
+              className="block w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-zinc-200 file:mr-4 file:rounded-md file:border-0 file:bg-surface-hover file:px-3 file:py-1.5 file:text-sm file:text-main"
               id="import-file"
               onChange={(event) => {
                 setFile(event.target.files?.[0] ?? null);
@@ -87,7 +87,7 @@ export function ImportPage() {
               }}
               type="file"
             />
-            <p className="mt-2 text-xs text-zinc-500">
+            <p className="mt-2 text-xs text-muted">
               Data harga dari import tetap manual dan bukan real-time.
             </p>
           </div>
@@ -103,7 +103,7 @@ export function ImportPage() {
               {uploadImport.isPending ? "Memproses..." : "Pratinjau"}
             </button>
             <button
-              className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-subtle px-4 py-2 text-sm font-medium text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!canConfirm || confirmImport.isPending}
               onClick={() => confirmImport.mutate()}
               type="button"
@@ -131,7 +131,7 @@ export function ImportPage() {
           <Card className="mb-5">
             <div className="flex flex-wrap gap-2">
               {detectedSections.map((section) => (
-                <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300" key={section}>
+                <span className="rounded-full border border-subtle px-3 py-1 text-xs text-muted" key={section}>
                   {section}
                 </span>
               ))}
@@ -142,8 +142,8 @@ export function ImportPage() {
         </>
       ) : (
         <Card>
-          <div className="flex items-center gap-3 text-zinc-400">
-            <FileSpreadsheet className="h-5 w-5 text-zinc-500" />
+          <div className="flex items-center gap-3 text-muted">
+            <FileSpreadsheet className="h-5 w-5 text-muted" />
             <p className="text-sm">Belum ada pratinjau impor.</p>
           </div>
         </Card>
@@ -154,9 +154,9 @@ export function ImportPage() {
 
 function PreviewTable({ rows }: { rows: ImportPreviewRow[] }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800">
+    <div className="overflow-hidden rounded-xl border border-subtle">
       <table className="w-full min-w-[980px] text-sm">
-        <thead className="bg-zinc-900 text-zinc-400">
+        <thead className="bg-surface text-muted">
           <tr>
             {["Baris", "Bagian", "Status", "Data Normalisasi", "Masalah"].map((header) => (
               <th className="px-4 py-3 text-left" key={header}>
@@ -165,10 +165,10 @@ function PreviewTable({ rows }: { rows: ImportPreviewRow[] }) {
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800">
+        <tbody className="divide-y divide-subtle">
           {rows.map((row) => (
             <tr className="align-top" key={row.id || `${row.section}-${row.row_number}`}>
-              <td className="px-4 py-3 text-zinc-400">{row.row_number}</td>
+              <td className="px-4 py-3 text-muted">{row.row_number}</td>
               <td className="px-4 py-3">{sectionLabels[row.section] ?? row.section}</td>
               <td className="px-4 py-3">
                 <StatusBadge status={row.status} />
@@ -184,7 +184,7 @@ function PreviewTable({ rows }: { rows: ImportPreviewRow[] }) {
                     ))}
                   </ul>
                 ) : (
-                  <span className="text-xs text-zinc-500">-</span>
+                  <span className="text-xs text-muted">-</span>
                 )}
               </td>
             </tr>
@@ -197,10 +197,10 @@ function PreviewTable({ rows }: { rows: ImportPreviewRow[] }) {
 
 function StatusBadge({ status }: { status: ImportPreviewRow["status"] }) {
   const styles: Record<ImportPreviewRow["status"], string> = {
-    valid: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+    valid: "border-emerald-500/40 bg-success/10 text-emerald-200",
     invalid: "border-amber-500/40 bg-amber-500/10 text-amber-200",
     imported: "border-sky-500/40 bg-sky-500/10 text-sky-200",
-    skipped: "border-zinc-600 bg-zinc-800 text-zinc-300",
+    skipped: "border-zinc-600 bg-surface-hover text-muted",
   };
   const labels: Record<ImportPreviewRow["status"], string> = {
     valid: "Valid",
@@ -218,13 +218,13 @@ function StatusBadge({ status }: { status: ImportPreviewRow["status"] }) {
 function KeyValueList({ values }: { values: ImportPreviewRow["normalized"] }) {
   const entries = Object.entries(values).filter(([, value]) => value !== "" && value !== null && value !== undefined);
   if (entries.length === 0) {
-    return <span className="text-xs text-zinc-500">-</span>;
+    return <span className="text-xs text-muted">-</span>;
   }
   return (
-    <div className="grid gap-1 text-xs text-zinc-300 md:grid-cols-2">
+    <div className="grid gap-1 text-xs text-muted md:grid-cols-2">
       {entries.map(([key, value]) => (
         <div className="min-w-0" key={key}>
-          <span className="text-zinc-500">{key}: </span>
+          <span className="text-muted">{key}: </span>
           <span className="break-words">{String(value)}</span>
         </div>
       ))}
@@ -235,8 +235,8 @@ function KeyValueList({ values }: { values: ImportPreviewRow["normalized"] }) {
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
     <Card>
-      <p className="text-sm text-zinc-400">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-white">{value}</p>
+      <p className="text-sm text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-main">{value}</p>
     </Card>
   );
 }
@@ -256,7 +256,7 @@ function Success({ result }: { result: ImportConfirmResult }) {
     ? `Nilai portfolio dihitung ulang untuk ${result.holdings_count} holding pada snapshot ${result.holdings_snapshot_date}.`
     : "Nilai portfolio belum dihitung ulang otomatis.";
   return (
-    <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+    <div className="mt-4 rounded-lg border border-emerald-500/30 bg-success/10 px-3 py-2 text-sm text-emerald-100">
       Import {status}. Diimpor: {result.imported_rows}, dilewati: {result.skipped_rows}, baris error: {result.failed_rows}. {result.message} {recalculation}
     </div>
   );

@@ -18,12 +18,12 @@ const sizeClass = {
 export function Modal({ children, onClose, size = "md", title }: ModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
-      <section className={`max-h-[90vh] w-full overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl ${sizeClass[size]}`}>
+      <section className={`max-h-[90vh] w-full overflow-y-auto rounded-xl border border-subtle bg-surface p-5 shadow-2xl ${sizeClass[size]}`}>
         <div className="flex items-start justify-between gap-4">
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          <h3 className="text-lg font-semibold text-main">{title}</h3>
           <button
             aria-label="Tutup"
-            className="rounded-lg border border-zinc-800 p-2 text-zinc-300"
+            className="rounded-lg border border-subtle p-2 text-muted hover:bg-surface-hover"
             onClick={onClose}
             type="button"
           >

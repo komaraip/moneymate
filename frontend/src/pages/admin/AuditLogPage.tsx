@@ -43,15 +43,15 @@ export function AuditLogPage() {
               </option>
             ))}
           </select>
-          <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={() => setFilters({ entity_type: "", action: "" })} type="button">
+          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={() => setFilters({ entity_type: "", action: "" })} type="button">
             Reset Filter
           </button>
         </div>
       </Card>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-800">
+      <div className="overflow-hidden rounded-xl border border-subtle">
         <table className="w-full min-w-[800px] text-sm">
-          <thead className="bg-zinc-900 text-zinc-400">
+          <thead className="bg-surface text-muted">
             <tr>
               {["Waktu", "Aksi", "Entitas", "ID Entitas", "IP"].map((header) => (
                 <th className="px-4 py-3 text-left" key={header}>
@@ -60,7 +60,7 @@ export function AuditLogPage() {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800">
+          <tbody className="divide-y divide-subtle">
             {audit.data?.map((item) => (
               <tr key={item.id}>
                 <td className="px-4 py-3">{formatDate(item.created_at)}</td>
@@ -72,7 +72,7 @@ export function AuditLogPage() {
             ))}
             {audit.data?.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-center text-zinc-500" colSpan={5}>
+                <td className="px-4 py-8 text-center text-muted" colSpan={5}>
                   Audit log belum ada untuk filter ini.
                 </td>
               </tr>
@@ -84,4 +84,4 @@ export function AuditLogPage() {
   );
 }
 
-const inputClass = "rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-500";
+const inputClass = "rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";

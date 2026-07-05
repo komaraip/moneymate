@@ -5,7 +5,7 @@ type InlineAlertProps = {
 
 const toneClass = {
   error: "border-red-500/30 bg-red-500/10 text-red-100",
-  success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-100",
+  success: "border-emerald-500/30 bg-success/10 text-emerald-100",
   warning: "border-amber-500/30 bg-amber-500/10 text-amber-100",
 };
 

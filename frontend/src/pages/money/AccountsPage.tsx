@@ -142,7 +142,7 @@ export function AccountsPage() {
       </div>
 
       {successMessage ? (
-        <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</div>
+        <div className="mb-4 rounded-lg border border-emerald-500/30 bg-success/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</div>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -150,18 +150,18 @@ export function AccountsPage() {
           <Card key={item.id}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-zinc-400">{item.account_type}</p>
-                <h3 className="mt-1 text-lg font-semibold text-white">{item.account_name}</h3>
+                <p className="text-sm text-muted">{item.account_type}</p>
+                <h3 className="mt-1 text-lg font-semibold text-main">{item.account_name}</h3>
               </div>
-              <span className={`rounded-full px-2 py-1 text-xs ${item.is_active ? "bg-emerald-500/10 text-emerald-200" : "bg-zinc-800 text-zinc-400"}`}>
+              <span className={`rounded-full px-2 py-1 text-xs ${item.is_active ? "bg-success/10 text-emerald-200" : "bg-surface-hover text-muted"}`}>
                 {item.is_active ? "Aktif" : "Nonaktif"}
               </span>
             </div>
-            <p className="mt-3 text-2xl font-semibold text-emerald-300">{formatCurrency(item.balance, item.currency)}</p>
-            {item.notes ? <p className="mt-2 text-sm text-zinc-500">{item.notes}</p> : null}
+            <p className="mt-3 text-2xl font-semibold text-accent">{formatCurrency(item.balance, item.currency)}</p>
+            {item.notes ? <p className="mt-2 text-sm text-muted">{item.notes}</p> : null}
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <button
-                className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:border-emerald-500 hover:text-emerald-200"
+                className="inline-flex items-center gap-2 rounded-lg border border-subtle px-3 py-2 text-sm text-muted hover:border-emerald-500 hover:text-emerald-200"
                 onClick={() => openAdjustment(item)}
                 type="button"
               >
@@ -169,7 +169,7 @@ export function AccountsPage() {
                 Sesuaikan Saldo
               </button>
               <button
-                className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:border-emerald-500 hover:text-emerald-200"
+                className="inline-flex items-center gap-2 rounded-lg border border-subtle px-3 py-2 text-sm text-muted hover:border-emerald-500 hover:text-emerald-200"
                 onClick={() => setHistoryTarget(item)}
                 type="button"
               >
@@ -177,7 +177,7 @@ export function AccountsPage() {
                 Histori
               </button>
               <button
-                className="rounded-lg border border-zinc-700 p-2 text-zinc-300 hover:border-emerald-500 hover:text-emerald-200"
+                className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200"
                 onClick={() => openEdit(item, setForm, setEditing, setFormOpen, setFormErrors)}
                 title="Edit akun cash"
                 type="button"
@@ -185,7 +185,7 @@ export function AccountsPage() {
                 <Pencil className="h-4 w-4" />
               </button>
               <button
-                className="rounded-lg border border-zinc-700 p-2 text-zinc-300 hover:border-rose-500 hover:text-rose-200"
+                className="rounded-lg border border-subtle p-2 text-muted hover:border-rose-500 hover:text-rose-200"
                 onClick={() => setDeleteTarget(item)}
                 title="Nonaktifkan akun cash"
                 type="button"
@@ -199,7 +199,7 @@ export function AccountsPage() {
 
       {cash.data?.length === 0 ? (
         <Card>
-          <p className="text-sm text-zinc-500">Belum ada akun cash.</p>
+          <p className="text-sm text-muted">Belum ada akun cash.</p>
         </Card>
       ) : null}
 
@@ -293,7 +293,7 @@ function CashModal({
 }) {
   return (
     <Modal onClose={onClose} size="lg" title={isEditing ? "Edit Akun Kas" : "Tambah Akun Kas"}>
-      <p className="mb-5 text-sm text-zinc-400">Saldo manual</p>
+      <p className="mb-5 text-sm text-muted">Saldo manual</p>
 
       <div className="grid gap-4 md:grid-cols-2">
           <Field label="Nama akun">
@@ -330,7 +330,7 @@ function CashModal({
       <Feedback error={error} errors={errors} />
 
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
+          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
@@ -356,10 +356,10 @@ function ConfirmDelete({
 }) {
   return (
     <Modal onClose={onCancel} size="sm" title="Nonaktifkan Akun Kas">
-      <p className="text-sm text-zinc-400">Akun {label} akan dibuat nonaktif. Saldo historis tetap tersimpan.</p>
+      <p className="text-sm text-muted">Akun {label} akan dibuat nonaktif. Saldo historis tetap tersimpan.</p>
       {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
+          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isDeleting} onClick={onConfirm} type="button">
@@ -391,7 +391,7 @@ function AdjustmentModal({
 }) {
   return (
     <Modal onClose={onClose} size="lg" title="Sesuaikan Saldo Kas">
-      <p className="mb-5 text-sm text-zinc-400">{account.account_name}</p>
+      <p className="mb-5 text-sm text-muted">{account.account_name}</p>
 
       <div className="grid gap-4 md:grid-cols-2">
           <Field label="Tanggal penyesuaian">
@@ -414,13 +414,13 @@ function AdjustmentModal({
           </Field>
       </div>
 
-      <p className="mt-4 text-sm text-zinc-500">
+      <p className="mt-4 text-sm text-muted">
           Penarikan dan transfer keluar akan mengurangi saldo. Saldo kas negatif tidak diizinkan.
       </p>
       <Feedback error={error} errors={errors} />
 
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
+          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
@@ -446,12 +446,12 @@ function HistoryModal({
 }) {
   return (
     <Modal onClose={onClose} size="xl" title="Histori Penyesuaian Kas">
-      <p className="mb-5 text-sm text-zinc-400">{account.account_name}</p>
+      <p className="mb-5 text-sm text-muted">{account.account_name}</p>
 
       {isLoading ? <LoadingState /> : null}
       {error ? <ErrorState message="Histori penyesuaian belum bisa dimuat." /> : null}
       {!isLoading && !error && rows.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/40 p-6 text-center text-sm text-zinc-400">
+          <div className="rounded-xl border border-dashed border-subtle bg-surface/40 p-6 text-center text-sm text-muted">
             Belum ada penyesuaian kas.
           </div>
       ) : null}
@@ -462,9 +462,9 @@ function HistoryModal({
 
 function AdjustmentTable({ rows }: { rows: CashAdjustment[] }) {
   return (
-    <div className="overflow-auto rounded-xl border border-zinc-800">
+    <div className="overflow-auto rounded-xl border border-subtle">
       <table className="w-full min-w-[900px] text-sm">
-        <thead className="bg-zinc-900 text-zinc-400">
+        <thead className="bg-surface text-muted">
           <tr>
             {["Tanggal", "Tipe", "Nominal", "Saldo Sebelum", "Saldo Setelah", "Catatan"].map((header) => (
               <th className="px-4 py-3 text-left" key={header}>
@@ -473,15 +473,15 @@ function AdjustmentTable({ rows }: { rows: CashAdjustment[] }) {
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800">
+        <tbody className="divide-y divide-subtle">
           {rows.map((row) => (
             <tr key={row.id}>
-              <td className="px-4 py-3 text-zinc-300">{formatDate(row.adjustment_date ?? row.created_at)}</td>
-              <td className="px-4 py-3 text-zinc-300">{adjustmentTypeLabel(row.type)}</td>
+              <td className="px-4 py-3 text-muted">{formatDate(row.adjustment_date ?? row.created_at)}</td>
+              <td className="px-4 py-3 text-muted">{adjustmentTypeLabel(row.type)}</td>
               <td className={`px-4 py-3 ${row.amount < 0 ? "text-rose-200" : "text-emerald-200"}`}>{formatCurrency(row.amount, row.currency)}</td>
-              <td className="px-4 py-3 text-zinc-300">{formatCurrency(row.balance_before, row.currency)}</td>
-              <td className="px-4 py-3 text-zinc-300">{formatCurrency(row.balance_after, row.currency)}</td>
-              <td className="px-4 py-3 text-zinc-400">{row.note ?? "-"}</td>
+              <td className="px-4 py-3 text-muted">{formatCurrency(row.balance_before, row.currency)}</td>
+              <td className="px-4 py-3 text-muted">{formatCurrency(row.balance_after, row.currency)}</td>
+              <td className="px-4 py-3 text-muted">{row.note ?? "-"}</td>
             </tr>
           ))}
         </tbody>
@@ -586,7 +586,7 @@ function invalidateCashWrites(queryClient: ReturnType<typeof useQueryClient>, ca
 function Field({ children, label }: { children: React.ReactNode; label: string }) {
   return (
     <label className="block text-sm">
-      <span className="mb-2 block text-zinc-300">{label}</span>
+      <span className="mb-2 block text-muted">{label}</span>
       {children}
     </label>
   );
@@ -610,4 +610,4 @@ function errorMessage(error: unknown) {
   return "Request gagal diproses.";
 }
 
-const inputClass = "w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-500";
+const inputClass = "w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";

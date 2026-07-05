@@ -44,7 +44,7 @@ export function OverviewPage() {
 
       <div className="mt-6 grid gap-4 xl:grid-cols-2">
         <Card>
-          <h3 className="font-semibold text-white">Alokasi Aset</h3>
+          <h3 className="font-semibold text-main">Alokasi Aset</h3>
           <div className="mt-4 space-y-3">
             {allocation.data?.map((item) => (
               <div key={item.asset}>
@@ -52,7 +52,7 @@ export function OverviewPage() {
                   <span>{item.asset}</span>
                   <span>{formatCurrency(item.value)}</span>
                 </div>
-                <div className="mt-1 h-2 rounded-full bg-zinc-800">
+                <div className="mt-1 h-2 rounded-full bg-surface-hover">
                   <div
                     className="h-2 rounded-full bg-emerald-400"
                     style={{ width: `${Math.min(item.percent * 100, 100)}%` }}
@@ -65,7 +65,7 @@ export function OverviewPage() {
         <BudgetWidget budgets={budgets.data ?? []} isError={budgets.isError} isLoading={budgets.isLoading} />
         <SavingsGoalWidget goals={savingsGoals.data ?? []} isError={savingsGoals.isError} isLoading={savingsGoals.isLoading} />
         <Card>
-          <h3 className="font-semibold text-white">Peringatan Data</h3>
+          <h3 className="font-semibold text-main">Peringatan Data</h3>
           <div className="mt-4 space-y-3">
             {alerts.data?.length ? (
               alerts.data.map((alert) => (
@@ -75,13 +75,13 @@ export function OverviewPage() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-zinc-400">Tidak ada peringatan utama.</p>
+              <p className="text-sm text-muted">Tidak ada peringatan utama.</p>
             )}
           </div>
         </Card>
       </div>
 
-      <p className="mt-6 text-sm text-zinc-500">{data.price_disclaimer}</p>
+      <p className="mt-6 text-sm text-muted">{data.price_disclaimer}</p>
     </div>
   );
 }
@@ -93,25 +93,25 @@ function SavingsGoalWidget({ goals, isError, isLoading }: { goals: SavingsGoal[]
 
   return (
     <Card>
-      <h3 className="font-semibold text-white">Tujuan Tabungan</h3>
-      {isLoading ? <p className="mt-4 text-sm text-zinc-500">Memuat tujuan tabungan...</p> : null}
+      <h3 className="font-semibold text-main">Tujuan Tabungan</h3>
+      {isLoading ? <p className="mt-4 text-sm text-muted">Memuat tujuan tabungan...</p> : null}
       {isError ? <p className="mt-4 text-sm text-red-200">Tujuan tabungan belum bisa dimuat.</p> : null}
-      {!isLoading && !isError && goals.length === 0 ? <p className="mt-4 text-sm text-zinc-500">Belum ada tujuan tabungan aktif.</p> : null}
+      {!isLoading && !isError && goals.length === 0 ? <p className="mt-4 text-sm text-muted">Belum ada tujuan tabungan aktif.</p> : null}
       {!isLoading && !isError && goals.length > 0 ? (
         <div className="mt-4">
           <div className="flex justify-between text-sm">
             <span>{formatCurrency(totalSaved)}</span>
             <span>{formatCurrency(totalTarget)}</span>
           </div>
-          <div className="mt-2 h-2 rounded-full bg-zinc-800">
+          <div className="mt-2 h-2 rounded-full bg-surface-hover">
             <div className="h-2 rounded-full bg-sky-300" style={{ width: `${Math.min(percent, 1) * 100}%` }} />
           </div>
-          <p className="mt-2 text-sm text-zinc-400">{formatPercent(percent)} terkumpul dari target aktif.</p>
+          <p className="mt-2 text-sm text-muted">{formatPercent(percent)} terkumpul dari target aktif.</p>
           <div className="mt-4 space-y-2">
             {goals.slice(0, 3).map((item) => (
               <div className="flex justify-between gap-3 text-sm" key={item.id}>
-                <span className="truncate text-zinc-300">{item.name}</span>
-                <span className={item.is_completed ? "text-emerald-300" : "text-zinc-200"}>{formatPercent(item.progress_percent)}</span>
+                <span className="truncate text-muted">{item.name}</span>
+                <span className={item.is_completed ? "text-accent" : "text-zinc-200"}>{formatPercent(item.progress_percent)}</span>
               </div>
             ))}
           </div>
@@ -129,25 +129,25 @@ function BudgetWidget({ budgets, isError, isLoading }: { budgets: Budget[]; isEr
 
   return (
     <Card>
-      <h3 className="font-semibold text-white">Anggaran Bulan Ini</h3>
-      {isLoading ? <p className="mt-4 text-sm text-zinc-500">Memuat anggaran...</p> : null}
+      <h3 className="font-semibold text-main">Anggaran Bulan Ini</h3>
+      {isLoading ? <p className="mt-4 text-sm text-muted">Memuat anggaran...</p> : null}
       {isError ? <p className="mt-4 text-sm text-red-200">Anggaran belum bisa dimuat.</p> : null}
-      {!isLoading && !isError && budgets.length === 0 ? <p className="mt-4 text-sm text-zinc-500">Belum ada anggaran bulan ini.</p> : null}
+      {!isLoading && !isError && budgets.length === 0 ? <p className="mt-4 text-sm text-muted">Belum ada anggaran bulan ini.</p> : null}
       {!isLoading && !isError && budgets.length > 0 ? (
         <div className="mt-4">
           <div className="flex justify-between text-sm">
             <span>{formatCurrency(totalSpent)}</span>
             <span>{formatCurrency(totalBudget)}</span>
           </div>
-          <div className="mt-2 h-2 rounded-full bg-zinc-800">
+          <div className="mt-2 h-2 rounded-full bg-surface-hover">
             <div className={`h-2 rounded-full ${percent > 1 ? "bg-red-400" : percent >= 0.8 ? "bg-amber-300" : "bg-emerald-400"}`} style={{ width: `${Math.min(percent, 1) * 100}%` }} />
           </div>
-          <p className="mt-2 text-sm text-zinc-400">{formatPercent(percent)} terpakai dari total anggaran.</p>
+          <p className="mt-2 text-sm text-muted">{formatPercent(percent)} terpakai dari total anggaran.</p>
           <div className="mt-4 space-y-2">
             {budgets.slice(0, 3).map((item) => (
               <div className="flex justify-between gap-3 text-sm" key={item.id}>
-                <span className="truncate text-zinc-300">{item.category_name}</span>
-                <span className={item.over_budget ? "text-red-300" : "text-zinc-200"}>{formatCurrency(item.remaining)}</span>
+                <span className="truncate text-muted">{item.category_name}</span>
+                <span className={item.over_budget ? "text-danger" : "text-zinc-200"}>{formatCurrency(item.remaining)}</span>
               </div>
             ))}
           </div>
@@ -159,10 +159,10 @@ function BudgetWidget({ budgets, isError, isLoading }: { budgets: Budget[]; isEr
 }
 
 function Kpi({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "positive" | "negative" }) {
-  const toneClass = tone === "negative" ? "text-red-300" : tone === "positive" ? "text-emerald-300" : "text-white";
+  const toneClass = tone === "negative" ? "text-danger" : tone === "positive" ? "text-accent" : "text-main";
   return (
     <Card>
-      <p className="text-sm text-zinc-400">{label}</p>
+      <p className="text-sm text-muted">{label}</p>
       <p className={`mt-2 text-2xl font-semibold ${toneClass}`}>{value}</p>
     </Card>
   );

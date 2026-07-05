@@ -26,15 +26,6 @@ Buat file `.env` lokal dari contoh:
 Copy-Item .env.example .env
 ```
 
-Demo credential lokal:
-
-```txt
-Email: admin@moneymate.local
-Password: changeme-local-demo
-```
-
-Nilai tersebut hanya placeholder lokal. Jangan gunakan untuk production.
-
 ## Menjalankan Lokal
 
 Repository ini hanya menyertakan source aplikasi inti. Jalankan service dengan tool lokal.

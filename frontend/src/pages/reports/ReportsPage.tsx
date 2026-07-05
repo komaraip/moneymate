@@ -57,39 +57,39 @@ export function ReportsPage() {
 
       <Card className="mb-5">
         <div className="grid gap-4 lg:grid-cols-[1fr_1fr_10rem_auto] lg:items-end">
-          <label className="text-sm text-zinc-300">
+          <label className="text-sm text-muted">
             <span className="mb-2 block font-medium">Bulan laporan</span>
             <input
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+              className="w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main"
               onChange={(event) => setMonth(event.target.value)}
               type="month"
               value={month}
             />
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm text-zinc-300">
+            <label className="text-sm text-muted">
               <span className="mb-2 block font-medium">Dari tanggal</span>
               <input
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+                className="w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main"
                 onChange={(event) => setFromDate(event.target.value)}
                 type="date"
                 value={fromDate}
               />
             </label>
-            <label className="text-sm text-zinc-300">
+            <label className="text-sm text-muted">
               <span className="mb-2 block font-medium">Sampai tanggal</span>
               <input
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+                className="w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main"
                 onChange={(event) => setToDate(event.target.value)}
                 type="date"
                 value={toDate}
               />
             </label>
           </div>
-          <label className="text-sm text-zinc-300">
+          <label className="text-sm text-muted">
             <span className="mb-2 block font-medium">Tren</span>
             <select
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+              className="w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main"
               onChange={(event) => setTrendMonths(Number(event.target.value))}
               value={trendMonths}
             >
@@ -108,7 +108,7 @@ export function ReportsPage() {
             {exportCsv.isPending ? "Menyiapkan..." : "Ekspor CSV"}
           </button>
         </div>
-        <p className="mt-3 text-sm text-zinc-500">Data manual/mock, bukan real-time.</p>
+        <p className="mt-3 text-sm text-muted">Data manual/mock, bukan real-time.</p>
         {exportMessage ? <p className="mt-3 text-sm text-emerald-200">{exportMessage}</p> : null}
         {exportCsv.isError ? <p className="mt-3 text-sm text-red-200">Ekspor CSV gagal diproses.</p> : null}
       </Card>
@@ -130,8 +130,8 @@ function PersonalInsights({ data }: { data: PersonalInsightsReport }) {
   return (
     <section className="mb-5">
       <div className="mb-3 flex items-center gap-2">
-        <FileText className="h-4 w-4 text-emerald-300" />
-        <h3 className="text-lg font-semibold text-white">Insight Personal {data.month}</h3>
+        <FileText className="h-4 w-4 text-accent" />
+        <h3 className="text-lg font-semibold text-main">Insight Personal {data.month}</h3>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <Metric label="Pemasukan" value={formatCurrency(data.income_total)} />
@@ -140,7 +140,7 @@ function PersonalInsights({ data }: { data: PersonalInsightsReport }) {
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card>
-          <h4 className="font-semibold text-white">Breakdown Kategori</h4>
+          <h4 className="font-semibold text-main">Breakdown Kategori</h4>
           <SimpleTable
             emptyLabel="Belum ada pemasukan atau pengeluaran pada bulan ini."
             rows={data.category_breakdown.map((row) => ({
@@ -152,7 +152,7 @@ function PersonalInsights({ data }: { data: PersonalInsightsReport }) {
           />
         </Card>
         <Card>
-          <h4 className="font-semibold text-white">Tren Cashflow</h4>
+          <h4 className="font-semibold text-main">Tren Cashflow</h4>
           <SimpleTable
             emptyLabel="Tren cashflow belum tersedia."
             rows={data.cashflow_trend.map((row) => ({
@@ -172,8 +172,8 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
   return (
     <section className="mb-5">
       <div className="mb-3 flex items-center gap-2">
-        <FileText className="h-4 w-4 text-emerald-300" />
-        <h3 className="text-lg font-semibold text-white">Ringkasan Bulanan {data.month}</h3>
+        <FileText className="h-4 w-4 text-accent" />
+        <h3 className="text-lg font-semibold text-main">Ringkasan Bulanan {data.month}</h3>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Metric label="Kekayaan Bersih Akhir" value={formatMaybeCurrency(data.ending_net_worth)} />
@@ -187,7 +187,7 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card>
-          <h4 className="font-semibold text-white">Progress Anggaran</h4>
+          <h4 className="font-semibold text-main">Progress Anggaran</h4>
           <SimpleTable
             emptyLabel="Belum ada anggaran pada bulan ini."
             rows={(data.budgets ?? []).map((row) => ({
@@ -199,7 +199,7 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
           />
         </Card>
         <Card>
-          <h4 className="font-semibold text-white">Total Transaksi per Aset</h4>
+          <h4 className="font-semibold text-main">Total Transaksi per Aset</h4>
           <SimpleTable
             emptyLabel="Belum ada transaksi pada bulan ini."
             rows={data.transaction_totals_by_asset_type.map((row) => ({
@@ -211,7 +211,7 @@ function MonthlySummary({ data }: { data: MonthlySummaryReport }) {
           />
         </Card>
         <Card>
-          <h4 className="font-semibold text-white">Total Transaksi per Instrumen</h4>
+          <h4 className="font-semibold text-main">Total Transaksi per Instrumen</h4>
           <SimpleTable
             emptyLabel="Belum ada transaksi instrumen."
             rows={data.transaction_totals_by_instrument.map((row) => ({
@@ -234,8 +234,8 @@ function PerformanceSummary({ data }: { data: PortfolioPerformanceReport }) {
   return (
     <section>
       <div className="mb-3 flex items-center gap-2">
-        <FileText className="h-4 w-4 text-emerald-300" />
-        <h3 className="text-lg font-semibold text-white">
+        <FileText className="h-4 w-4 text-accent" />
+        <h3 className="text-lg font-semibold text-main">
           Performa Portofolio {formatDate(data.from_date)} - {formatDate(data.to_date)}
         </h3>
       </div>
@@ -247,7 +247,7 @@ function PerformanceSummary({ data }: { data: PortfolioPerformanceReport }) {
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card>
-          <h4 className="font-semibold text-white">Alokasi</h4>
+          <h4 className="font-semibold text-main">Alokasi</h4>
           <SimpleTable
             emptyLabel="Alokasi belum tersedia."
             rows={data.allocation_breakdown.map((row) => ({
@@ -259,7 +259,7 @@ function PerformanceSummary({ data }: { data: PortfolioPerformanceReport }) {
           />
         </Card>
         <Card>
-          <h4 className="font-semibold text-white">Posisi</h4>
+          <h4 className="font-semibold text-main">Posisi</h4>
           <SimpleTable
             emptyLabel="Holding belum tersedia."
             rows={data.holdings_performance.map((row) => ({
@@ -272,12 +272,12 @@ function PerformanceSummary({ data }: { data: PortfolioPerformanceReport }) {
         </Card>
       </div>
       <Card className="mt-4">
-        <h4 className="font-semibold text-white">Kas</h4>
-        <p className="mt-2 text-sm text-zinc-300">
+        <h4 className="font-semibold text-main">Kas</h4>
+        <p className="mt-2 text-sm text-muted">
           {formatCurrency(data.cash_summary.total_cash)} dari {data.cash_summary.active_accounts} akun aktif.
         </p>
-        <p className="mt-1 text-sm text-zinc-300">Pergerakan periode: {formatCurrency(data.cash_summary.period_movement)}</p>
-        <p className="mt-1 text-sm text-zinc-500">{data.cash_summary.note}</p>
+        <p className="mt-1 text-sm text-muted">Pergerakan periode: {formatCurrency(data.cash_summary.period_movement)}</p>
+        <p className="mt-1 text-sm text-muted">{data.cash_summary.note}</p>
       </Card>
       <Warnings warnings={data.warnings} />
     </section>
@@ -287,23 +287,23 @@ function PerformanceSummary({ data }: { data: PortfolioPerformanceReport }) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <Card>
-      <p className="text-sm text-zinc-400">{label}</p>
-      <p className="mt-2 text-xl font-semibold text-white">{value}</p>
+      <p className="text-sm text-muted">{label}</p>
+      <p className="mt-2 text-xl font-semibold text-main">{value}</p>
     </Card>
   );
 }
 
 function SimpleTable({ emptyLabel, rows }: { emptyLabel: string; rows: Array<{ key: string; left: string; right: string; detail: string }> }) {
   if (rows.length === 0) {
-    return <p className="mt-4 text-sm text-zinc-500">{emptyLabel}</p>;
+    return <p className="mt-4 text-sm text-muted">{emptyLabel}</p>;
   }
   return (
-    <div className="mt-4 divide-y divide-zinc-800">
+    <div className="mt-4 divide-y divide-subtle">
       {rows.map((row) => (
         <div className="flex items-start justify-between gap-4 py-3" key={row.key}>
           <div>
-            <p className="text-sm font-medium text-zinc-100">{row.left}</p>
-            <p className="mt-1 text-xs text-zinc-500">{row.detail}</p>
+            <p className="text-sm font-medium text-main">{row.left}</p>
+            <p className="mt-1 text-xs text-muted">{row.detail}</p>
           </div>
           <p className="shrink-0 text-sm text-zinc-200">{row.right}</p>
         </div>
@@ -318,7 +318,7 @@ function Warnings({ warnings }: { warnings: ReportWarning[] }) {
   }
   return (
     <Card className="mt-4">
-      <h4 className="font-semibold text-white">Catatan Kualitas Data</h4>
+      <h4 className="font-semibold text-main">Catatan Kualitas Data</h4>
       <div className="mt-3 space-y-2">
         {warnings.map((warning) => (
           <div className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2" key={`${warning.code}-${warning.message}`}>

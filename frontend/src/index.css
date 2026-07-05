@@ -2,65 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: dark;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-}
+@layer base {
+  :root,
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    
+    --bg-app: 23 23 23;
+    --bg-surface: 38 38 38;
+    --bg-surface-hover: 64 64 64;
+    --border-subtle: 64 64 64;
+    
+    --text-main: 249 250 251;
+    --text-muted: 156 163 175;
+    
+    --color-primary: 129 140 248;
+    --color-primary-hover: 99 102 241;
+    --color-accent: 45 212 191;
+    --color-danger: 251 113 133;
+    --color-success: 52 211 153;
+    --color-warning: 251 191 36;
+  }
 
-:root[data-theme="light"] {
-  color-scheme: light;
-}
+  :root[data-theme="light"] {
+    color-scheme: light;
+    
+    --bg-app: 245 243 255;
+    --bg-surface: 255 255 255;
+    --bg-surface-hover: 249 250 251;
+    --border-subtle: 229 231 235;
+    
+    --text-main: 17 24 39;
+    --text-muted: 107 114 128;
+    
+    --color-primary: 99 102 241;
+    --color-primary-hover: 79 70 229;
+    --color-accent: 20 184 166;
+    --color-danger: 244 63 94;
+    --color-success: 16 185 129;
+    --color-warning: 245 158 11;
+  }
 
-body {
-  margin: 0;
-}
+  body {
+    margin: 0;
+    background-color: rgb(var(--bg-app));
+    color: rgb(var(--text-main));
+  }
 
-:root[data-theme="light"] body {
-  background: #f8fafc;
-  color: #18181b;
-}
-
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-}
-
-:root[data-theme="light"] .bg-zinc-950,
-:root[data-theme="light"] .bg-zinc-950\/90 {
-  background-color: #f8fafc !important;
-}
-
-:root[data-theme="light"] .bg-zinc-900,
-:root[data-theme="light"] .bg-zinc-900\/70,
-:root[data-theme="light"] .hover\:bg-zinc-900:hover {
-  background-color: #ffffff !important;
-}
-
-:root[data-theme="light"] .bg-zinc-800 {
-  background-color: #e4e4e7 !important;
-}
-
-:root[data-theme="light"] .border-zinc-800,
-:root[data-theme="light"] .border-zinc-700 {
-  border-color: #d4d4d8 !important;
-}
-
-:root[data-theme="light"] .text-white,
-:root[data-theme="light"] .text-zinc-100 {
-  color: #18181b !important;
-}
-
-:root[data-theme="light"] .text-zinc-200,
-:root[data-theme="light"] .text-zinc-300 {
-  color: #3f3f46 !important;
-}
-
-:root[data-theme="light"] .text-zinc-400,
-:root[data-theme="light"] .text-zinc-500,
-:root[data-theme="light"] .text-zinc-600 {
-  color: #71717a !important;
-}
-
-:root[data-theme="light"] .divide-zinc-800 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #e4e4e7 !important;
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
 }

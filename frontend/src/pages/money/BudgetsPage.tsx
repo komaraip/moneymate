@@ -108,12 +108,12 @@ export function BudgetsPage() {
       </div>
 
       {successMessage ? (
-        <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</div>
+        <div className="mb-4 rounded-lg border border-emerald-500/30 bg-success/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</div>
       ) : null}
 
       <Card className="mb-5">
         <div className="grid gap-4 lg:grid-cols-[16rem_1fr] lg:items-end">
-          <label className="text-sm text-zinc-300">
+          <label className="text-sm text-muted">
             <span className="mb-2 block font-medium">Bulan anggaran</span>
             <input
               className={inputClass}
@@ -167,14 +167,14 @@ export function BudgetsPage() {
             <Field label="Catatan">
               <textarea className={`${inputClass} min-h-24`} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
             </Field>
-            <label className="flex items-center gap-2 text-sm text-zinc-300">
+            <label className="flex items-center gap-2 text-sm text-muted">
               <input checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} type="checkbox" />
               Anggaran aktif
             </label>
           </div>
           <Feedback error={errorMessage(create.error ?? update.error)} errors={formErrors} />
           <div className="mt-5 flex justify-end gap-2">
-            <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300" onClick={closeForm} type="button">
+            <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-muted" onClick={closeForm} type="button">
               Batal
             </button>
             <button
@@ -191,12 +191,12 @@ export function BudgetsPage() {
 
       {deleteTarget ? (
         <Modal title="Hapus Anggaran" onClose={() => setDeleteTarget(null)}>
-          <p className="text-sm text-zinc-300">
+          <p className="text-sm text-muted">
             Anggaran {deleteTarget.category_name} bulan {deleteTarget.month} akan dinonaktifkan. Transaksi pengeluaran tidak dihapus.
           </p>
           <Feedback error={errorMessage(remove.error)} errors={[]} />
           <div className="mt-5 flex justify-end gap-2">
-            <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300" onClick={() => setDeleteTarget(null)} type="button">
+            <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-muted" onClick={() => setDeleteTarget(null)} type="button">
               Batal
             </button>
             <button
@@ -228,10 +228,10 @@ function BudgetCard({ item, onDelete, onEdit }: { item: Budget; onDelete: () => 
     <Card>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm text-zinc-400">{item.month}</p>
-          <h3 className="mt-1 text-lg font-semibold text-white">{item.category_name}</h3>
+          <p className="text-sm text-muted">{item.month}</p>
+          <h3 className="mt-1 text-lg font-semibold text-main">{item.category_name}</h3>
         </div>
-        <span className={`rounded-full px-2 py-1 text-xs ${item.over_budget ? "bg-red-500/10 text-red-200" : "bg-emerald-500/10 text-emerald-200"}`}>
+        <span className={`rounded-full px-2 py-1 text-xs ${item.over_budget ? "bg-red-500/10 text-red-200" : "bg-success/10 text-emerald-200"}`}>
           {item.over_budget ? "Melebihi" : "Terkendali"}
         </span>
       </div>
@@ -241,20 +241,20 @@ function BudgetCard({ item, onDelete, onEdit }: { item: Budget; onDelete: () => 
         <SmallMetric label="Sisa" tone={item.remaining < 0 ? "negative" : "neutral"} value={formatCurrency(item.remaining)} />
       </div>
       <div className="mt-4">
-        <div className="mb-1 flex justify-between text-xs text-zinc-400">
+        <div className="mb-1 flex justify-between text-xs text-muted">
           <span>Progress</span>
           <span>{formatPercent(item.percent_used)}</span>
         </div>
-        <div className="h-2 rounded-full bg-zinc-800">
+        <div className="h-2 rounded-full bg-surface-hover">
           <div className={`h-2 rounded-full ${progressTone}`} style={{ width }} />
         </div>
       </div>
-      {item.notes ? <p className="mt-3 text-sm text-zinc-500">{item.notes}</p> : null}
+      {item.notes ? <p className="mt-3 text-sm text-muted">{item.notes}</p> : null}
       <div className="mt-4 flex justify-end gap-2">
-        <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300 hover:border-emerald-500 hover:text-emerald-200" onClick={onEdit} type="button">
+        <button className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200" onClick={onEdit} type="button">
           <Pencil className="h-4 w-4" />
         </button>
-        <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300 hover:border-red-500 hover:text-red-200" onClick={onDelete} type="button">
+        <button className="rounded-lg border border-subtle p-2 text-muted hover:border-red-500 hover:text-red-200" onClick={onDelete} type="button">
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
@@ -265,8 +265,8 @@ function BudgetCard({ item, onDelete, onEdit }: { item: Budget; onDelete: () => 
 function SmallMetric({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "negative" }) {
   return (
     <div>
-      <p className="text-xs text-zinc-500">{label}</p>
-      <p className={`mt-1 text-sm font-medium ${tone === "negative" ? "text-red-300" : "text-zinc-100"}`}>{value}</p>
+      <p className="text-xs text-muted">{label}</p>
+      <p className={`mt-1 text-sm font-medium ${tone === "negative" ? "text-danger" : "text-main"}`}>{value}</p>
     </div>
   );
 }
@@ -344,4 +344,4 @@ function defaultMonth() {
   return new Date().toISOString().slice(0, 7);
 }
 
-const inputClass = "w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-500";
+const inputClass = "w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";

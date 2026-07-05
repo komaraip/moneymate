@@ -41,7 +41,7 @@ func Load() Config {
 		RefreshTokenTTL:    30 * 24 * time.Hour,
 		SeedAdminEmail:     getEnv("SEED_ADMIN_EMAIL", getEnv("SEED_OWNER_EMAIL", "admin@moneymate.local")),
 		SeedAdminPassword:  getEnv("SEED_ADMIN_PASSWORD", getEnv("SEED_OWNER_PASSWORD", "changeme-local-demo")),
-		SeedAdminName:      getEnv("SEED_ADMIN_NAME", getEnv("SEED_OWNER_NAME", "MoneyMate Admin")),
+		SeedAdminName:      getEnv("SEED_ADMIN_NAME", getEnv("SEED_OWNER_NAME", "Super Admin")),
 	}
 }
 

@@ -64,11 +64,11 @@ export function AdminUsersPage() {
 
       <Card className="mb-5">
         <div className="grid gap-4 lg:grid-cols-[1fr_10rem_10rem]">
-          <label className="text-sm text-zinc-300">
+          <label className="text-sm text-muted">
             <span className="mb-2 block font-medium">Cari pengguna</span>
             <input className={inputClass} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Email atau nama" value={filters.search} />
           </label>
-          <label className="text-sm text-zinc-300">
+          <label className="text-sm text-muted">
             <span className="mb-2 block font-medium">Role</span>
             <select className={inputClass} onChange={(event) => setFilters((current) => ({ ...current, role: event.target.value }))} value={filters.role}>
               <option value="">Semua</option>
@@ -76,7 +76,7 @@ export function AdminUsersPage() {
               <option value="user">User</option>
             </select>
           </label>
-          <label className="text-sm text-zinc-300">
+          <label className="text-sm text-muted">
             <span className="mb-2 block font-medium">Status</span>
             <select className={inputClass} onChange={(event) => setFilters((current) => ({ ...current, is_active: event.target.value }))} value={filters.is_active}>
               <option value="">Semua</option>
@@ -85,17 +85,17 @@ export function AdminUsersPage() {
             </select>
           </label>
         </div>
-        <p className="mt-3 text-sm text-zinc-500">Admin tidak melihat transaksi, kas, portofolio, anggaran, atau tujuan tabungan pengguna lain di halaman ini.</p>
+        <p className="mt-3 text-sm text-muted">Admin tidak melihat transaksi, kas, portofolio, anggaran, atau tujuan tabungan pengguna lain di halaman ini.</p>
       </Card>
 
       {successMessage ? (
-        <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</div>
+        <div className="mb-4 rounded-lg border border-emerald-500/30 bg-success/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</div>
       ) : null}
 
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="text-xs uppercase text-zinc-500">
+            <thead className="text-xs uppercase text-muted">
               <tr>
                 <th className="py-3 pr-4">Pengguna</th>
                 <th className="py-3 pr-4">Role</th>
@@ -104,22 +104,22 @@ export function AdminUsersPage() {
                 <th className="py-3 pr-4 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800">
+            <tbody className="divide-y divide-subtle">
               {(users.data ?? []).map((item) => (
                 <tr key={item.id}>
                   <td className="py-3 pr-4">
-                    <p className="font-medium text-zinc-100">{item.full_name}</p>
-                    <p className="mt-1 text-xs text-zinc-500">{item.email}</p>
+                    <p className="font-medium text-main">{item.full_name}</p>
+                    <p className="mt-1 text-xs text-muted">{item.email}</p>
                   </td>
-                  <td className="py-3 pr-4 text-zinc-300">{item.role === "admin" ? "Admin" : "User"}</td>
+                  <td className="py-3 pr-4 text-muted">{item.role === "admin" ? "Admin" : "User"}</td>
                   <td className="py-3 pr-4">
-                    <span className={`rounded-full px-2 py-1 text-xs ${item.is_active ? "bg-emerald-500/10 text-emerald-200" : "bg-zinc-800 text-zinc-400"}`}>
+                    <span className={`rounded-full px-2 py-1 text-xs ${item.is_active ? "bg-success/10 text-emerald-200" : "bg-surface-hover text-muted"}`}>
                       {item.is_active ? "Aktif" : "Nonaktif"}
                     </span>
                   </td>
-                  <td className="py-3 pr-4 text-zinc-300">{formatDate(item.created_at)}</td>
+                  <td className="py-3 pr-4 text-muted">{formatDate(item.created_at)}</td>
                   <td className="py-3 pr-4 text-right">
-                    <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300 hover:border-emerald-500 hover:text-emerald-200" onClick={() => openEdit(item, setEditing, setForm)} type="button">
+                    <button className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200" onClick={() => openEdit(item, setEditing, setForm)} type="button">
                       <Pencil className="h-4 w-4" />
                     </button>
                   </td>
@@ -128,15 +128,15 @@ export function AdminUsersPage() {
             </tbody>
           </table>
         </div>
-        {(users.data ?? []).length === 0 ? <p className="mt-4 text-sm text-zinc-500">Tidak ada pengguna untuk filter ini.</p> : null}
+        {(users.data ?? []).length === 0 ? <p className="mt-4 text-sm text-muted">Tidak ada pengguna untuk filter ini.</p> : null}
       </Card>
 
       {editing ? (
         <Modal title="Edit Pengguna" onClose={() => setEditing(null)}>
           <div className="space-y-4">
             <div>
-              <p className="font-medium text-white">{editing.full_name}</p>
-              <p className="mt-1 text-sm text-zinc-500">{editing.email}</p>
+              <p className="font-medium text-main">{editing.full_name}</p>
+              <p className="mt-1 text-sm text-muted">{editing.email}</p>
             </div>
             <Field label="Role">
               <select className={inputClass} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as "admin" | "user" }))} value={form.role}>
@@ -144,7 +144,7 @@ export function AdminUsersPage() {
                 <option value="user">User</option>
               </select>
             </Field>
-            <label className="flex items-center gap-2 text-sm text-zinc-300">
+            <label className="flex items-center gap-2 text-sm text-muted">
               <input checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} type="checkbox" />
               Akun aktif
             </label>
@@ -153,7 +153,7 @@ export function AdminUsersPage() {
             <InlineAlert messages={[errorMessage(update.error)]} tone="error" />
           </div>
           <div className="mt-5 flex justify-end gap-2">
-            <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300" onClick={() => setEditing(null)} type="button">
+            <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-muted" onClick={() => setEditing(null)} type="button">
               Batal
             </button>
             <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={update.isPending} onClick={() => update.mutate()} type="button">
@@ -185,4 +185,4 @@ function errorMessage(error: unknown) {
   return "Request gagal diproses.";
 }
 
-const inputClass = "w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-500";
+const inputClass = "w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";

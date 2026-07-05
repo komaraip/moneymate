@@ -107,7 +107,7 @@ export function SavingsGoalsPage() {
       </div>
 
       {successMessage ? (
-        <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</div>
+        <div className="mb-4 rounded-lg border border-emerald-500/30 bg-success/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</div>
       ) : null}
 
       <Card className="mb-5">
@@ -153,14 +153,14 @@ export function SavingsGoalsPage() {
             <Field label="Catatan">
               <textarea className={`${inputClass} min-h-24`} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
             </Field>
-            <label className="flex items-center gap-2 text-sm text-zinc-300">
+            <label className="flex items-center gap-2 text-sm text-muted">
               <input checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} type="checkbox" />
               Tujuan aktif
             </label>
           </div>
           <Feedback error={errorMessage(create.error ?? update.error)} errors={formErrors} />
           <div className="mt-5 flex justify-end gap-2">
-            <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300" onClick={closeForm} type="button">
+            <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-muted" onClick={closeForm} type="button">
               Batal
             </button>
             <button
@@ -177,10 +177,10 @@ export function SavingsGoalsPage() {
 
       {deleteTarget ? (
         <Modal title="Hapus Tujuan Tabungan" onClose={() => setDeleteTarget(null)}>
-          <p className="text-sm text-zinc-300">Tujuan {deleteTarget.name} akan dinonaktifkan. Catatan historis tetap tersimpan di database lokal.</p>
+          <p className="text-sm text-muted">Tujuan {deleteTarget.name} akan dinonaktifkan. Catatan historis tetap tersimpan di database lokal.</p>
           <Feedback error={errorMessage(remove.error)} errors={[]} />
           <div className="mt-5 flex justify-end gap-2">
-            <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300" onClick={() => setDeleteTarget(null)} type="button">
+            <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-muted" onClick={() => setDeleteTarget(null)} type="button">
               Batal
             </button>
             <button
@@ -211,10 +211,10 @@ function GoalCard({ item, onDelete, onEdit }: { item: SavingsGoal; onDelete: () 
     <Card>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm text-zinc-400">Tujuan pribadi</p>
-          <h3 className="mt-1 text-lg font-semibold text-white">{item.name}</h3>
+          <p className="text-sm text-muted">Tujuan pribadi</p>
+          <h3 className="mt-1 text-lg font-semibold text-main">{item.name}</h3>
         </div>
-        <span className={`rounded-full px-2 py-1 text-xs ${item.is_completed ? "bg-emerald-500/10 text-emerald-200" : "bg-zinc-800 text-zinc-300"}`}>
+        <span className={`rounded-full px-2 py-1 text-xs ${item.is_completed ? "bg-success/10 text-emerald-200" : "bg-surface-hover text-muted"}`}>
           {item.is_completed ? "Tercapai" : "Berjalan"}
         </span>
       </div>
@@ -224,26 +224,26 @@ function GoalCard({ item, onDelete, onEdit }: { item: SavingsGoal; onDelete: () 
         <SmallMetric label="Sisa" value={formatCurrency(item.remaining_amount)} />
       </div>
       <div className="mt-4">
-        <div className="mb-1 flex justify-between text-xs text-zinc-400">
+        <div className="mb-1 flex justify-between text-xs text-muted">
           <span>Progress</span>
           <span>{formatPercent(item.progress_percent)}</span>
         </div>
-        <div className="h-2 rounded-full bg-zinc-800">
+        <div className="h-2 rounded-full bg-surface-hover">
           <div className={`h-2 rounded-full ${item.is_completed ? "bg-emerald-400" : "bg-sky-300"}`} style={{ width }} />
         </div>
       </div>
       {item.target_date ? (
-        <p className="mt-3 inline-flex items-center gap-2 text-sm text-zinc-400">
+        <p className="mt-3 inline-flex items-center gap-2 text-sm text-muted">
           <CalendarDays className="h-4 w-4" />
           Deadline {formatDate(item.target_date)}
         </p>
       ) : null}
-      {item.notes ? <p className="mt-3 text-sm text-zinc-500">{item.notes}</p> : null}
+      {item.notes ? <p className="mt-3 text-sm text-muted">{item.notes}</p> : null}
       <div className="mt-4 flex justify-end gap-2">
-        <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300 hover:border-emerald-500 hover:text-emerald-200" onClick={onEdit} type="button">
+        <button className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200" onClick={onEdit} type="button">
           <Pencil className="h-4 w-4" />
         </button>
-        <button className="rounded-lg border border-zinc-700 p-2 text-zinc-300 hover:border-red-500 hover:text-red-200" onClick={onDelete} type="button">
+        <button className="rounded-lg border border-subtle p-2 text-muted hover:border-red-500 hover:text-red-200" onClick={onDelete} type="button">
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
@@ -254,8 +254,8 @@ function GoalCard({ item, onDelete, onEdit }: { item: SavingsGoal; onDelete: () 
 function SmallMetric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs text-zinc-500">{label}</p>
-      <p className="mt-1 text-sm font-medium text-zinc-100">{value}</p>
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-sm font-medium text-main">{value}</p>
     </div>
   );
 }
@@ -331,4 +331,4 @@ function errorMessage(error: unknown) {
   return "Request gagal diproses.";
 }
 
-const inputClass = "w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-500";
+const inputClass = "w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";

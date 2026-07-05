@@ -201,11 +201,11 @@ export function TransactionsPage() {
         setFilters={setFilters}
       />
 
-      {successMessage ? <p className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</p> : null}
+      {successMessage ? <p className="mb-4 rounded-lg border border-emerald-500/30 bg-success/10 px-3 py-2 text-sm text-emerald-100">{successMessage}</p> : null}
 
       <Table headers={["Tanggal", "Tipe", "Kategori/Instrumen", "Akun", "Nominal", "Aksi"]}>
         {transactions.data?.map((item) => (
-          <tr className="border-t border-zinc-800" key={item.id}>
+          <tr className="border-t border-subtle" key={item.id}>
             <td className="px-4 py-3">{formatDate(item.transaction_date)}</td>
             <td className="px-4 py-3">{transactionTypeLabel(item.type)}</td>
             <td className="px-4 py-3">{item.category_name ?? item.instrument_ticker ?? item.instrument_name ?? "-"}</td>
@@ -218,7 +218,7 @@ export function TransactionsPage() {
             <td className="px-4 py-3">
               <div className="flex justify-end gap-2">
                 <button
-                  className="rounded-lg border border-zinc-700 p-2 text-zinc-300 hover:border-emerald-500 hover:text-emerald-200"
+                  className="rounded-lg border border-subtle p-2 text-muted hover:border-emerald-500 hover:text-emerald-200"
                   onClick={() => openEdit(item, setForm, setEditing, setFormOpen, setFormErrors)}
                   title="Edit transaksi"
                   type="button"
@@ -226,7 +226,7 @@ export function TransactionsPage() {
                   <Pencil className="h-4 w-4" />
                 </button>
                 <button
-                  className="rounded-lg border border-zinc-700 p-2 text-zinc-300 hover:border-rose-500 hover:text-rose-200"
+                  className="rounded-lg border border-subtle p-2 text-muted hover:border-rose-500 hover:text-rose-200"
                   onClick={() => setDeleteTarget(item)}
                   title="Hapus transaksi"
                   type="button"
@@ -239,7 +239,7 @@ export function TransactionsPage() {
         ))}
         {transactions.data?.length === 0 ? (
           <tr>
-            <td className="px-4 py-8 text-center text-zinc-500" colSpan={6}>
+            <td className="px-4 py-8 text-center text-muted" colSpan={6}>
               Belum ada transaksi. Tambahkan pemasukan atau pengeluaran pertama.
             </td>
           </tr>
@@ -307,8 +307,8 @@ function QuickAddCard({
   return (
     <Card className="mb-4">
       <div className="mb-3">
-        <h3 className="font-semibold text-white">Tambah Cepat</h3>
-        <p className="mt-1 text-sm text-zinc-500">Untuk pemasukan dan pengeluaran harian. Transfer dan investasi tetap lewat form lengkap.</p>
+        <h3 className="font-semibold text-main">Tambah Cepat</h3>
+        <p className="mt-1 text-sm text-muted">Untuk pemasukan dan pengeluaran harian. Transfer dan investasi tetap lewat form lengkap.</p>
       </div>
       <div className="grid gap-3 lg:grid-cols-[140px_150px_1fr_1fr_160px_1fr_auto] lg:items-end">
         <Field label="Tipe">
@@ -412,7 +412,7 @@ function TransactionFiltersCard({
         </Field>
       </div>
       <div className="mt-3 flex justify-end">
-        <button className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200" onClick={onReset} type="button">
+        <button className="rounded-lg border border-subtle px-3 py-2 text-sm text-zinc-200" onClick={onReset} type="button">
           Reset Filter
         </button>
       </div>
@@ -452,7 +452,7 @@ function TransactionModal({
 
   return (
     <Modal onClose={onClose} size="xl" title={isEditing ? "Edit Transaksi" : "Tambah Transaksi"}>
-      <p className="mb-5 text-sm text-zinc-400">Data manual, bukan real-time</p>
+      <p className="mb-5 text-sm text-muted">Data manual, bukan real-time</p>
 
       <div className="grid gap-4 md:grid-cols-2">
           <Field label="Tipe">
@@ -569,7 +569,7 @@ function TransactionModal({
       <Feedback error={error} errors={errors} />
 
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
+          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onClose} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isSaving} onClick={onSubmit} type="button">
@@ -595,10 +595,10 @@ function ConfirmDelete({
 }) {
   return (
     <Modal onClose={onCancel} size="sm" title="Hapus Transaksi">
-      <p className="text-sm text-zinc-400">Transaksi {label} akan dihapus. Efek saldo kas akan dibalik otomatis untuk transaksi personal.</p>
+      <p className="text-sm text-muted">Transaksi {label} akan dihapus. Efek saldo kas akan dibalik otomatis untuk transaksi personal.</p>
       {error ? <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
       <div className="mt-5 flex justify-end gap-3">
-          <button className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
+          <button className="rounded-lg border border-subtle px-4 py-2 text-sm text-zinc-200" onClick={onCancel} type="button">
             Batal
           </button>
           <button className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-60" disabled={isDeleting} onClick={onConfirm} type="button">
@@ -753,7 +753,7 @@ function invalidateTransactionWrites(queryClient: ReturnType<typeof useQueryClie
 function Field({ children, label }: { children: ReactNode; label: string }) {
   return (
     <label className="block text-sm">
-      <span className="mb-2 block text-zinc-300">{label}</span>
+      <span className="mb-2 block text-muted">{label}</span>
       {children}
     </label>
   );
@@ -773,9 +773,9 @@ function Feedback({ error, errors }: { error: string; errors: string[] }) {
 
 function Table({ headers, children }: { headers: string[]; children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-800">
+    <div className="overflow-x-auto rounded-xl border border-subtle">
       <table className="w-full min-w-[860px] text-sm">
-        <thead className="bg-zinc-900 text-zinc-400">
+        <thead className="bg-surface text-muted">
           <tr>
             {headers.map((header) => (
               <th className="px-4 py-3 text-left" key={header}>
@@ -835,4 +835,4 @@ function isNumeric(value: string) {
   return value.trim() !== "" && Number.isFinite(Number(value));
 }
 
-const inputClass = "w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-500";
+const inputClass = "w-full rounded-lg border border-subtle bg-app px-3 py-2 text-sm text-main outline-none focus:border-emerald-500";
