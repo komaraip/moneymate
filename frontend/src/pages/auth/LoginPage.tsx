@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ApiError } from "../../helpers/api-client";
 import { useAuth } from "../../hooks/useAuth";
+import { AuthSplitLayout } from "../../components/layout/AuthSplitLayout";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -26,49 +27,62 @@ export function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-app px-5 text-main">
+    <AuthSplitLayout>
+      <div>
+        <h2 className="text-3xl font-bold text-white">Masuk Dashboard</h2>
+        <p className="mt-2 text-zinc-400">Gunakan akun Anda untuk melanjutkan.</p>
+      </div>
+
       <form
-        className="w-full max-w-md rounded-xl border border-subtle bg-surface/80 p-6"
+        className="mt-8 space-y-5"
         onSubmit={(event) => void onSubmit(event)}
       >
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">
-          MoneyMate
-        </p>
-        <h1 className="mt-3 text-2xl font-semibold text-main">Masuk Dashboard</h1>
-
-        <label className="mt-6 block text-sm text-muted">
-          Email
+        <div>
+          <label className="block text-sm font-medium text-zinc-300">
+            Email
+          </label>
           <input
-            className="mt-2 w-full rounded-lg border border-subtle bg-app px-3 py-2 text-main outline-none focus:border-emerald-400"
+            className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder-zinc-500 outline-none transition-colors focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50"
             onChange={(event) => setEmail(event.target.value)}
+            placeholder="nama@email.com"
             type="email"
             value={email}
+            required
           />
-        </label>
-        <label className="mt-4 block text-sm text-muted">
-          Password
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-zinc-300">
+            Password
+          </label>
           <input
-            className="mt-2 w-full rounded-lg border border-subtle bg-app px-3 py-2 text-main outline-none focus:border-emerald-400"
+            className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder-zinc-500 outline-none transition-colors focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50"
             onChange={(event) => setPassword(event.target.value)}
+            placeholder="••••••••"
             type="password"
             value={password}
+            required
           />
-        </label>
+        </div>
 
-        {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
-
-        <p className="mt-6 text-center text-sm text-muted">
-          Belum punya akun? <Link to="/register" className="text-emerald-400 hover:underline">Daftar sekarang</Link>
-        </p>
+        {error ? (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+            {error}
+          </div>
+        ) : null}
 
         <button
-          className="mt-6 w-full rounded-lg bg-emerald-400 px-4 py-2 font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 px-4 py-3 font-semibold text-zinc-950 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] hover:shadow-emerald-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
           disabled={isSubmitting}
           type="submit"
         >
           {isSubmitting ? "Memproses..." : "Masuk"}
         </button>
+
+        <p className="mt-8 text-center text-sm text-zinc-400">
+          Belum punya akun? <Link to="/register" className="font-medium text-emerald-400 hover:text-emerald-300 hover:underline">Daftar sekarang</Link>
+        </p>
       </form>
-    </main>
+    </AuthSplitLayout>
   );
 }

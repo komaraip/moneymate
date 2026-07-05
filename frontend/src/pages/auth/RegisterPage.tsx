@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { ApiError } from "../../helpers/api-client";
 import { moneymateApi } from "../../helpers/moneymate-api";
+import { AuthSplitLayout } from "../../components/layout/AuthSplitLayout";
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -26,61 +27,76 @@ export function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-app px-5 text-main">
+    <AuthSplitLayout>
+      <div>
+        <h2 className="text-3xl font-bold text-white">Daftar Akun Baru</h2>
+        <p className="mt-2 text-zinc-400">Mulai kelola finansial Anda hari ini.</p>
+      </div>
+
       <form
-        className="w-full max-w-md rounded-xl border border-subtle bg-surface/80 p-6"
+        className="mt-8 space-y-5"
         onSubmit={(event) => void onSubmit(event)}
       >
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">
-          MoneyMate
-        </p>
-        <h1 className="mt-3 text-2xl font-semibold text-main">Daftar Akun Baru</h1>
-
-        <label className="mt-6 block text-sm text-muted">
-          Nama Lengkap
+        <div>
+          <label className="block text-sm font-medium text-zinc-300">
+            Nama Lengkap
+          </label>
           <input
-            className="mt-2 w-full rounded-lg border border-subtle bg-app px-3 py-2 text-main outline-none focus:border-emerald-400"
+            className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder-zinc-500 outline-none transition-colors focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50"
             onChange={(event) => setFullName(event.target.value)}
+            placeholder="John Doe"
             type="text"
             value={fullName}
             required
           />
-        </label>
-        <label className="mt-4 block text-sm text-muted">
-          Email
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-zinc-300">
+            Email
+          </label>
           <input
-            className="mt-2 w-full rounded-lg border border-subtle bg-app px-3 py-2 text-main outline-none focus:border-emerald-400"
+            className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder-zinc-500 outline-none transition-colors focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50"
             onChange={(event) => setEmail(event.target.value)}
+            placeholder="nama@email.com"
             type="email"
             value={email}
             required
           />
-        </label>
-        <label className="mt-4 block text-sm text-muted">
-          Password
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-zinc-300">
+            Password
+          </label>
           <input
-            className="mt-2 w-full rounded-lg border border-subtle bg-app px-3 py-2 text-main outline-none focus:border-emerald-400"
+            className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder-zinc-500 outline-none transition-colors focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50"
             onChange={(event) => setPassword(event.target.value)}
+            placeholder="Minimal 8 karakter"
             type="password"
             value={password}
             required
           />
-        </label>
+        </div>
 
-        {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
-
-        <p className="mt-6 text-center text-sm text-muted">
-          Sudah punya akun? <Link to="/login" className="text-emerald-400 hover:underline">Masuk di sini</Link>
-        </p>
+        {error ? (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+            {error}
+          </div>
+        ) : null}
 
         <button
-          className="mt-6 w-full rounded-lg bg-emerald-400 px-4 py-2 font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 px-4 py-3 font-semibold text-zinc-950 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] hover:shadow-emerald-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
           disabled={isSubmitting}
           type="submit"
         >
-          {isSubmitting ? "Memproses..." : "Daftar"}
+          {isSubmitting ? "Memproses..." : "Buat Akun"}
         </button>
+        
+        <p className="mt-8 text-center text-sm text-zinc-400">
+          Sudah punya akun? <Link to="/login" className="font-medium text-emerald-400 hover:text-emerald-300 hover:underline">Masuk di sini</Link>
+        </p>
       </form>
-    </main>
+    </AuthSplitLayout>
   );
 }
